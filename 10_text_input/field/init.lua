@@ -3,16 +3,13 @@
 
 local ecs = require("ecs")
 
-local fill = assert(ecs.service.get("ui.fill", "void(handle<ecs.surface>, float, float, float, float, int64)"))
-local text = assert(ecs.service.get("ui.text", "float(handle<ecs.surface>, string, float, float, float, int64)"))
-local measure = assert(ecs.service.get("ui.measure", "void(string, float, out float, out float)"))
-local color = assert(ecs.service.get("ui.color", "int64(string)"))
+local draw = require("draw") -- the functions of a plugin the manifest depends on
 
 local MARGIN, SIZE = 16, 20 -- in layout units
 
 -- tells the core where the cursor is, in surface pixels, so an input method's window shows beside it
 local function placeCursor(field)
-  local width, height = measure(field.text, SIZE)
+  local width, height = draw.measure(field.text, SIZE)
   field.panel:setTextInput(true, (MARGIN + width) * field.scale, MARGIN * field.scale, 2 * field.scale, height * field.scale)
 end
 
@@ -29,10 +26,10 @@ ecs.panel.registerType({
 
   draw = function(field, surface)
     field.scale = surface.scale
-    fill(surface, 0, 0, surface.width / surface.scale, surface.height / surface.scale, color("background"))
-    local width = text(surface, field.text, MARGIN, MARGIN, SIZE, color("text"))
-    local _, height = measure(field.text, SIZE)
-    fill(surface, MARGIN + width, MARGIN, 2, height, color("accent")) -- the cursor
+    surface:fill(0, 0, surface.width, surface.height, draw.color("background"))
+    local width = draw.text(surface, field.text, MARGIN, MARGIN, SIZE, draw.color("text"))
+    local _, height = draw.measure(field.text, SIZE)
+    draw.fill(surface, MARGIN + width, MARGIN, 2, height, draw.color("accent")) -- the cursor
   end,
 
   event = function(field, event)

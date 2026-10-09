@@ -1,10 +1,8 @@
--- A number that keys step up and down. Its keys are settings, so the user can change them.
+-- A number that keys step up and down.
 
 local ecs = require("ecs")
 
-local fill = assert(ecs.service.get("ui.fill", "void(handle<ecs.surface>, float, float, float, float, int64)"))
-local text = assert(ecs.service.get("ui.text", "float(handle<ecs.surface>, string, float, float, float, int64)"))
-local color = assert(ecs.service.get("ui.color", "int64(string)"))
+local draw = require("draw") -- the functions of a plugin the manifest depends on
 
 local steppers = {} -- every open stepper, by its panel
 
@@ -33,8 +31,8 @@ ecs.panel.registerType({
   end,
 
   draw = function(stepper, surface)
-    fill(surface, 0, 0, surface.width / surface.scale, surface.height / surface.scale, color("background"))
-    text(surface, tostring(stepper.value), 24, 24, 48, color("text"))
+    surface:fill(0, 0, surface.width, surface.height, draw.color("background"))
+    draw.text(surface, tostring(stepper.value), 24, 24, 48, draw.color("text"))
   end,
 
   -- keys that no binding takes come to the focused panel

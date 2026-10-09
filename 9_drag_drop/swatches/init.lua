@@ -2,9 +2,7 @@
 
 local ecs = require("ecs")
 
-local fill = assert(ecs.service.get("ui.fill", "void(handle<ecs.surface>, float, float, float, float, int64)"))
-local text = assert(ecs.service.get("ui.text", "float(handle<ecs.surface>, string, float, float, float, int64)"))
-local color = assert(ecs.service.get("ui.color", "int64(string)"))
+local draw = require("draw") -- the functions of a plugin the manifest depends on
 
 local COLORS = { 0xFFBF616A, 0xFFD08770, 0xFFEBCB8B, 0xFFA3BE8C, 0xFF5E81AC, 0xFFB48EAD }
 local SWATCH = 48 -- in layout units
@@ -20,10 +18,10 @@ ecs.panel.registerType({
 
   draw = function(palette, surface)
     palette.scale = surface.scale
-    fill(surface, 0, 0, surface.width / surface.scale, surface.height / surface.scale, color("background"))
+    surface:fill(0, 0, surface.width, surface.height, draw.color("background"))
 
     for i, argb in ipairs(COLORS) do
-      fill(surface, (i - 1) * SWATCH, 0, SWATCH, SWATCH, argb)
+      draw.fill(surface, (i - 1) * SWATCH, 0, SWATCH, SWATCH, argb)
     end
   end,
 
@@ -54,10 +52,10 @@ ecs.panel.registerType({
   end,
 
   draw = function(sample, surface)
-    fill(surface, 0, 0, surface.width / surface.scale, surface.height / surface.scale, sample.color)
+    surface:fill(0, 0, surface.width, surface.height, sample.color)
 
     for i, name in ipairs(sample.files) do
-      text(surface, name, 16, 16 + (i - 1) * 24, 16, color("text"))
+      draw.text(surface, name, 16, 16 + (i - 1) * 24, 16, draw.color("text"))
     end
   end,
 
