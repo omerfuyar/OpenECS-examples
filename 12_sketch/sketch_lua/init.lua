@@ -334,11 +334,7 @@ ecs.panel.registerType({
   draw = function(clock, surface, seconds)
     clock.time = clock.time + seconds
     local width, height = surface.width, surface.height
-    local background = string.pack("=I4", BACKGROUND):rep(width)
-
-    for y = 0, height - 1 do
-      surface:setRow(y, background)
-    end
+    surface:fill(0, 0, width, height, BACKGROUND)
 
     local cx, cy = width / 2, height / 2
     local radius = math.min(cx, cy) * 0.8

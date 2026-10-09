@@ -38,10 +38,6 @@ ecs.panel.registerType({
   end,
 
   draw = function(_, surface)
-    local row = string.pack("=I4", 0xFF3B4252):rep(surface.width)
-
-    for y = 0, surface.height - 1 do
-      surface:setRow(y, row)
-    end
+    surface:fill(0, 0, surface.width, surface.height, 0xFF3B4252)
   end,
 })

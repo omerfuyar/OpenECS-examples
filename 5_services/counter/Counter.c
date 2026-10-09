@@ -35,7 +35,7 @@ static i64 *CounterFind(const char *name)
     return &COUNTERS.values[COUNTERS.count++];
 }
 
-// counter.add, "int(string, int)": the string is valid only during the call, so it is copied if kept
+// the string is valid only during the call, so it is copied if kept
 static i32 CounterAdd(const char *name, i32 amount)
 {
     i64 *value = CounterFind(name);
@@ -49,7 +49,6 @@ static i32 CounterAdd(const char *name, i32 amount)
     return (i32)*value;
 }
 
-// counter.get, "int(string)"
 static i32 CounterGet(const char *name)
 {
     i64 *value = CounterFind(name);
@@ -58,9 +57,9 @@ static i32 CounterGet(const char *name)
 
 SHUResult ECSPlugin_Init(ECSPlugin plugin)
 {
-    // the signature tells the core how to pass the arguments; callers must ask for the same signature
+    // the signature tells the core how to pass the arguments: the result's type, then each parameter's type and name
     // the function is cast to ECSFunction, the type of any function; the signature says its real type
-    SHU_ReturnResult(ECSService_RegisterFunction(plugin, "counter.add", (ECSFunction)CounterAdd, "int(string, int)", "Adds to a named counter, and gives its new value"));
-    SHU_ReturnResult(ECSService_RegisterFunction(plugin, "counter.get", (ECSFunction)CounterGet, "int(string)", "Gives a named counter's value"));
+    SHU_ReturnResult(ECSService_RegisterFunction(plugin, "counter.add", (ECSFunction)CounterAdd, "int(string name, int amount)", "Adds to a named counter, and gives its new value"));
+    SHU_ReturnResult(ECSService_RegisterFunction(plugin, "counter.get", (ECSFunction)CounterGet, "int(string name)", "Gives a named counter's value"));
     return SHUResult_Ok;
 }

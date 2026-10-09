@@ -737,15 +737,7 @@ static void SketchClockDraw(void *state, ECSSurface *surface, f64 seconds)
     SketchClock *clock = state;
     clock->time += seconds;
 
-    for (i32 y = 0; y < surface->height; y++)
-    {
-        u32 *row = (u32 *)((u8 *)surface->pixels.data + (usz)y * (usz)surface->pitch);
-
-        for (i32 x = 0; x < surface->width; x++)
-        {
-            row[x] = SKETCH_BACKGROUND;
-        }
-    }
+    ECSSurface_Fill(surface, 0, 0, surface->width, surface->height, SKETCH_BACKGROUND);
 
     f32 cx = (f32)surface->width / 2.0f;
     f32 cy = (f32)surface->height / 2.0f;

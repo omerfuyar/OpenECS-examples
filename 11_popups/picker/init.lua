@@ -2,9 +2,7 @@
 
 local ecs = require("ecs")
 
-local fill = assert(ecs.service.get("ui.fill", "void(handle<ecs.surface>, float, float, float, float, int64)"))
-local text = assert(ecs.service.get("ui.text", "float(handle<ecs.surface>, string, float, float, float, int64)"))
-local color = assert(ecs.service.get("ui.color", "int64(string)"))
+local draw = require("draw") -- the functions of a plugin the manifest depends on
 
 local CHOICES = { { "Red", "#BF616A" }, { "Green", "#A3BE8C" }, { "Blue", "#5E81AC" }, { "Yellow", "#EBCB8B" } }
 local ROW, WIDTH = 28, 160 -- in layout units
@@ -33,15 +31,15 @@ local function openMenu(picker, x, y)
 
     -- the surface is the popup's own; what draw leaves out is transparent
     draw = function(surface)
-      fill(surface, 0, 0, WIDTH, ROW * #CHOICES, color("background"))
+      draw.fill(surface, 0, 0, WIDTH, ROW * #CHOICES, draw.color("background"))
 
       for i, choice in ipairs(CHOICES) do
         if i == hover then
-          fill(surface, 0, (i - 1) * ROW, WIDTH, ROW, color("selected"))
+          draw.fill(surface, 0, (i - 1) * ROW, WIDTH, ROW, draw.color("selected"))
         end
 
-        fill(surface, 8, (i - 1) * ROW + 8, 12, 12, color(choice[2]))
-        text(surface, choice[1], 28, (i - 1) * ROW + 5, 15, color("text"))
+        draw.fill(surface, 8, (i - 1) * ROW + 8, 12, 12, draw.color(choice[2]))
+        draw.text(surface, choice[1], 28, (i - 1) * ROW + 5, 15, draw.color("text"))
       end
     end,
 
@@ -76,8 +74,8 @@ ecs.panel.registerType({
 
   draw = function(picker, surface)
     picker.scale = surface.scale
-    fill(surface, 0, 0, surface.width / surface.scale, surface.height / surface.scale, color(picker.color))
-    text(surface, "Right-click to choose a colour", 24, 24, 18, color("text"))
+    surface:fill(0, 0, surface.width, surface.height, draw.color(picker.color))
+    draw.text(surface, "Right-click to choose a colour", 24, 24, 18, draw.color("text"))
   end,
 
   event = function(picker, event)

@@ -1,62 +1,46 @@
 // The smallest native plugin: one panel type that fills itself with one colour. 1_hello does the same in Lua.
 
 #include "OpenECS.h" // the only header a plugin includes; it declares everything the core gives plugins
-                     // types such as u32, f64 and SHUResult come from shu.h, which it includes
 
-#include <stdlib.h>
+/// @brief The plugin, which the functions that log need. The core gives it to ECSPlugin_Init.
+static ECSPlugin PLUGIN = NULL;
 
-/// @brief A panel's state: what Create gives, and what the other functions get.
-typedef struct Greeting
-{
-    ECSPanel panel;
-} Greeting;
-
-// gets the new panel, the state a session saved for it (NULL for a new panel) and that state's version; gives back the panel's state
-// SHUResult is the interface's result: SHUResult_Ok, or an error
+// the core calls it when a panel of the type opens; the state it gives back goes to the other functions
+// this panel needs no state of its own, so it gives none
 static SHUResult GreetingCreate(ECSPanel panel, const ECSValue *savedState, u32 version, void **retState)
 {
+    (void)panel;
     (void)savedState;
     (void)version;
 
-    Greeting *greeting = calloc(1, sizeof(Greeting));
-
-    if (greeting == NULL)
-    {
-        return SHUResult_ErrAllocation; // an error shows on the panel instead of its drawing
-    }
-
-    greeting->panel = panel;
-    *retState = greeting;
-    return SHUResult_Ok;
+    ECS_Log(PLUGIN, ECSLogLevel_Info, "A greeting opens.");
+    *retState = NULL;
+    return SHUResult_Ok; // an error instead shows on the panel, in place of its drawing
 }
 
-// runs when the panel closes; frees what Create made
+// the core calls it when the panel closes
 static void GreetingDestroy(void *state)
 {
-    free(state);
+    (void)state;
+    ECS_Log(PLUGIN, ECSLogLevel_Info, "A greeting closes.");
 }
 
-// the surface is valid only during this call; pixels are ARGB, one row every pitch bytes
+// the core calls it only when the panel needs drawing; the surface is valid only during this call
+// C may also write the surface's pixels directly: ARGB, one row every pitch bytes
 static void GreetingDraw(void *state, ECSSurface *surface, f64 seconds)
 {
     (void)state;
     (void)seconds;
 
-    for (i32 y = 0; y < surface->height; y++)
-    {
-        u32 *row = (u32 *)((u8 *)surface->pixels.data + (usz)y * (usz)surface->pitch);
-
-        for (i32 x = 0; x < surface->width; x++)
-        {
-            row[x] = 0xFF5E81AC;
-        }
-    }
+    ECS_Log(PLUGIN, ECSLogLevel_Info, "The greeting draws itself, %d by %d pixels.", surface->width, surface->height);
+    ECSSurface_Fill(surface, 0, 0, surface->width, surface->height, 0xFF5E81AC);
 }
 
 // the core calls it once, after it loads the library; register everything here, not later
 SHUResult ECSPlugin_Init(ECSPlugin plugin)
 {
-    ECS_Log(plugin, ECSLogLevel_Info, "Hello from C!");
+    PLUGIN = plugin;
+    ECS_Log(plugin, ECSLogLevel_Info, "The plugin loads.");
 
     const ECSPanelTypeDesc greeting = {
         .name = "hello_c.greeting",

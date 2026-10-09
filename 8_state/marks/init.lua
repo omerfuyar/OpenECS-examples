@@ -3,8 +3,7 @@
 
 local ecs = require("ecs")
 
-local fill = assert(ecs.service.get("ui.fill", "void(handle<ecs.surface>, float, float, float, float, int64)"))
-local color = assert(ecs.service.get("ui.color", "int64(string)"))
+local draw = require("draw") -- the functions of a plugin the manifest depends on
 
 -- raise it when the saved state changes shape; create then gets the old version, and can read or drop the old state
 local STATE_VERSION = 1
@@ -30,10 +29,10 @@ ecs.panel.registerType({
 
   draw = function(marks, surface)
     marks.scale = surface.scale
-    fill(surface, 0, 0, surface.width / surface.scale, surface.height / surface.scale, color("background"))
+    surface:fill(0, 0, surface.width, surface.height, draw.color("background"))
 
     for i = 1, #marks.dots - 1, 2 do
-      fill(surface, marks.dots[i] - DOT / 2, marks.dots[i + 1] - DOT / 2, DOT, DOT, color("accent"))
+      draw.fill(surface, marks.dots[i] - DOT / 2, marks.dots[i + 1] - DOT / 2, DOT, DOT, draw.color("accent"))
     end
   end,
 
