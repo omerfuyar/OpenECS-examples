@@ -64,8 +64,9 @@ jobs:
           mkdir -p "$RUNNER_TEMP/luals"
           curl -sSL "https://github.com/LuaLS/lua-language-server/releases/download/$LUALS_VERSION/lua-language-server-$LUALS_VERSION-linux-x64.tar.gz" | tar -xz -C "$RUNNER_TEMP/luals"
 
-      # inside OpenECS's checkout, the check reads ecs.lua, so it finds code that misuses the ecs module
+      # the check reads OpenECS's ecs.lua as a library, so it finds code that misuses the ecs module
       - name: Check the Lua files
         run: |
+          echo '{ "workspace.library": ["../include"] }' > examples/.luarc.json
           "$RUNNER_TEMP/luals/bin/lua-language-server" --check="$GITHUB_WORKSPACE/examples" --checklevel=Warning --logpath="$RUNNER_TEMP/luals-log" | tee luals.log
           grep -q "no problems found" luals.log

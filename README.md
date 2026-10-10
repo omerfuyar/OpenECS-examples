@@ -1,6 +1,9 @@
 # OpenECS-examples
 
-Examples for writing [OpenECS](https://github.com/omerfuyar/OpenECS) plugins, one part at a time. Read them in the order of their numbers, from `1_hello` to `12_sketch`: each explains the parts of OpenECS that it is the first to use.
+Examples for writing [OpenECS](https://github.com/omerfuyar/OpenECS) plugins, one part at a time. Read them in the order of their numbers: each explains the parts that it is the first to use.
+
+- `1_hello` to `12_sketch` teach OpenECS: panels, native plugins, settings, services, keys, events, saved state, drag and drop, typed text, popups, and a whole tool in C and in Lua.
+- From `13_terminal`, each teaches standard plugins of [OpenECS-std](https://github.com/omerfuyar/OpenECS-std): `13_terminal` tty, `14_media` image and audio, `15_network` net, `16_model` gltf, and `17_files` fs with Lua's `io`.
 
 Each example holds a preset, `preset.lua`, its plugins and its tests. OpenECS ships the examples in `examples/`, next to the program. Run one with `--fresh`, so it starts from its preset even if you keep sessions (`ecs.keepSession`):
 
@@ -12,7 +15,7 @@ Each example holds a preset, `preset.lua`, its plugins and its tests. OpenECS sh
 
 ## Building and testing
 
-This repository is a submodule of OpenECS, in its `examples/` folder. Build and test inside a checkout of OpenECS:
+This repository is a submodule of OpenECS, in its `examples/` folder. OpenECS's build, with `--examples`, compiles and runs `shuild.c`, which copies each example into `bin/examples/` and builds its plugins there. Build and test inside a checkout of OpenECS:
 
 ``` shell
 git clone --recursive https://github.com/omerfuyar/OpenECS.git
@@ -20,3 +23,7 @@ cd OpenECS
 .github/scripts/build.sh D
 .github/scripts/test.sh build/Debug/bin/OpenECS examples
 ```
+
+## Releases
+
+This repository is released with OpenECS and OpenECS-std, at the same time and with the same version. Each release has a description in `.github/release-notes/`.
