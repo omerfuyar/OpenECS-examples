@@ -17,8 +17,8 @@ typedef enum BuildType
     BuildType_MinSizeRel,
 } BuildType;
 
-static const char *const BUILD_TYPE_NAMES[] = {"debug", "release", "relwithdebinfo", "minsizerel"};
-static const char *const BUILD_TYPE_FOLDERS[] = {"Debug", "Release", "RelWithDebInfo", "MinSizeRel"};
+static const char *const BUILD_TYPE_STRINGS[] = {"Debug", "Release", "RelWithDebInfo", "MinSizeRel"};
+#define BuildType_String(buildType) BUILD_TYPE_STRINGS[(buildType)]
 
 /// @brief What the flags choose.
 static struct
@@ -27,7 +27,9 @@ static struct
     const char *output; // OpenECS's build folder, such as ../build/Debug/
 } CONFIG = {BuildType_Debug, NULL};
 
-static void PrintUsage(void)
+#define RunCheck(cmd, ...) SHU_Assert(!SHU_UtilRun(cmd, ##__VA_ARGS__), "Runing " SHUM_COLOR_RED("'%s'") "failed", cmd)
+
+static void PrintUsageAndExit(void)
 {
     printf("Usage: ./shuild.ignore -o FOLDER [FLAG...]\n\n"
            "OpenECS's shuild.c runs this build with its --examples flag; see OpenECS's README.md.\n\n"
@@ -35,14 +37,14 @@ static void PrintUsage(void)
            "  -o, --output FOLDER  OpenECS's build folder, named from this folder, such as ../build/Debug/\n"
            "  -b, --build TYPE     Build type: debug (the default), release, relwithdebinfo or minsizerel\n"
            "  -h, --help           Show this help\n");
+    exit(1);
 }
 
 /// @brief Stops the build with what is wrong, the argument, and the usage.
 static void Refuse(const char *what, const char *argument)
 {
     SHU_LogError(0, "%s: " SHUM_COLOR_RED("'%s'"), what, argument);
-    PrintUsage();
-    exit(1);
+    PrintUsageAndExit();
 }
 
 static void SetupConfiguration(int argc, char **argv)
@@ -56,12 +58,12 @@ static void SetupConfiguration(int argc, char **argv)
             const char *name = i + 1 < argc ? argv[++i] : "";
             usz type = 0;
 
-            while (type < sizeof(BUILD_TYPE_NAMES) / sizeof(*BUILD_TYPE_NAMES) && strcasecmp(name, BUILD_TYPE_NAMES[type]) != 0)
+            while (type < sizeof(BUILD_TYPE_STRINGS) / sizeof(*BUILD_TYPE_STRINGS) && strcasecmp(name, BuildType_String(type)) != 0)
             {
                 type++;
             }
 
-            if (type == sizeof(BUILD_TYPE_NAMES) / sizeof(*BUILD_TYPE_NAMES))
+            if (type == sizeof(BUILD_TYPE_STRINGS) / sizeof(*BUILD_TYPE_STRINGS))
             {
                 Refuse("Unknown build type", name);
             }
@@ -74,7 +76,7 @@ static void SetupConfiguration(int argc, char **argv)
         }
         else if (!strcmp(flag, "-h") || !strcmp(flag, "--help"))
         {
-            PrintUsage();
+            PrintUsageAndExit();
             exit(0);
         }
         else
@@ -89,7 +91,7 @@ static void SetupConfiguration(int argc, char **argv)
     }
 
     SHUI_String cache;
-    SHUI_SFormat(&cache, ".shu/%s/", BUILD_TYPE_FOLDERS[CONFIG.type]);
+    SHUI_SFormat(&cache, ".shu/%s/", BUILD_TYPE_STRINGS[CONFIG.type]);
     SHU_CacheConfigure(cache.data);
 }
 
@@ -193,6 +195,8 @@ static void BuildExample(const char *path, const char *name)
     ForEachFolder(root.data, false, BuildPlugin);
 }
 
+// todo split definitions and declarations, move definitions under main
+
 int main(int argc, char **argv)
 {
     SHU_CompilerTryConfigure("gcc");
@@ -200,7 +204,7 @@ int main(int argc, char **argv)
 
     SHUI_String folder;
     SHUI_SFormat(&folder, "%sbin/examples/", CONFIG.output);
-    SHU_UtilRun("rm -rf %s && mkdir -p %s && cp -r [0-9]* %s", folder.data, folder.data, folder.data);
+    RunCheck("rm -rf %s && mkdir -p %s && cp -r [0-9]* %s", folder.data, folder.data, folder.data);
     ForEachFolder("./", true, BuildExample);
     return 0;
 }
