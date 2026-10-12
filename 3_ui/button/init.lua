@@ -4,7 +4,7 @@
 local ecs = require("ecs")
 
 -- require with a plugin's name gives that plugin's functions; the manifest must depend on it, so it loads first
-local ui = require("ui")
+local ui = require("ui") -- todo intellisense doesn't work
 
 ecs.panel.registerType({
   name = "button.panel",
@@ -30,7 +30,9 @@ ecs.panel.registerType({
 
   -- the panel's events go to ui, which calls the callbacks of the elements they reach, and asks the core to draw the panel again
   event = function(button, event)
+    -- own code
     ui.event(button.panel, event)
+    -- own code
   end,
 
   destroy = function(button)

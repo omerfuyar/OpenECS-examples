@@ -13,6 +13,7 @@ static SHUResult GreetingCreate(ECSPanel panel, const ECSValue *savedState, u32 
     (void)savedState;
     (void)version;
 
+    // todo LogInfo, LogError etc ???
     ECS_Log(PLUGIN, ECSLogLevel_Info, "A greeting opens.");
     *retState = NULL;
     return SHUResult_Ok; // an error instead shows on the panel, in place of its drawing
