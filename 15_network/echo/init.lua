@@ -1,4 +1,5 @@
 -- A server and a client on this computer, with the net standard plugin. The client sends each typed line, and the server sends it back in capitals.
+-- A line that starts with /udp goes in a UDP datagram instead of the TCP connection, and comes back the same way.
 -- Nothing in net waits: a timer moves the connections on, taking what arrived and answering it, so the program never stops for the network.
 
 local ecs = require("ecs")
@@ -11,6 +12,8 @@ local SIZE = 16
 local server = net.listen(PORT) -- nil if the port is taken
 local client = net.connect("127.0.0.1", PORT)
 local accepted -- the server's end of the connection, once the client is accepted
+local udpServer = net.udp(PORT) -- UDP ports are apart from TCP ports, so the same number serves both
+local udpClient = net.udp(0)    -- port 0: any free port
 local log = { server and "Listening on port " .. PORT or "Cannot listen on port " .. PORT }
 local panels = {} -- the open panels, drawn again when the log changes
 
@@ -41,14 +44,27 @@ local timer = ecs.timer.start(0.05, true, function()
   if answer ~= "" then
     add("< " .. answer)
   end
-end)
 
-ecs.plugin.onShutdown(function()
-  timer:stop()
+  -- a datagram comes with the address and port it came from, where the answer goes
+  if udpServer then
+    local datagram, host, port = net.receiveFrom(udpServer)
+
+    if datagram ~= "" then
+      net.sendTo(udpServer, host, port, datagram:upper())
+    end
+  end
+
+  if udpClient then
+    local datagram = net.receiveFrom(udpClient)
+
+    if datagram ~= "" then
+      add("< udp " .. datagram)
+    end
+  end
 end)
 
 ecs.panel.registerType({
-  name = "echo.panel",
+  name = "panel",
   title = "Echo",
 
   create = function(panel)
@@ -58,24 +74,28 @@ ecs.panel.registerType({
   end,
 
   draw = function(echo, surface)
-    surface:fill(0, 0, surface.width, surface.height, draw.color("background"))
-    local _, height = draw.measure("Ag", SIZE)
+    surface:fill(0, 0, surface.width, surface.height, "background")
+    local _, height = draw.measure(draw.font("ui"), "Ag", SIZE)
     local lines = math.max(1, math.floor(surface.height / surface.scale / height) - 2)
 
     -- the last lines of the log, then the line being typed
     for i = math.max(1, #log - lines + 1), #log do
-      draw.text(surface, log[i], 12, 12 + (i - math.max(1, #log - lines + 1)) * height, SIZE, draw.color("text"))
+      draw.text(surface, draw.font("ui"), log[i], 12, 12 + (i - math.max(1, #log - lines + 1)) * height, SIZE, "text")
     end
 
-    draw.text(surface, "> " .. echo.line, 12, 12 + lines * height, SIZE, draw.color("accent"))
+    draw.text(surface, draw.font("ui"), "> " .. echo.line, 12, 12 + lines * height, SIZE, "accent")
   end,
 
   event = function(echo, event)
     if event.type == "text" then
       echo.line = echo.line .. event.text
     elseif event.type == "keyDown" and event.key == "Return" and echo.line ~= "" then
-      -- send queues the data; it gives false while the client is not connected yet
-      if net.status(client) == 1 and net.send(client, echo.line) then
+      local datagram = echo.line:match("^/udp (.+)")
+
+      -- sendTo queues a datagram, which may be lost on the way; send queues data and gives false while the client is not connected yet
+      if datagram then
+        add(udpClient and net.sendTo(udpClient, "127.0.0.1", PORT, datagram) and "> udp " .. datagram or "Cannot send by UDP")
+      elseif net.status(client) == 1 and net.send(client, echo.line) then
         add("> " .. echo.line)
       else
         add("Not connected yet")
@@ -94,11 +114,14 @@ ecs.panel.registerType({
   end,
 })
 
--- the log is the plugin's saved state, so the test can read it
-ecs.plugin.registerState({
-  version = 1,
-  save = function()
+-- the log is the plugin's saved state, so the test can read it; the timer stops before the program exits
+ecs.plugin.register({
+  stateVersion = 1,
+  saveState = function()
     return { log = log }
   end,
-  restore = function() end,
+  restoreState = function() end,
+  destroy = function()
+    timer:stop()
+  end,
 })

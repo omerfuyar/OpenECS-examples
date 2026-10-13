@@ -31,15 +31,15 @@ local function openMenu(picker, x, y)
 
     -- the surface is the popup's own; what draw leaves out is transparent
     draw = function(surface)
-      draw.fill(surface, 0, 0, WIDTH, ROW * #CHOICES, draw.color("background"))
+      draw.fill(surface, 0, 0, WIDTH, ROW * #CHOICES, "background")
 
       for i, choice in ipairs(CHOICES) do
         if i == hover then
-          draw.fill(surface, 0, (i - 1) * ROW, WIDTH, ROW, draw.color("selected"))
+          draw.fill(surface, 0, (i - 1) * ROW, WIDTH, ROW, "selected")
         end
 
-        draw.fill(surface, 8, (i - 1) * ROW + 8, 12, 12, draw.color(choice[2]))
-        draw.text(surface, choice[1], 28, (i - 1) * ROW + 5, 15, draw.color("text"))
+        draw.fill(surface, 8, (i - 1) * ROW + 8, 12, 12, choice[2])
+        draw.text(surface, draw.font("ui"), choice[1], 28, (i - 1) * ROW + 5, 15, "text")
       end
     end,
 
@@ -64,7 +64,7 @@ local function openMenu(picker, x, y)
 end
 
 ecs.panel.registerType({
-  name = "picker.panel",
+  name = "panel",
   title = "Picker",
   stateVersion = 1,
 
@@ -74,8 +74,8 @@ ecs.panel.registerType({
 
   draw = function(picker, surface)
     picker.scale = surface.scale
-    surface:fill(0, 0, surface.width, surface.height, draw.color(picker.color))
-    draw.text(surface, "Right-click to choose a colour", 24, 24, 18, draw.color("text"))
+    surface:fill(0, 0, surface.width, surface.height, picker.color)
+    draw.text(surface, draw.font("ui"), "Right-click to choose a colour", 24, 24, 18, "text")
   end,
 
   event = function(picker, event)

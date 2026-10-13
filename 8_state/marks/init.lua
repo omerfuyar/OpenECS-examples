@@ -12,7 +12,7 @@ local DOT = 8 -- in layout units
 local placed = 0 -- every dot placed, in every session; the plugin's own state
 
 ecs.panel.registerType({
-  name = "marks.panel",
+  name = "panel",
   title = "Marks",
   stateVersion = STATE_VERSION,
 
@@ -29,10 +29,10 @@ ecs.panel.registerType({
 
   draw = function(marks, surface)
     marks.scale = surface.scale
-    surface:fill(0, 0, surface.width, surface.height, draw.color("background"))
+    surface:fill(0, 0, surface.width, surface.height, "background")
 
     for i = 1, #marks.dots - 1, 2 do
-      draw.fill(surface, marks.dots[i] - DOT / 2, marks.dots[i + 1] - DOT / 2, DOT, DOT, draw.color("accent"))
+      draw.fill(surface, marks.dots[i] - DOT / 2, marks.dots[i + 1] - DOT / 2, DOT, DOT, "accent")
     end
   end,
 
@@ -41,7 +41,7 @@ ecs.panel.registerType({
       table.insert(marks.dots, event.x / marks.scale) -- dots are kept in layout units, so they stay put at any scale
       table.insert(marks.dots, event.y / marks.scale)
       placed = placed + 1
-      marks.panel:setUnsaved(true) -- marks the tab; closing the panel then asks to save
+      marks.panel.unsaved = true -- marks the tab; closing the panel then asks to save
       marks.panel:redraw()
     end
   end,
@@ -53,18 +53,18 @@ ecs.panel.registerType({
 
   -- saves the panel's unsaved work, when the user asks or closes it; the dots are already in the session, so it only clears the mark
   save = function(marks)
-    marks.panel:setUnsaved(false)
+    marks.panel.unsaved = false
     return true
   end,
 })
 
--- state that belongs to no panel; restore runs before the session's panels are made
-ecs.plugin.registerState({
-  version = 1,
-  save = function()
+-- state that belongs to no panel, but to the plugin; restoreState runs before the session's panels are made
+ecs.plugin.register({
+  stateVersion = 1,
+  saveState = function()
     return { placed = placed }
   end,
-  restore = function(saved)
+  restoreState = function(saved)
     placed = saved and saved.placed or 0
   end,
 })

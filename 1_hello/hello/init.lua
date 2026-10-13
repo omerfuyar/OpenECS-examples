@@ -7,16 +7,15 @@ ecs.log.info("The plugin loads.") -- this file runs once, when the plugin loads;
 
 -- register panel types while the plugin loads, not later
 ecs.panel.registerType({
-  -- todo maybe auto append plugin name and dot to the start of this kind of names, that will take responsibility from the user
-  name = "hello.greeting", -- the type's name: the plugin's name, a dot, and a name of its own
-  title = "Greeting",      -- what the panel's tab shows
+  name = "greeting",  -- the type's local name; the core adds the plugin's name, so presets know it as "hello.greeting"
+  title = "Greeting", -- what the panel's tab shows
 
-  -- the core calls create when a panel of the type created, opened for the first time; what it returns is the panel's state, which the other functions get
-  -- todo what is saved ???
-  -- todo what is version ???
+  -- the core calls create each time a panel of the type opens; what it returns is the panel's state, which the other functions get
+  -- saved is what saveState gave when the session was saved, or nil for a new panel, and version is the stateVersion it was saved with
+  -- this panel saves nothing, so both are nil; 8_state shows a panel that saves its state
   create = function(panel, saved, version)
     ecs.log.info("A greeting opens.")
-    return { myPanel = panel } -- this allocates memory to keep custom state, panel on the left hand side is the panel of this plugin
+    return { panel = panel } -- any Lua value; here a table that keeps the panel, such as to set panel.title later
   end,
 
   -- the core calls draw only when the panel needs drawing: when it is shown, when its size changes, and after panel:redraw()
@@ -26,8 +25,8 @@ ecs.panel.registerType({
   draw = function(state, surface, seconds)
     ecs.log.info(("The greeting draws itself, %d by %d pixels."):format(surface.width, surface.height))
 
-    -- a colour is ARGB: alpha, red, green and blue, one byte each, so 0xFF5E81AC is an opaque blue
-    surface:fill(0, 0, surface.width, surface.height, 0xFF5E81AC) -- todo make all colors either 0x... or "#..."
+    -- a colour is a text: "#RRGGBB", "#RRGGBBAA" with alpha, or a colour of the theme, such as "accent"
+    surface:fill(0, 0, surface.width, surface.height, "#5E81AC")
   end,
 
   -- the core calls destroy when the panel closes, after which the panel's state is gone

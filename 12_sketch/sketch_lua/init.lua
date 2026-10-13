@@ -4,16 +4,22 @@ local ecs = require("ecs")
 
 local NAME = ecs.plugin.name
 
--- makes a name of this plugin, such as "sketch_lua.canvas"
+-- makes the full name of a name of this plugin, such as "sketch_lua.canvas", to look it up; declaring takes the local name alone
 local function name(localName)
   return NAME .. "." .. localName
 end
 
--- colours a brush can have, in ARGB8888, and their names in the setting sketch_lua.brushColor
+-- colours a brush can have, as 0xAARRGGBB numbers, and their names in the setting sketch_lua.brushColor
+-- strokes keep numbers, which the PPM export and the clipboard that sketch_c shares need; the surface takes colours as texts
 local COLOR_NAMES = { "white", "red", "green", "blue", "yellow" }
 local COLORS = { white = 0xFFECEFF4, red = 0xFFBF616A, green = 0xFFA3BE8C, blue = 0xFF5E81AC, yellow = 0xFFEBCB8B }
 local BACKGROUND = 0xFF2E3440
 local CLOCK_HAND = 0xFF88C0D0
+
+-- a colour number as the text the surface takes, such as "#ECEFF4FF"
+local function hex(color)
+  return ("#%06X%02X"):format(color & 0xFFFFFF, (color >> 24) & 0xFF)
+end
 
 -- the clipboard type of strokes; both sketch plugins use it, so strokes copied in one paste into the other
 local CLIPBOARD_TYPE = "application/x-openecs-strokes"
@@ -148,20 +154,20 @@ end
 
 -- shows the number of strokes in the canvas's title
 local function canvasTitle(canvas)
-  canvas.panel:setTitle(("Lua canvas (%d)"):format(#canvas.strokes))
+  canvas.panel.title = ("Lua canvas (%d)"):format(#canvas.strokes)
 end
 
 -- marks a canvas changed: unsaved, retitled and redrawn
 local function canvasChanged(canvas)
   canvas.unsaved = true
-  canvas.panel:setUnsaved(true)
+  canvas.panel.unsaved = true
   canvasTitle(canvas)
   canvas.panel:redraw()
 end
 
 -- tells subscribers that a canvas has a new stroke
 local function emitStroke(canvas)
-  ecs.event.emit(name("strokeAdded"), { panel = canvas.panel:getId(), strokes = #canvas.strokes })
+  ecs.event.emit(name("strokeAdded"), { panel = canvas.panel.id, strokes = #canvas.strokes })
 end
 
 -- adds dropped strokes to a canvas: strokes or text in the format of copy, or the strokes of each dropped file
@@ -193,7 +199,7 @@ local function brushChanged()
 end
 
 ecs.settings.declare({
-  name = name("brushSize"),
+  name = "brushSize",
   type = "integer",
   description =
   "Size of the brush, in pixels; the wheel over a canvas changes it",
@@ -201,7 +207,7 @@ ecs.settings.declare({
   changed = brushChanged
 })
 ecs.settings.declare({
-  name = name("brushColor"),
+  name = "brushColor",
   type = "choice",
   description = "Colour of the brush",
   default =
@@ -210,14 +216,14 @@ ecs.settings.declare({
   changed = brushChanged
 })
 ecs.settings.declare({
-  name = name("reminderSeconds"),
+  name = "reminderSeconds",
   type = "number",
   description =
   "How often a canvas with unsaved strokes says so",
   default = 30.0
 })
 ecs.panel.registerType({
-  name = name("canvas"),
+  name = "canvas",
   title = "Lua canvas",
   stateVersion = STATE_VERSION,
   minWidth = 64,
@@ -243,7 +249,7 @@ ecs.panel.registerType({
     -- a panel timer, so it stops when the canvas closes
     panel:startTimer(math.max(1, ecs.settings.get(name("reminderSeconds")) or 30), true, function()
       if canvas.unsaved then
-        ecs.log.info(panel:getTitle() .. " has unsaved strokes.")
+        ecs.log.info(panel.title .. " has unsaved strokes.")
       end
     end)
 
@@ -256,10 +262,10 @@ ecs.panel.registerType({
 
   draw = function(canvas, surface)
     canvas.width, canvas.height = surface.width, surface.height
-    surface:fill(0, 0, surface.width, surface.height, BACKGROUND)
+    surface:fill(0, 0, surface.width, surface.height, hex(BACKGROUND))
 
     paint(surface.width, surface.height, canvas.strokes, function(x, y, color)
-      surface:setPixel(x, y, color)
+      surface:setPixel(x, y, hex(color))
     end)
   end,
 
@@ -295,11 +301,11 @@ ecs.panel.registerType({
         ecs.log.warn("Cannot change the brush size.")
       end
     elseif event.type == "focused" or event.type == "unfocused" then
-      ecs.log.debug(("%s is %s."):format(panel:getTitle(), event.type))
+      ecs.log.debug(("%s is %s."):format(panel.title, event.type))
     elseif event.type == "shown" or event.type == "resized" then
-      ecs.log.debug(("%s is %s at %.0fx%.0f."):format(panel:getTitle(), event.type, event.width, event.height))
+      ecs.log.debug(("%s is %s at %.0fx%.0f."):format(panel.title, event.type, event.width, event.height))
     elseif event.type == "hidden" then
-      ecs.log.debug(panel:getTitle() .. " is hidden.")
+      ecs.log.debug(panel.title .. " is hidden.")
     elseif event.type == "drop" then
       dropStrokes(canvas, event.dataType, event.value)
     end
@@ -313,8 +319,8 @@ ecs.panel.registerType({
   save = function(canvas)
     canvas.unsaved = false
     saves = saves + 1
-    canvas.panel:setUnsaved(false)
-    ecs.log.info(canvas.panel:getTitle() .. " is saved.")
+    canvas.panel.unsaved = false
+    ecs.log.info(canvas.panel.title .. " is saved.")
     return true
   end,
 })
@@ -323,7 +329,7 @@ ecs.panel.registerType({
 
 -- a dark face with twelve marks and a hand that turns once a minute; a continuous panel, so it is drawn every frame
 ecs.panel.registerType({
-  name = name("clock"),
+  name = "clock",
   title = "Lua clock",
   continuous = true,
 
@@ -334,7 +340,7 @@ ecs.panel.registerType({
   draw = function(clock, surface, seconds)
     clock.time = clock.time + seconds
     local width, height = surface.width, surface.height
-    surface:fill(0, 0, width, height, BACKGROUND)
+    surface:fill(0, 0, width, height, hex(BACKGROUND))
 
     local cx, cy = width / 2, height / 2
     local radius = math.min(cx, cy) * 0.8
@@ -346,7 +352,7 @@ ecs.panel.registerType({
 
       for dy = -2, 2 do
         for dx = -2, 2 do
-          surface:setPixel(x + dx, y + dy, COLORS.white)
+          surface:setPixel(x + dx, y + dy, hex(COLORS.white))
         end
       end
     end
@@ -354,14 +360,14 @@ ecs.panel.registerType({
     local angle = (clock.time % 60) / 60 * 2 * math.pi
 
     for t = 0, radius - 1 do
-      surface:setPixel(math.floor(cx + math.sin(angle) * t), math.floor(cy - math.cos(angle) * t), CLOCK_HAND)
+      surface:setPixel(math.floor(cx + math.sin(angle) * t), math.floor(cy - math.cos(angle) * t), hex(CLOCK_HAND))
     end
 
     -- the title changes once a second, not every frame
     local whole = math.floor(clock.time)
 
     if whole ~= clock.shownSeconds then
-      clock.panel:setTitle(("Lua clock %d:%02d"):format(whole // 60, whole % 60))
+      clock.panel.title = ("Lua clock %d:%02d"):format(whole // 60, whole % 60)
       clock.shownSeconds = whole
     end
   end,
@@ -415,9 +421,9 @@ local function exportChosen(id, files)
   local written = file and file:write(image) and file:close()
 
   if written then
-    ecs.log.info(("%s was exported to %s."):format(panel:getTitle(), files[1]))
+    ecs.log.info(("%s was exported to %s."):format(panel.title, files[1]))
   else
-    ecs.log.warn(("%s could not be exported to %s."):format(panel:getTitle(), files[1]))
+    ecs.log.warn(("%s could not be exported to %s."):format(panel.title, files[1]))
   end
 end
 
@@ -456,7 +462,7 @@ function services.export(panel)
     return
   end
 
-  local id = panel:getId()
+  local id = panel.id
   local shown = ecs.dialog.show(
     { type = "saveFile", filters = { { name = "PPM images", pattern = "ppm" } }, location = "canvas.ppm" },
     function(files)
@@ -522,7 +528,7 @@ end
 function services.gather(panel)
   for other in pairs(canvases) do
     if other ~= panel and not ecs.layout.move(other, panel, "center") then
-      ecs.log.warn("Cannot move " .. other:getTitle() .. ".")
+      ecs.log.warn("Cannot move " .. other.title .. ".")
     end
   end
 
@@ -582,7 +588,7 @@ function services.stats()
         strokes = total,
         saves = saves,
         settings = own,
-        focus = focus and focus:getId() or 0,
+        focus = focus and focus.id or 0,
         workspace =
             ecs.workspace.getCurrent()
       }
@@ -608,9 +614,9 @@ function services.useBrush(brush, panel)
   end
 end
 
-ecs.handle.registerType(name("brush"))
+ecs.handle.registerType("brush")
 
-assert(ecs.service.register(NAME, {
+assert(ecs.service.register({
   strokeCount = { sig = "int(handle<ecs.panel>)", doc = "Counts a canvas's strokes", fn = services.strokeCount },
   clear = { sig = "void(handle<ecs.panel>)", doc = "Clear the canvas", fn = services.clear },
   export = { sig = "void(handle<ecs.panel>)", doc = "Export the canvas as an image", fn = services.export },
@@ -636,7 +642,7 @@ end
 
 -- events ----------------------------------------------------------------
 
-ecs.event.declare(name("strokeAdded"), "A canvas has a new stroke: { panel = id, strokes = count }")
+ecs.event.declare("strokeAdded", "A canvas has a new stroke: { panel = id, strokes = count }")
 
 local function onEvent(event, value)
   if event == name("strokeAdded") then
@@ -654,16 +660,6 @@ for _, event in ipairs({ name("strokeAdded"), "ecs.panelOpened", "ecs.panelClose
   ecs.event.subscribe(event, onEvent)
 end
 
-ecs.plugin.registerState({
-  version = STATE_VERSION,
-  save = function()
-    return { total = total, saves = saves }
-  end,
-  restore = function(state)
-    total, saves = state and state.total or 0, state and state.saves or 0
-    ecs.log.info(("Restored: %d strokes and %d saves so far."):format(total, saves))
-  end,
-})
 
 -- logs the numbers of sketch_lua.stats now and then, and each canvas through sketch_lua.eachCanvas; a plugin timer
 local eachCanvas = assert(ecs.service.get(name("eachCanvas"), "int(fn<void(handle<ecs.panel>, int)>)"))
@@ -671,14 +667,25 @@ local statsTimer = ecs.timer.start(60, true, function()
   local strokes, numbers = services.stats()
   ecs.log.debug(("%d strokes in all, %d canvases open."):format(strokes, numbers.canvases))
   eachCanvas(function(panel, count)
-    ecs.log.debug(("%s has %d strokes."):format(panel:getTitle(), count))
+    ecs.log.debug(("%s has %d strokes."):format(panel.title, count))
   end)
 end)
 
-ecs.plugin.onShutdown(function()
-  statsTimer:stop()
-  ecs.log.info(("Goodbye after %d strokes."):format(total))
-end)
+-- the plugin's own life: the numbers it keeps across sessions, and what it does before the program exits
+ecs.plugin.register({
+  stateVersion = STATE_VERSION,
+  saveState = function()
+    return { total = total, saves = saves }
+  end,
+  restoreState = function(state)
+    total, saves = state and state.total or 0, state and state.saves or 0
+    ecs.log.info(("Restored: %d strokes and %d saves so far."):format(total, saves))
+  end,
+  destroy = function()
+    statsTimer:stop()
+    ecs.log.info(("Goodbye after %d strokes."):format(total))
+  end,
+})
 
 -- a service is called through its lookup like any other plugin would call it
 local stats = assert(ecs.service.get(name("stats"), "int(out value)"))

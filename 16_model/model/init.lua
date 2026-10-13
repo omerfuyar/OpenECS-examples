@@ -1,8 +1,9 @@
--- A glTF model that turns, drawn as lines: the gltf standard plugin reads the model and gives its vertices and triangles, and the panel draws them.
+-- A glTF model that turns, drawn as lines: the gltf standard plugin reads the model and gives its vertices and triangles, and the draw plugin draws their edges.
 -- A panel type with continuous = true draws every frame while it shows, and its draw gets the seconds since the last one.
 
 local ecs = require("ecs")
 local gltf = require("gltf")
+local draw = require("draw")
 
 local model = gltf.load(ecs.plugin.folder .. "cube.gltf")
 local info = gltf.describe(model)
@@ -11,31 +12,27 @@ local info = gltf.describe(model)
 local primitive = info.meshes[1].primitives[1]
 local positions = gltf.attribute(model, 1, 1, "POSITION")
 local indices = gltf.indices(model, 1, 1)
-local points, triangles = {}, {}
+local points, edges = {}, {}
 
 for i = 0, primitive.vertices - 1 do
-  points[i] = { string.unpack("<fff", positions, i * 12 + 1) }
+  points[i + 1] = { string.unpack("<fff", positions, i * 12 + 1) }
 end
 
+-- each triangle's three edges, as pairs of point numbers from 0, which draw.lines takes as 32-bit integers
 for i = 0, primitive.indices - 1, 3 do
-  triangles[#triangles + 1] = { string.unpack("<I4I4I4", indices, i * 4 + 1) }
+  local a, b, c = string.unpack("<I4I4I4", indices, i * 4 + 1)
+  edges[#edges + 1] = string.pack("=I4I4I4I4I4I4", a, b, b, c, c, a)
 end
 
--- the material's colour, as ARGB
+local EDGES = table.concat(edges)
+local TRIANGLES = primitive.indices // 3
+
+-- the material's colour, as a text
 local r, g, b = table.unpack(info.materials[primitive.material].color)
-local COLOR = 0xFF000000 | math.floor(r * 255) << 16 | math.floor(g * 255) << 8 | math.floor(b * 255)
-
--- a line of pixels from one point to another
-local function line(surface, x0, y0, x1, y1)
-  local steps = math.max(math.abs(x1 - x0), math.abs(y1 - y0), 1)
-
-  for step = 0, steps do
-    surface:setPixel(math.floor(x0 + (x1 - x0) * step / steps + 0.5), math.floor(y0 + (y1 - y0) * step / steps + 0.5), COLOR)
-  end
-end
+local COLOR = ("#%02X%02X%02X"):format(math.floor(r * 255), math.floor(g * 255), math.floor(b * 255))
 
 ecs.panel.registerType({
-  name = "model.panel",
+  name = "panel",
   title = "Model",
   continuous = true,
 
@@ -46,30 +43,26 @@ ecs.panel.registerType({
   draw = function(view, surface, seconds)
     view.angle = view.angle + seconds * 0.8
     view.drawn = view.drawn + 1
-    surface:fill(0, 0, surface.width, surface.height, 0xFF101418)
+    surface:fill(0, 0, surface.width, surface.height, "#101418")
 
-    -- each point turns around the vertical axis, leans towards the viewer, and is drawn with a little perspective
+    -- each point turns around the vertical axis, leans towards the viewer, and is drawn with a little perspective, in layout units
     local cos, sin = math.cos(view.angle), math.sin(view.angle)
-    local scale = math.min(surface.width, surface.height) * 0.3
+    local width, height = surface.width / surface.scale, surface.height / surface.scale
+    local scale = math.min(width, height) * 0.3
     local projected = {}
 
-    for i, point in pairs(points) do
+    for i, point in ipairs(points) do
       local x, y, z = point[1] * cos - point[3] * sin, point[2], point[1] * sin + point[3] * cos
       y, z = y * 0.94 - z * 0.34, y * 0.34 + z * 0.94
       local depth = 4 / (z + 5)
-      projected[i] = { surface.width / 2 + x * scale * depth, surface.height / 2 - y * scale * depth }
+      projected[i] = string.pack("=ff", width / 2 + x * scale * depth, height / 2 - y * scale * depth)
     end
 
-    for _, triangle in ipairs(triangles) do
-      for corner = 1, 3 do
-        local a, b = projected[triangle[corner]], projected[triangle[corner % 3 + 1]]
-        line(surface, a[1], a[2], b[1], b[2])
-      end
-    end
+    draw.lines(surface, table.concat(projected), EDGES, 1, COLOR)
   end,
 
   -- how many frames it drew, so the test can see it draws every frame
   saveState = function(view)
-    return { drawn = view.drawn, triangles = #triangles, vertices = primitive.vertices }
+    return { drawn = view.drawn, triangles = TRIANGLES, vertices = primitive.vertices }
   end,
 })

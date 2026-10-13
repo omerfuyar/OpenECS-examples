@@ -6,7 +6,7 @@ local listeners = {} -- every open listener, by its panel
 local opened = 0
 
 local function show(listener)
-  listener.panel:setTitle(("Ticks %d, panels %d"):format(listener.ticks, opened))
+  listener.panel.title = ("Ticks %d, panels %d"):format(listener.ticks, opened)
 end
 
 -- subscribe after the plugin that declares the event has loaded; the subscription lasts until it is cancelled
@@ -24,7 +24,7 @@ ecs.event.subscribe("ecs.panelOpened", function(_, value)
 end)
 
 ecs.panel.registerType({
-  name = "listener.panel",
+  name = "panel",
   title = "Listener",
 
   create = function(panel)
@@ -38,6 +38,6 @@ ecs.panel.registerType({
   end,
 
   draw = function(_, surface)
-    surface:fill(0, 0, surface.width, surface.height, 0xFF3B4252)
+    surface:fill(0, 0, surface.width, surface.height, "#3B4252")
   end,
 })

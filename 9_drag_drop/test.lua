@@ -9,6 +9,6 @@ return {
     test.dropFiles(sample.x + 50, sample.y + 50, { "/home/someone/notes.txt", "/home/someone/photo.png" })
 
     local state = test.session().workspaces[1].windows[1][2].panels[1].state
-    test.match(state, { color = 0xFFEBCB8B, files = { "notes.txt", "photo.png" } })
+    test.match(state, { color = "#EBCB8B", files = { "notes.txt", "photo.png" } })
   end,
 }

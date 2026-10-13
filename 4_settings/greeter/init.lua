@@ -14,7 +14,7 @@ end
 -- runs after a setting's value in effect changes, whichever layer changed it
 local function changed()
   for _, greeting in pairs(greetings) do
-    greeting.panel:setTitle(title())
+    greeting.panel.title = title()
     greeting.panel:redraw()
   end
 end
@@ -22,19 +22,19 @@ end
 -- a setting has a type, and the core takes only values of that type: bool, integer, number, string, choice, key, color, list or table
 -- its value in effect comes from the highest of three layers: the default declared here, then the preset, then the user's settings file
 -- declare settings while the plugin loads; a setting's name starts with the plugin's name
-ecs.settings.declare({ name = "greeter.name", type = "string", description = "Who to greet", default = "world", changed = changed })
-ecs.settings.declare({ name = "greeter.color", type = "choice", description = "Colour of the greeting", default = "blue", choices = { "blue", "green", "red" }, changed = changed })
-ecs.settings.declare({ name = "greeter.size", type = "integer", description = "Size of the greeting; the wheel changes it", default = 32, changed = changed })
-ecs.settings.declare({ name = "greeter.background", type = "color", description = "Colour behind the greeting", default = "#2E3440", changed = changed })
+ecs.settings.declare({ name = "name", type = "string", description = "Who to greet", default = "world", changed = changed })
+ecs.settings.declare({ name = "color", type = "choice", description = "Colour of the greeting", default = "blue", choices = { "blue", "green", "red" }, changed = changed })
+ecs.settings.declare({ name = "size", type = "integer", description = "Size of the greeting; the wheel changes it", default = 32, changed = changed })
+ecs.settings.declare({ name = "background", type = "color", description = "Colour behind the greeting", default = "#2E3440", changed = changed })
 
 ecs.panel.registerType({
-  name = "greeter.panel",
+  name = "panel",
   title = "Greeting",
 
   create = function(panel)
     local greeting = { panel = panel }
     greetings[panel] = greeting
-    panel:setTitle(title())
+    panel.title = title()
     return greeting
   end,
 
@@ -44,8 +44,8 @@ ecs.panel.registerType({
 
   -- get gives the value in effect
   draw = function(_, surface)
-    surface:fill(0, 0, surface.width, surface.height, draw.color(ecs.settings.get("greeter.background")))
-    draw.text(surface, "Hello, " .. ecs.settings.get("greeter.name") .. "!", 24, 24, ecs.settings.get("greeter.size"), draw.color(COLORS[ecs.settings.get("greeter.color")]))
+    surface:fill(0, 0, surface.width, surface.height, ecs.settings.get("greeter.background"))
+    draw.text(surface, draw.font("ui"), "Hello, " .. ecs.settings.get("greeter.name") .. "!", 24, 24, ecs.settings.get("greeter.size"), COLORS[ecs.settings.get("greeter.color")])
   end,
 
   event = function(_, event)

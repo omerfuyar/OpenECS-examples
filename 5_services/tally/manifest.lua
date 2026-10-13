@@ -5,5 +5,5 @@ return {
   api = 1,
   description = "Panels that count clicks with the counter plugin",
   depends = { counter = "0.1", draw = "0.1" },
-  lua = "init.lua",
+  type = "lua",
 }

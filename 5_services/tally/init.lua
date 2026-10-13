@@ -18,7 +18,7 @@ local function redrawAll()
 end
 
 ecs.panel.registerType({
-  name = "tally.panel",
+  name = "panel",
   title = "Tally",
 
   create = function(panel)
@@ -31,13 +31,13 @@ ecs.panel.registerType({
   end,
 
   draw = function(_, surface)
-    surface:fill(0, 0, surface.width, surface.height, draw.color("background"))
-    draw.text(surface, ("%d clicks in all"):format(counter.get("clicks")), 24, 24, 24, draw.color("text"))
+    surface:fill(0, 0, surface.width, surface.height, "background")
+    draw.text(surface, draw.font("ui"), ("%d clicks in all"):format(counter.get("clicks")), 24, 24, 24, "text")
   end,
 
   event = function(tally, event)
     if event.type == "pointerDown" then
-      tally.panel:setTitle(("Tally (%d)"):format(counter.add("clicks", 1)))
+      tally.panel.title = ("Tally (%d)"):format(counter.add("clicks", 1))
       redrawAll()
     end
   end,
@@ -45,7 +45,7 @@ ecs.panel.registerType({
 
 -- register functions while the plugin loads; keys, menus and other plugins run them by name
 -- a signature says the result's type, then the parameters' types and names; callers in C rely on it
-assert(ecs.service.register("tally", {
+assert(ecs.service.register({
   reset = {
     sig = "void()",
     doc = "Sets the click counter back to 0",
