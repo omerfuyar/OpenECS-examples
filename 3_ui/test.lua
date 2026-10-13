@@ -40,5 +40,24 @@ return {
 
     test.click(at("item:2"))
     test.match(state().selected, 2, "the list")
+
+    -- typing goes in at the cursor, which the arrows move
+    test.click(at("name"))
+    test.text("abc")
+    test.key("Left")
+    test.key("Left")
+    test.text("X")
+    test.key("Home")
+    test.key("Delete")
+    test.match(state().name, "Xbc", "the field")
+
+    -- the note wraps into more than one line
+    test.match(state().rects.note.height > state().rects.name.height, true, "the wrapped text")
+
+    -- Escape stops typing; the field is the last control, so Tab goes round to the first, the button, which Space presses
+    test.key("Escape")
+    test.key("Tab")
+    test.key("Space")
+    test.match(state().clicks, 3, "the keys")
   end,
 }
