@@ -1,4 +1,4 @@
--- Run it with: OpenECS --preset examples/18_first_party/preset.lua
+-- Run it with: OpenECS --preset examples/19_first_party/preset.lua
 -- A tool made of one plugin of its own and the first-party plugins that every tool can have: the settings window and the panel list.
 ---@type ecs.Preset
 return {
