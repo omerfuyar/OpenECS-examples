@@ -12,14 +12,14 @@ local SIZES = { "S", "M", "L" }
 local ITEMS = { "First item", "Second item", "Third item" }
 
 -- the elements the test clicks, by id; their rectangles are saved, so the test finds them
-local IDS = { "button", "sound", "volume", "size", "fruit", "item:2" }
+local IDS = { "button", "sound", "volume", "size", "fruit", "item:2", "name", "note" }
 
 ecs.panel.registerType({
   name = "panel",
   title = "Controls",
 
   create = function(panel)
-    return { panel = panel, clicks = 0, sound = false, dark = true, volume = 0.5, size = "M", fruit = "Apple", selected = 1, rects = {} }
+    return { panel = panel, clicks = 0, sound = false, dark = true, volume = 0.5, size = "M", fruit = "Apple", selected = 1, name = "", rects = {} }
   end,
 
   -- draw runs only when the panel needs drawing; a panel type that draws every frame says continuous = true
@@ -56,6 +56,12 @@ ecs.panel.registerType({
         ui.row({ gap = 8 }, { ui.text("Fruit"), ui.dropdown(controls.fruit, FRUITS, { id = "fruit", onChange = set("fruit") }) }),
       }),
       ui.list({ id = "list", height = 90, grow = 0, border = "tabShown", selected = controls.selected, onSelect = set("selected") }, items),
+      -- a field keeps what is typed while it has the keys; Left, Right, Home and End move its cursor
+      ui.row({ gap = 8 }, { ui.text("Name"), ui.field(controls.name, { id = "name", grow = 1, onChange = set("name") }) }),
+      -- text with wrap = true breaks into lines at the width of its column
+      ui.text("Tab gives the keys to the next control and Shift+Tab to the one before. Return or Space presses the control that has them, " ..
+        "Left and Right change a selector or a slider, and Escape takes the keys away. A field takes typing as soon as it has the keys.",
+        { id = "note", wrap = true, color = "textDim" }),
     }))
 
     -- the rectangles of the elements, in the panel's surface pixels
@@ -76,6 +82,6 @@ ecs.panel.registerType({
 
   -- the values and the rectangles are saved, so the test can read them
   saveState = function(controls)
-    return { sound = controls.sound, volume = controls.volume, size = controls.size, fruit = controls.fruit, selected = controls.selected, rects = controls.rects }
+    return { clicks = controls.clicks, sound = controls.sound, volume = controls.volume, size = controls.size, fruit = controls.fruit, selected = controls.selected, name = controls.name, rects = controls.rects }
   end,
 })
