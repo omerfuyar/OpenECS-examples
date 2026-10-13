@@ -15,7 +15,7 @@ static struct
     usz count;
 } COUNTERS = {0};
 
-/// @brief Finds a counter, and makes it if it is new; NULL if there is no room.
+/// @brief Finds a counter, and makes it if it is new; nullptr if there is no room.
 static i64 *CounterFind(const char *name)
 {
     for (usz i = 0; i < COUNTERS.count; i++)
@@ -28,7 +28,7 @@ static i64 *CounterFind(const char *name)
 
     if (COUNTERS.count == COUNTER_MAX || strlen(name) >= COUNTER_NAME_SIZE)
     {
-        return NULL;
+        return nullptr;
     }
 
     strcpy(COUNTERS.names[COUNTERS.count], name);
@@ -40,7 +40,7 @@ static i32 CounterAdd(const char *name, i32 amount)
 {
     i64 *value = CounterFind(name);
 
-    if (value == NULL)
+    if (value == nullptr)
     {
         return 0;
     }
@@ -52,14 +52,14 @@ static i32 CounterAdd(const char *name, i32 amount)
 static i32 CounterGet(const char *name)
 {
     i64 *value = CounterFind(name);
-    return value == NULL ? 0 : (i32)*value;
+    return value == nullptr ? 0 : (i32)*value;
 }
 
 SHUResult ECSPlugin_Init(ECSPlugin plugin)
 {
     // the signature tells the core how to pass the arguments: the result's type, then each parameter's type and name
     // the function is cast to ECSFunction, the type of any function; the signature says its real type
-    SHU_ReturnResult(ECSService_RegisterFunction(plugin, "counter.add", (ECSFunction)CounterAdd, "int(string name, int amount)", "Adds to a named counter, and gives its new value"));
-    SHU_ReturnResult(ECSService_RegisterFunction(plugin, "counter.get", (ECSFunction)CounterGet, "int(string name)", "Gives a named counter's value"));
+    SHU_ReturnResult(ECSService_RegisterFunction(plugin, "add", (ECSFunction)CounterAdd, "int(string name, int amount)", "Adds to a named counter, and gives its new value"));
+    SHU_ReturnResult(ECSService_RegisterFunction(plugin, "get", (ECSFunction)CounterGet, "int(string name)", "Gives a named counter's value"));
     return SHUResult_Ok;
 }

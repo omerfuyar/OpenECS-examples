@@ -11,13 +11,13 @@ local function step(panel, amount)
 
   if stepper then
     stepper.value = stepper.value + amount
-    panel:setTitle(("Stepper (%d)"):format(stepper.value))
+    panel.title = ("Stepper (%d)"):format(stepper.value)
     panel:redraw()
   end
 end
 
 ecs.panel.registerType({
-  name = "stepper.panel",
+  name = "panel",
   title = "Stepper",
 
   create = function(panel)
@@ -31,8 +31,8 @@ ecs.panel.registerType({
   end,
 
   draw = function(stepper, surface)
-    surface:fill(0, 0, surface.width, surface.height, draw.color("background"))
-    draw.text(surface, tostring(stepper.value), 24, 24, 48, draw.color("text"))
+    surface:fill(0, 0, surface.width, surface.height, "background")
+    draw.text(surface, draw.font("ui"), tostring(stepper.value), 24, 24, 48, "text")
   end,
 
   -- keys that no binding takes come to the focused panel
@@ -45,7 +45,7 @@ ecs.panel.registerType({
 
 -- a handle stands for an object of the core or a plugin, here a panel
 -- a function that keys run on a panel takes it as handle<ecs.panel>; the key passes the focused panel
-assert(ecs.service.register("stepper", {
+assert(ecs.service.register({
   up = { sig = "void(handle<ecs.panel>)", doc = "Step up", fn = function(panel) step(panel, 1) end },
   down = { sig = "void(handle<ecs.panel>)", doc = "Step down", fn = function(panel) step(panel, -1) end },
   resetAll = {

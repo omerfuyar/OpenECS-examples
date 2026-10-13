@@ -9,12 +9,12 @@ local MARGIN, SIZE = 16, 20 -- in layout units
 
 -- tells the core where the cursor is, in surface pixels, so an input method's window shows beside it
 local function placeCursor(field)
-  local width, height = draw.measure(field.text, SIZE)
+  local width, height = draw.measure(draw.font("ui"), field.text, SIZE)
   field.panel:setTextInput(true, (MARGIN + width) * field.scale, MARGIN * field.scale, 2 * field.scale, height * field.scale)
 end
 
 ecs.panel.registerType({
-  name = "field.panel",
+  name = "panel",
   title = "Field",
   stateVersion = 1,
 
@@ -26,10 +26,10 @@ ecs.panel.registerType({
 
   draw = function(field, surface)
     field.scale = surface.scale
-    surface:fill(0, 0, surface.width, surface.height, draw.color("background"))
-    local width = draw.text(surface, field.text, MARGIN, MARGIN, SIZE, draw.color("text"))
-    local _, height = draw.measure(field.text, SIZE)
-    draw.fill(surface, MARGIN + width, MARGIN, 2, height, draw.color("accent")) -- the cursor
+    surface:fill(0, 0, surface.width, surface.height, "background")
+    local width = draw.text(surface, draw.font("ui"), field.text, MARGIN, MARGIN, SIZE, "text")
+    local _, height = draw.measure(draw.font("ui"), field.text, SIZE)
+    draw.fill(surface, MARGIN + width, MARGIN, 2, height, "accent") -- the cursor
   end,
 
   event = function(field, event)

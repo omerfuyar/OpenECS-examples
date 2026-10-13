@@ -5,5 +5,5 @@ return {
   api = 1,
   description = "A greeting whose words, colour and size are settings",
   depends = { draw = "0.1" },
-  lua = "init.lua",
+  type = "lua",
 }

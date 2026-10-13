@@ -9,12 +9,12 @@
 
 #pragma region Source Only
 
-/// @brief Makes a name of this plugin, such as "sketch_c.canvas".
+/// @brief Makes the full name of a name of this plugin, such as "sketch_c.canvas", to look it up; declaring takes the local name alone.
 #define SKETCH_NAME(local) "sketch_c." local
 
 /// @brief Colours a brush can have, in ARGB8888, and their names in the setting sketch_c.brushColor.
-static const char *const SKETCH_COLOR_NAMES[] = {"white", "red", "green", "blue", "yellow", NULL};
-static const u32 SKETCH_COLORS[] = {0xFFECEFF4, 0xFFBF616A, 0xFFA3BE8C, 0xFF5E81AC, 0xFFEBCB8B};
+static const char *const SKETCH_COLOR_NAMES[] = {"white", "red", "green", "blue", "yellow", nullptr};
+static const ECSColor SKETCH_COLORS[] = {0xFFECEFF4, 0xFFBF616A, 0xFFA3BE8C, 0xFF5E81AC, 0xFFEBCB8B};
 #define SKETCH_BACKGROUND 0xFF2E3440
 #define SKETCH_CLOCK_HAND 0xFF88C0D0
 
@@ -58,7 +58,7 @@ typedef struct SketchCanvas
     usz strokeCapacity;
     bool drawing;       // the main button is held, and the last stroke grows
     bool unsaved;       // changed since the last save
-    SketchBrush *brush; // a brush from sketch_c.useBrush, or NULL for the settings' brush
+    SketchBrush *brush; // a brush from sketch_c.useBrush, or nullptr for the settings' brush
     i32 width;          // size of the last surface, for exporting
     i32 height;
     ECSTimer reminder;
@@ -117,7 +117,7 @@ static bool SketchGrow(void **items, usz *capacity, usz needed, usz itemSize)
     grown = grown < needed ? needed : grown;
     void *moved = realloc(*items, grown * itemSize);
 
-    if (moved == NULL)
+    if (moved == nullptr)
     {
         return false;
     }
@@ -144,7 +144,7 @@ static SketchStroke *SketchAddStroke(SketchStroke **strokes, usz *count, usz *ca
 {
     if (!SketchGrow((void **)strokes, capacity, *count + 1, sizeof(SketchStroke)))
     {
-        return NULL;
+        return nullptr;
     }
 
     SketchStroke *stroke = &(*strokes)[(*count)++];
@@ -232,9 +232,9 @@ static char *SketchStrokesToText(const SketchStroke *strokes, usz count)
 
     char *text = malloc(length);
 
-    if (text == NULL)
+    if (text == nullptr)
     {
-        return NULL;
+        return nullptr;
     }
 
     usz used = 0;
@@ -266,9 +266,9 @@ static usz SketchStrokesFromText(SketchCanvas *canvas, SHUSliceView bytes)
     while (text < end)
     {
         const char *lineEnd = memchr(text, '\n', (usz)(end - text));
-        lineEnd = lineEnd == NULL ? end : lineEnd;
+        lineEnd = lineEnd == nullptr ? end : lineEnd;
 
-        char *cursor = NULL;
+        char *cursor = nullptr;
         long size = strtol(text, &cursor, 10);
         unsigned long color = cursor < lineEnd ? strtoul(cursor, &cursor, 10) : 0;
 
@@ -276,9 +276,9 @@ static usz SketchStrokesFromText(SketchCanvas *canvas, SHUSliceView bytes)
         {
             SketchStroke *stroke = SketchAddStroke(&canvas->strokes, &canvas->strokeCount, &canvas->strokeCapacity, (i32)size, (u32)color);
 
-            while (stroke != NULL && cursor < lineEnd)
+            while (stroke != nullptr && cursor < lineEnd)
             {
-                char *next = NULL;
+                char *next = nullptr;
                 f32 x = strtof(cursor, &next);
                 f32 y = next < lineEnd ? strtof(next, &next) : 0.0f;
 
@@ -290,7 +290,7 @@ static usz SketchStrokesFromText(SketchCanvas *canvas, SHUSliceView bytes)
                 cursor = next;
             }
 
-            added += stroke != NULL ? 1 : 0;
+            added += stroke != nullptr ? 1 : 0;
         }
 
         text = lineEnd + 1;
@@ -313,8 +313,8 @@ static SketchCanvas *SketchFindCanvas(ECSPanel panel)
         }
     }
 
-    ECS_Log(SKETCH.plugin, ECSLogLevel_Warning, "That panel is not a sketch_c canvas.");
-    return NULL;
+    ECS_LogWarn(SKETCH.plugin, "That panel is not a sketch_c canvas.");
+    return nullptr;
 }
 
 static i32 SketchSettingSize(void)
@@ -328,7 +328,7 @@ static u32 SketchSettingColor(void)
 {
     const char *name = ECSValue_GetString(ECSSetting_Get(SKETCH_NAME("brushColor")), "white");
 
-    for (usz i = 0; SKETCH_COLOR_NAMES[i] != NULL; i++)
+    for (usz i = 0; SKETCH_COLOR_NAMES[i] != nullptr; i++)
     {
         if (strcmp(SKETCH_COLOR_NAMES[i], name) == 0)
         {
@@ -358,7 +358,7 @@ static void SketchCanvasChanged(SketchCanvas *canvas)
 
 static void SketchReleaseBrush(SketchBrush *brush)
 {
-    if (brush != NULL && --brush->references == 0)
+    if (brush != nullptr && --brush->references == 0)
     {
         free(brush);
     }
@@ -371,7 +371,7 @@ static void SketchCanvasRemind(void *data)
 
     if (canvas->unsaved)
     {
-        ECS_Log(SKETCH.plugin, ECSLogLevel_Info, "%s has unsaved strokes.", ECSPanel_GetTitle(canvas->panel));
+        ECS_LogInfo(SKETCH.plugin, "%s has unsaved strokes.", ECSPanel_GetTitle(canvas->panel));
     }
 }
 
@@ -379,7 +379,7 @@ static SHUResult SketchCanvasCreate(ECSPanel panel, const ECSValue *savedState, 
 {
     SketchCanvas *canvas = calloc(1, sizeof(SketchCanvas));
 
-    if (canvas == NULL || !SketchGrow((void **)&SKETCH.canvases, &SKETCH.canvasCapacity, SKETCH.canvasCount + 1, sizeof(SketchCanvas *)))
+    if (canvas == nullptr || !SketchGrow((void **)&SKETCH.canvases, &SKETCH.canvasCapacity, SKETCH.canvasCount + 1, sizeof(SketchCanvas *)))
     {
         free(canvas);
         return SHUResult_ErrAllocation;
@@ -388,7 +388,7 @@ static SHUResult SketchCanvasCreate(ECSPanel panel, const ECSValue *savedState, 
     canvas->panel = panel;
 
     // strokes = { { size = 6, color = 0xFFECEFF4, points = { x, y, ... } }, ... }; older versions are not read
-    const ECSValue *strokes = version == SKETCH_STATE_VERSION ? ECSValue_GetTableField(savedState, "strokes") : NULL;
+    const ECSValue *strokes = version == SKETCH_STATE_VERSION ? ECSValue_GetTableField(savedState, "strokes") : nullptr;
 
     for (usz i = 0; i < ECSValue_GetListCount(strokes); i++)
     {
@@ -397,7 +397,7 @@ static SHUResult SketchCanvasCreate(ECSPanel panel, const ECSValue *savedState, 
         i64 size = ECSValue_GetInteger(ECSValue_GetTableField(saved, "size"), 6);
         SketchStroke *stroke = SketchAddStroke(&canvas->strokes, &canvas->strokeCount, &canvas->strokeCapacity, (i32)size, (u32)ECSValue_GetInteger(ECSValue_GetTableField(saved, "color"), SKETCH_COLORS[0]));
 
-        for (usz p = 0; stroke != NULL && p + 1 < ECSValue_GetListCount(points); p += 2)
+        for (usz p = 0; stroke != nullptr && p + 1 < ECSValue_GetListCount(points); p += 2)
         {
             SketchStrokeAddPoint(stroke, (f32)ECSValue_GetNumber(ECSValue_GetListItem(points, p), 0.0), (f32)ECSValue_GetNumber(ECSValue_GetListItem(points, p + 1), 0.0));
         }
@@ -411,14 +411,14 @@ static SHUResult SketchCanvasCreate(ECSPanel panel, const ECSValue *savedState, 
 
     if (ECSPanel_AcceptDrops(panel, accepted, sizeof(accepted) / sizeof(*accepted)))
     {
-        ECS_Log(SKETCH.plugin, ECSLogLevel_Warning, "A canvas cannot take dropped strokes.");
+        ECS_LogWarn(SKETCH.plugin, "A canvas cannot take dropped strokes.");
     }
 
     f64 seconds = ECSValue_GetNumber(ECSSetting_Get(SKETCH_NAME("reminderSeconds")), 30.0);
 
     if (ECSPanel_StartTimer(panel, &canvas->reminder, seconds > 1.0 ? seconds : 1.0, true, SketchCanvasRemind, canvas))
     {
-        ECS_Log(SKETCH.plugin, ECSLogLevel_Warning, "Cannot start a canvas's reminder.");
+        ECS_LogWarn(SKETCH.plugin, "Cannot start a canvas's reminder.");
     }
 
     *retState = canvas;
@@ -453,7 +453,7 @@ static void SketchCanvasDraw(void *state, ECSSurface *surface, f64 seconds)
     // the surface's rows may be padded, so each row is copied on its own
     u32 *pixels = calloc((usz)surface->width * (usz)surface->height, sizeof(u32));
 
-    if (pixels == NULL)
+    if (pixels == nullptr)
     {
         return;
     }
@@ -471,8 +471,8 @@ static void SketchCanvasDraw(void *state, ECSSurface *surface, f64 seconds)
 /// @brief Tells subscribers that a canvas has a new stroke.
 static void SketchEmitStroke(SketchCanvas *canvas)
 {
-    ECSValue *value = NULL;
-    ECSValue *field = NULL;
+    ECSValue *value = nullptr;
+    ECSValue *field = nullptr;
 
     if (ECSValue_Create(&value))
     {
@@ -491,27 +491,27 @@ static void SketchEmitStroke(SketchCanvas *canvas)
 
     if (ECSEvent_Emit(SKETCH.plugin, SKETCH_NAME("strokeAdded"), value))
     {
-        ECS_Log(SKETCH.plugin, ECSLogLevel_Warning, "Cannot emit sketch_c.strokeAdded.");
+        ECS_LogWarn(SKETCH.plugin, "Cannot emit sketch_c.strokeAdded.");
     }
 
     ECSValue_Destroy(&value);
 }
 
 /// @brief Reads a whole file, ending it with a zero, because strtol reads the strokes.
-/// @return The text, or NULL. Free it with free.
+/// @return The text, or nullptr. Free it with free.
 static char *SketchReadFile(const char *path, usz *retSize)
 {
     FILE *file = fopen(path, "rb");
-    char *text = NULL;
+    char *text = nullptr;
     long size = -1;
 
-    if (file != NULL && fseek(file, 0, SEEK_END) == 0 && (size = ftell(file)) >= 0 && fseek(file, 0, SEEK_SET) == 0)
+    if (file != nullptr && fseek(file, 0, SEEK_END) == 0 && (size = ftell(file)) >= 0 && fseek(file, 0, SEEK_SET) == 0)
     {
         text = malloc((size_t)size + 1);
-        size = text != NULL ? (long)fread(text, 1, (size_t)size, file) : -1;
+        size = text != nullptr ? (long)fread(text, 1, (size_t)size, file) : -1;
     }
 
-    if (file != NULL)
+    if (file != nullptr)
     {
         fclose(file);
     }
@@ -519,7 +519,7 @@ static char *SketchReadFile(const char *path, usz *retSize)
     if (size < 0)
     {
         free(text);
-        return NULL;
+        return nullptr;
     }
 
     text[size] = '\0';
@@ -531,11 +531,11 @@ static char *SketchReadFile(const char *path, usz *retSize)
 static void SketchDragStrokes(SketchCanvas *canvas)
 {
     char *text = SketchStrokesToText(canvas->strokes, canvas->strokeCount);
-    ECSValue *value = NULL;
+    ECSValue *value = nullptr;
 
-    if (text == NULL || ECSValue_Create(&value) || ECSValue_SetString(value, text) || ECSPanel_StartDrag(canvas->panel, SKETCH_CLIPBOARD_TYPE, value))
+    if (text == nullptr || ECSValue_Create(&value) || ECSValue_SetString(value, text) || ECSPanel_StartDrag(canvas->panel, SKETCH_CLIPBOARD_TYPE, value))
     {
-        ECS_Log(SKETCH.plugin, ECSLogLevel_Warning, "Cannot drag the strokes.");
+        ECS_LogWarn(SKETCH.plugin, "Cannot drag the strokes.");
     }
 
     ECSValue_Destroy(&value);
@@ -554,7 +554,7 @@ static void SketchCanvasDrop(SketchCanvas *canvas, ECSDropData data)
         {
             usz size = 0;
             char *text = SketchReadFile(ECSValue_GetString(ECSValue_GetListItem(value, i), ""), &size);
-            added += text != NULL ? SketchStrokesFromText(canvas, (SHUSliceView){.data = text, .size = size}) : 0;
+            added += text != nullptr ? SketchStrokesFromText(canvas, (SHUSliceView){.data = text, .size = size}) : 0;
             free(text);
         }
     }
@@ -564,7 +564,7 @@ static void SketchCanvasDrop(SketchCanvas *canvas, ECSDropData data)
         added = SketchStrokesFromText(canvas, (SHUSliceView){.data = text, .size = strlen(text)});
     }
 
-    ECS_Log(SKETCH.plugin, ECSLogLevel_Info, "Dropped %zu strokes.", added);
+    ECS_LogInfo(SKETCH.plugin, "Dropped %zu strokes.", added);
 
     if (added > 0)
     {
@@ -592,10 +592,10 @@ static void SketchCanvasEvent(void *state, const ECSPanelEvent *event)
             break;
         }
 
-        i32 size = canvas->brush != NULL ? canvas->brush->size : SketchSettingSize();
-        u32 color = canvas->brush != NULL ? canvas->brush->color : SketchSettingColor();
+        i32 size = canvas->brush != nullptr ? canvas->brush->size : SketchSettingSize();
+        u32 color = canvas->brush != nullptr ? canvas->brush->color : SketchSettingColor();
         SketchStroke *stroke = SketchAddStroke(&canvas->strokes, &canvas->strokeCount, &canvas->strokeCapacity, size, color);
-        canvas->drawing = stroke != NULL && SketchStrokeAddPoint(stroke, event->pointer.x, event->pointer.y);
+        canvas->drawing = stroke != nullptr && SketchStrokeAddPoint(stroke, event->pointer.x, event->pointer.y);
         ECSPanel_Redraw(canvas->panel);
         break;
     }
@@ -619,7 +619,7 @@ static void SketchCanvasEvent(void *state, const ECSPanelEvent *event)
     case ECSPanelEventType_Wheel:
     {
         // the wheel changes the setting, so every canvas and the settings window see the new size
-        ECSValue *size = NULL;
+        ECSValue *size = nullptr;
 
         if (ECSValue_Create(&size) == SHUResult_Ok)
         {
@@ -629,7 +629,7 @@ static void SketchCanvasEvent(void *state, const ECSPanelEvent *event)
 
             if (ECSSetting_Set(SKETCH_NAME("brushSize"), size))
             {
-                ECS_Log(SKETCH.plugin, ECSLogLevel_Warning, "Cannot change the brush size.");
+                ECS_LogWarn(SKETCH.plugin, "Cannot change the brush size.");
             }
 
             ECSValue_Destroy(&size);
@@ -640,16 +640,16 @@ static void SketchCanvasEvent(void *state, const ECSPanelEvent *event)
 
     case ECSPanelEventType_Focused:
     case ECSPanelEventType_Unfocused:
-        ECS_Log(SKETCH.plugin, ECSLogLevel_Debug, "%s is %s.", ECSPanel_GetTitle(canvas->panel), event->type == ECSPanelEventType_Focused ? "focused" : "unfocused");
+        ECS_LogDebug(SKETCH.plugin, "%s is %s.", ECSPanel_GetTitle(canvas->panel), event->type == ECSPanelEventType_Focused ? "focused" : "unfocused");
         break;
 
     case ECSPanelEventType_Shown:
     case ECSPanelEventType_Resized:
-        ECS_Log(SKETCH.plugin, ECSLogLevel_Debug, "%s is %s at %.0fx%.0f.", ECSPanel_GetTitle(canvas->panel), event->type == ECSPanelEventType_Shown ? "shown" : "resized", (double)event->size.width, (double)event->size.height);
+        ECS_LogDebug(SKETCH.plugin, "%s is %s at %.0fx%.0f.", ECSPanel_GetTitle(canvas->panel), event->type == ECSPanelEventType_Shown ? "shown" : "resized", (double)event->size.width, (double)event->size.height);
         break;
 
     case ECSPanelEventType_Hidden:
-        ECS_Log(SKETCH.plugin, ECSLogLevel_Debug, "%s is hidden.", ECSPanel_GetTitle(canvas->panel));
+        ECS_LogDebug(SKETCH.plugin, "%s is hidden.", ECSPanel_GetTitle(canvas->panel));
         break;
 
     case ECSPanelEventType_Drop:
@@ -664,16 +664,16 @@ static void SketchCanvasEvent(void *state, const ECSPanelEvent *event)
 static SHUResult SketchCanvasSaveState(void *state, ECSValue *retState)
 {
     SketchCanvas *canvas = state;
-    ECSValue *strokes = NULL;
+    ECSValue *strokes = nullptr;
     SHU_ReturnResult(ECSValue_TableSetField(retState, "strokes", &strokes));
     ECSValue_SetTable(strokes);
 
     for (usz i = 0; i < canvas->strokeCount; i++)
     {
         const SketchStroke *stroke = &canvas->strokes[i];
-        ECSValue *saved = NULL;
-        ECSValue *field = NULL;
-        ECSValue *points = NULL;
+        ECSValue *saved = nullptr;
+        ECSValue *field = nullptr;
+        ECSValue *points = nullptr;
 
         SHU_ReturnResult(ECSValue_ListAddItem(strokes, &saved));
         SHU_ReturnResult(ECSValue_TableSetField(saved, "size", &field));
@@ -700,7 +700,7 @@ static SHUResult SketchCanvasSave(void *state)
     canvas->unsaved = false;
     SKETCH.saves++;
     ECSPanel_SetUnsaved(canvas->panel, false);
-    ECS_Log(SKETCH.plugin, ECSLogLevel_Info, "%s is saved.", ECSPanel_GetTitle(canvas->panel));
+    ECS_LogInfo(SKETCH.plugin, "%s is saved.", ECSPanel_GetTitle(canvas->panel));
     return SHUResult_Ok;
 }
 
@@ -715,7 +715,7 @@ static SHUResult SketchClockCreate(ECSPanel panel, const ECSValue *savedState, u
 
     SketchClock *clock = calloc(1, sizeof(SketchClock));
 
-    if (clock == NULL)
+    if (clock == nullptr)
     {
         return SHUResult_ErrAllocation;
     }
@@ -808,7 +808,7 @@ static bool SketchWritePpm(const char *path, const u32 *pixels, i32 width, i32 h
 {
     FILE *file = fopen(path, "wb");
 
-    if (file == NULL)
+    if (file == nullptr)
     {
         return false;
     }
@@ -828,7 +828,7 @@ static bool SketchWritePpm(const char *path, const u32 *pixels, i32 width, i32 h
 static void SketchExportProgress(void *data)
 {
     char *message = data;
-    ECS_Log(SKETCH.plugin, ECSLogLevel_Debug, "%s", message);
+    ECS_LogDebug(SKETCH.plugin, "%s", message);
     free(message);
 }
 
@@ -838,7 +838,7 @@ static void SketchExportWork(void *data)
     SketchExportJob *job = data;
     u32 *pixels = malloc((usz)job->width * (usz)job->height * sizeof(u32));
 
-    if (pixels == NULL)
+    if (pixels == nullptr)
     {
         return;
     }
@@ -847,7 +847,7 @@ static void SketchExportWork(void *data)
 
     char *message = malloc(256);
 
-    if (message != NULL)
+    if (message != nullptr)
     {
         snprintf(message, 256, "Canvas %u is painted; writing %s.", job->panelId, job->path);
 
@@ -866,7 +866,7 @@ static void SketchExportDone(void *data)
 {
     SketchExportJob *job = data;
     ECSPanel panel = ECSLayout_FindPanel(job->panelId);
-    ECS_Log(SKETCH.plugin, job->written ? ECSLogLevel_Info : ECSLogLevel_Warning, "%s %s %s.", panel == NULL ? "A closed canvas" : ECSPanel_GetTitle(panel), job->written ? "was exported to" : "could not be exported to", job->path);
+    ECS_Log(SKETCH.plugin, job->written ? ECSLogLevel_Info : ECSLogLevel_Warning, "%s %s %s.", panel == nullptr ? "A closed canvas" : ECSPanel_GetTitle(panel), job->written ? "was exported to" : "could not be exported to", job->path);
     SketchExportFree(job);
 }
 
@@ -875,9 +875,9 @@ static void SketchExportChosen(void *data, const char *const *files, usz count)
 {
     u32 panelId = (u32)(uintptr_t)data;
     ECSPanel panel = ECSLayout_FindPanel(panelId);
-    SketchCanvas *canvas = panel == NULL || count == 0 ? NULL : SketchFindCanvas(panel);
+    SketchCanvas *canvas = panel == nullptr || count == 0 ? nullptr : SketchFindCanvas(panel);
 
-    if (files == NULL || canvas == NULL || canvas->width <= 0)
+    if (files == nullptr || canvas == nullptr || canvas->width <= 0)
     {
         return;
     }
@@ -886,7 +886,7 @@ static void SketchExportChosen(void *data, const char *const *files, usz count)
     SketchExportJob *job = calloc(1, sizeof(SketchExportJob));
     usz capacity = 0;
 
-    if (job == NULL || (job->path = strdup(files[0])) == NULL)
+    if (job == nullptr || (job->path = strdup(files[0])) == nullptr)
     {
         free(job);
         return;
@@ -901,7 +901,7 @@ static void SketchExportChosen(void *data, const char *const *files, usz count)
         const SketchStroke *source = &canvas->strokes[i];
         SketchStroke *stroke = SketchAddStroke(&job->strokes, &job->strokeCount, &capacity, source->size, source->color);
 
-        for (usz p = 0; stroke != NULL && p + 1 < source->count; p += 2)
+        for (usz p = 0; stroke != nullptr && p + 1 < source->count; p += 2)
         {
             SketchStrokeAddPoint(stroke, source->points[p], source->points[p + 1]);
         }
@@ -909,7 +909,7 @@ static void SketchExportChosen(void *data, const char *const *files, usz count)
 
     if (ECS_RunInBackground(SKETCH.plugin, SketchExportWork, SketchExportDone, job))
     {
-        ECS_Log(SKETCH.plugin, ECSLogLevel_Warning, "Cannot start the export.");
+        ECS_LogWarn(SKETCH.plugin, "Cannot start the export.");
         SketchExportFree(job);
     }
 }
@@ -921,7 +921,7 @@ static void SketchExportChosen(void *data, const char *const *files, usz count)
 static i32 SketchStrokeCount(ECSPanel panel)
 {
     SketchCanvas *canvas = SketchFindCanvas(panel);
-    return canvas == NULL ? 0 : (i32)canvas->strokeCount;
+    return canvas == nullptr ? 0 : (i32)canvas->strokeCount;
 }
 
 /// @brief Clears a canvas. If it has unsaved strokes, the user is asked first.
@@ -929,7 +929,7 @@ static void SketchClear(ECSPanel panel)
 {
     SketchCanvas *canvas = SketchFindCanvas(panel);
 
-    if (canvas == NULL || canvas->strokeCount == 0)
+    if (canvas == nullptr || canvas->strokeCount == 0)
     {
         return;
     }
@@ -944,7 +944,7 @@ static void SketchClear(ECSPanel panel)
     }
 
     SketchFreeStrokes(canvas->strokes, canvas->strokeCount);
-    canvas->strokes = NULL;
+    canvas->strokes = nullptr;
     canvas->strokeCount = 0;
     canvas->strokeCapacity = 0;
     SketchCanvasChanged(canvas);
@@ -963,20 +963,20 @@ static void SketchExport(ECSPanel panel)
         .data = (void *)(uintptr_t)ECSPanel_GetId(panel),
     };
 
-    if (SketchFindCanvas(panel) != NULL && ECSDialog_Show(SKETCH.plugin, &desc))
+    if (SketchFindCanvas(panel) != nullptr && ECSDialog_Show(SKETCH.plugin, &desc))
     {
-        ECS_Log(SKETCH.plugin, ECSLogLevel_Warning, "Cannot show the export dialog.");
+        ECS_LogWarn(SKETCH.plugin, "Cannot show the export dialog.");
     }
 }
 
 static void SketchCopy(ECSPanel panel)
 {
     SketchCanvas *canvas = SketchFindCanvas(panel);
-    char *text = canvas == NULL ? NULL : SketchStrokesToText(canvas->strokes, canvas->strokeCount);
+    char *text = canvas == nullptr ? nullptr : SketchStrokesToText(canvas->strokes, canvas->strokeCount);
 
-    if (text != NULL && ECSClipboard_SetData(SKETCH_CLIPBOARD_TYPE, (SHUSliceView){.data = text, .size = strlen(text)}) == SHUResult_Ok)
+    if (text != nullptr && ECSClipboard_SetData(SKETCH_CLIPBOARD_TYPE, (SHUSliceView){.data = text, .size = strlen(text)}) == SHUResult_Ok)
     {
-        ECS_Log(SKETCH.plugin, ECSLogLevel_Info, "Copied %zu strokes.", canvas->strokeCount);
+        ECS_LogInfo(SKETCH.plugin, "Copied %zu strokes.", canvas->strokeCount);
     }
 
     free(text);
@@ -988,7 +988,7 @@ static void SketchPaste(ECSPanel panel)
     SketchCanvas *canvas = SketchFindCanvas(panel);
     SHUSlice data = {0};
 
-    if (canvas == NULL)
+    if (canvas == nullptr)
     {
         return;
     }
@@ -1002,10 +1002,10 @@ static void SketchPaste(ECSPanel panel)
     else
     {
         const char *text = ECSClipboard_GetText();
-        added = text == NULL ? 0 : SketchStrokesFromText(canvas, (SHUSliceView){.data = text, .size = strlen(text)});
+        added = text == nullptr ? 0 : SketchStrokesFromText(canvas, (SHUSliceView){.data = text, .size = strlen(text)});
     }
 
-    ECS_Log(SKETCH.plugin, ECSLogLevel_Info, "Pasted %zu strokes.", added);
+    ECS_LogInfo(SKETCH.plugin, "Pasted %zu strokes.", added);
 
     if (added > 0)
     {
@@ -1018,36 +1018,36 @@ static void SketchOpen(const char *path)
 {
     usz size = 0;
     char *text = SketchReadFile(path, &size);
-    ECSPanel panel = NULL;
+    ECSPanel panel = nullptr;
 
-    if (text == NULL || ECSLayout_Open(SKETCH.plugin, &panel, SKETCH_NAME("canvas"), NULL, NULL, ECSZone_Default))
+    if (text == nullptr || ECSLayout_Open(SKETCH.plugin, &panel, SKETCH_NAME("canvas"), nullptr, nullptr, ECSZone_Default))
     {
-        ECS_Log(SKETCH.plugin, ECSLogLevel_Warning, "Cannot open '%s'.", path);
+        ECS_LogWarn(SKETCH.plugin, "Cannot open '%s'.", path);
         free(text);
         return;
     }
 
     SketchCanvas *canvas = SketchFindCanvas(panel);
-    usz added = canvas != NULL ? SketchStrokesFromText(canvas, (SHUSliceView){.data = text, .size = size}) : 0;
+    usz added = canvas != nullptr ? SketchStrokesFromText(canvas, (SHUSliceView){.data = text, .size = size}) : 0;
     free(text);
 
-    if (canvas == NULL)
+    if (canvas == nullptr)
     {
         return;
     }
 
-    ECS_Log(SKETCH.plugin, ECSLogLevel_Info, "Opened %zu strokes from '%s'.", added, path);
+    ECS_LogInfo(SKETCH.plugin, "Opened %zu strokes from '%s'.", added, path);
     SketchCanvasTitle(canvas);
     ECSPanel_Redraw(panel);
 }
 
 static void SketchOpenBeside(ECSPanel panel)
 {
-    ECSPanel opened = NULL;
+    ECSPanel opened = nullptr;
 
-    if (ECSLayout_Open(SKETCH.plugin, &opened, SKETCH_NAME("canvas"), NULL, panel, ECSZone_Right))
+    if (ECSLayout_Open(SKETCH.plugin, &opened, SKETCH_NAME("canvas"), nullptr, panel, ECSZone_Right))
     {
-        ECS_Log(SKETCH.plugin, ECSLogLevel_Warning, "Cannot open a canvas.");
+        ECS_LogWarn(SKETCH.plugin, "Cannot open a canvas.");
     }
 }
 
@@ -1058,7 +1058,7 @@ static void SketchGather(ECSPanel panel)
     {
         if (SKETCH.canvases[i]->panel != panel && ECSLayout_Move(SKETCH.canvases[i]->panel, panel, ECSZone_Center))
         {
-            ECS_Log(SKETCH.plugin, ECSLogLevel_Warning, "Cannot move %s.", ECSPanel_GetTitle(SKETCH.canvases[i]->panel));
+            ECS_LogWarn(SKETCH.plugin, "Cannot move %s.", ECSPanel_GetTitle(SKETCH.canvases[i]->panel));
         }
     }
 
@@ -1083,14 +1083,14 @@ static void SketchNextWorkspace(void)
 {
     usz next = ECSWorkspace_GetCurrent() % ECSWorkspace_GetCount() + 1;
     ECSWorkspace_Switch(next);
-    ECS_Log(SKETCH.plugin, ECSLogLevel_Info, "Workspace %zu, '%s'.", next, ECSWorkspace_GetName(next));
+    ECS_LogInfo(SKETCH.plugin, "Workspace %zu, '%s'.", next, ECSWorkspace_GetName(next));
 }
 
 /// @brief Calls a function with every open canvas and its number of strokes. The function is valid only during the call.
 /// @return The number of open canvases.
 static i32 SketchEachCanvas(SketchCanvasFunction function)
 {
-    for (usz i = 0; function != NULL && i < SKETCH.canvasCount; i++)
+    for (usz i = 0; function != nullptr && i < SKETCH.canvasCount; i++)
     {
         function(SKETCH.canvases[i]->panel, (i32)SKETCH.canvases[i]->strokeCount);
     }
@@ -1101,8 +1101,8 @@ static i32 SketchEachCanvas(SketchCanvasFunction function)
 /// @brief Gives the number of strokes drawn in every session, and fills a table of numbers about the plugin.
 static i32 SketchStats(ECSValue *retStats)
 {
-    ECSValue *field = NULL;
-    ECSValue *settings = NULL;
+    ECSValue *field = nullptr;
+    ECSValue *settings = nullptr;
     ECSPanel focus = ECSLayout_GetFocus();
     i64 own = 0;
 
@@ -1126,7 +1126,7 @@ static i32 SketchStats(ECSValue *retStats)
         {"strokes", SKETCH.total},
         {"saves", SKETCH.saves},
         {"settings", own},
-        {"focus", focus == NULL ? 0 : ECSPanel_GetId(focus)},
+        {"focus", focus == nullptr ? 0 : ECSPanel_GetId(focus)},
         {"workspace", (i64)ECSWorkspace_GetCurrent()},
     };
 
@@ -1146,7 +1146,7 @@ static SHUSlice SketchPixels(ECSPanel panel)
 {
     SketchCanvas *canvas = SketchFindCanvas(panel);
 
-    if (canvas == NULL || canvas->width <= 0)
+    if (canvas == nullptr || canvas->width <= 0)
     {
         return (SHUSlice){0};
     }
@@ -1157,7 +1157,7 @@ static SHUSlice SketchPixels(ECSPanel panel)
     usz headerLength = (usz)snprintf(header, sizeof(header), "P6\n%d %d\n255\n", canvas->width, canvas->height);
     u8 *buffer = realloc(SKETCH.pixels, headerLength + count * 3);
 
-    if (pixels == NULL || buffer == NULL)
+    if (pixels == nullptr || buffer == nullptr)
     {
         free(pixels);
         SKETCH.pixels = buffer;
@@ -1184,9 +1184,9 @@ static SketchBrush *SketchNewBrush(i32 size, const char *color)
 {
     SketchBrush *brush = calloc(1, sizeof(SketchBrush));
 
-    if (brush == NULL)
+    if (brush == nullptr)
     {
-        return NULL;
+        return nullptr;
     }
 
     brush->size = size < SKETCH_MIN_SIZE ? SKETCH_MIN_SIZE : size > SKETCH_MAX_SIZE ? SKETCH_MAX_SIZE
@@ -1194,7 +1194,7 @@ static SketchBrush *SketchNewBrush(i32 size, const char *color)
     brush->color = SKETCH_COLORS[0];
     brush->references = 1;
 
-    for (usz i = 0; SKETCH_COLOR_NAMES[i] != NULL; i++)
+    for (usz i = 0; SKETCH_COLOR_NAMES[i] != nullptr; i++)
     {
         brush->color = strcmp(SKETCH_COLOR_NAMES[i], color) == 0 ? SKETCH_COLORS[i] : brush->color;
     }
@@ -1212,7 +1212,7 @@ static void SketchUseBrush(SketchBrush *brush, ECSPanel panel)
 {
     SketchCanvas *canvas = SketchFindCanvas(panel);
 
-    if (canvas != NULL && brush != NULL)
+    if (canvas != nullptr && brush != nullptr)
     {
         brush->references++;
         SketchReleaseBrush(canvas->brush);
@@ -1234,7 +1234,7 @@ static void SketchBrushChanged(void *data)
         ECSPanel_Redraw(SKETCH.canvases[i]->panel);
     }
 
-    ECS_Log(SKETCH.plugin, ECSLogLevel_Debug, "The brush is %d, %s.", SketchSettingSize(), ECSValue_GetString(ECSSetting_Get(SKETCH_NAME("brushColor")), "?"));
+    ECS_LogDebug(SKETCH.plugin, "The brush is %d, %s.", SketchSettingSize(), ECSValue_GetString(ECSSetting_Get(SKETCH_NAME("brushColor")), "?"));
 }
 
 static void SketchOnEvent(void *data, const char *name, const ECSValue *value)
@@ -1257,26 +1257,26 @@ static void SketchOnEvent(void *data, const char *name, const ECSValue *value)
     else if (strcmp(name, "ecs.workspaceSwitched") == 0)
     {
         i64 number = ECSValue_GetInteger(ECSValue_GetTableField(value, "workspace"), 0);
-        ECS_Log(SKETCH.plugin, ECSLogLevel_Debug, "Workspace %lld, '%s', is shown.", (long long)number, ECSWorkspace_GetName((usz)number));
+        ECS_LogDebug(SKETCH.plugin, "Workspace %lld, '%s', is shown.", (long long)number, ECSWorkspace_GetName((usz)number));
     }
 }
 
 /// @brief Logs a canvas's number of strokes; a callback of sketch_c.eachCanvas.
 static void SketchLogCanvas(ECSPanel panel, i32 strokes)
 {
-    ECS_Log(SKETCH.plugin, ECSLogLevel_Debug, "%s has %d strokes.", ECSPanel_GetTitle(panel), strokes);
+    ECS_LogDebug(SKETCH.plugin, "%s has %d strokes.", ECSPanel_GetTitle(panel), strokes);
 }
 
 /// @brief Logs the numbers of sketch_c.stats now and then, and each canvas through sketch_c.eachCanvas; a plugin timer.
 static void SketchLogStats(void *data)
 {
     (void)data;
-    ECSValue *stats = NULL;
+    ECSValue *stats = nullptr;
 
     if (ECSValue_Create(&stats) == SHUResult_Ok)
     {
         i32 total = SketchStats(stats);
-        ECS_Log(SKETCH.plugin, ECSLogLevel_Debug, "%d strokes in all, %lld canvases open.", total, (long long)ECSValue_GetInteger(ECSValue_GetTableField(stats, "canvases"), 0));
+        ECS_LogDebug(SKETCH.plugin, "%d strokes in all, %lld canvases open.", total, (long long)ECSValue_GetInteger(ECSValue_GetTableField(stats, "canvases"), 0));
     }
 
     ECSValue_Destroy(&stats);
@@ -1286,7 +1286,7 @@ static void SketchLogStats(void *data)
 static SHUResult SketchSaveState(void *data, ECSValue *retState)
 {
     (void)data;
-    ECSValue *field = NULL;
+    ECSValue *field = nullptr;
     SHU_ReturnResult(ECSValue_TableSetField(retState, "total", &field));
     ECSValue_SetInteger(field, SKETCH.total);
     SHU_ReturnResult(ECSValue_TableSetField(retState, "saves", &field));
@@ -1300,8 +1300,20 @@ static SHUResult SketchRestoreState(void *data, const ECSValue *state, u32 versi
     (void)version;
     SKETCH.total = ECSValue_GetInteger(ECSValue_GetTableField(state, "total"), 0);
     SKETCH.saves = ECSValue_GetInteger(ECSValue_GetTableField(state, "saves"), 0);
-    ECS_Log(SKETCH.plugin, ECSLogLevel_Info, "Restored: %lld strokes and %lld saves so far.", (long long)SKETCH.total, (long long)SKETCH.saves);
+    ECS_LogInfo(SKETCH.plugin, "Restored: %lld strokes and %lld saves so far.", (long long)SKETCH.total, (long long)SKETCH.saves);
     return SHUResult_Ok;
+}
+
+/// @brief Frees what the plugin holds before the program exits; the Destroy function of the plugin.
+static void SketchDestroy(void *data)
+{
+    (void)data;
+    ECSTimer_Stop(&SKETCH.statsTimer);
+    ECS_LogInfo(SKETCH.plugin, "Goodbye after %lld strokes.", (long long)SKETCH.total);
+    free(SKETCH.canvases);
+    free(SKETCH.pixels);
+    SKETCH.canvases = nullptr;
+    SKETCH.pixels = nullptr;
 }
 
 #pragma endregion Events
@@ -1313,9 +1325,9 @@ SHUResult ECSPlugin_Init(ECSPlugin plugin)
     SKETCH.plugin = plugin;
 
     const ECSSettingDesc settings[] = {
-        {.name = SKETCH_NAME("brushSize"), .type = ECSSettingType_Integer, .description = "Size of the brush, in pixels; the wheel over a canvas changes it", .defaultInteger = 6, .Changed = SketchBrushChanged},
-        {.name = SKETCH_NAME("brushColor"), .type = ECSSettingType_Choice, .description = "Colour of the brush", .defaultString = "white", .choices = SKETCH_COLOR_NAMES, .Changed = SketchBrushChanged},
-        {.name = SKETCH_NAME("reminderSeconds"), .type = ECSSettingType_Number, .description = "How often a canvas with unsaved strokes says so", .defaultNumber = 30.0},
+        {.name = "brushSize", .type = ECSSettingType_Integer, .description = "Size of the brush, in pixels; the wheel over a canvas changes it", .defaultInteger = 6, .Changed = SketchBrushChanged},
+        {.name = "brushColor", .type = ECSSettingType_Choice, .description = "Colour of the brush", .defaultString = "white", .choices = SKETCH_COLOR_NAMES, .Changed = SketchBrushChanged},
+        {.name = "reminderSeconds", .type = ECSSettingType_Number, .description = "How often a canvas with unsaved strokes says so", .defaultNumber = 30.0},
     };
 
     for (usz i = 0; i < sizeof(settings) / sizeof(*settings); i++)
@@ -1324,7 +1336,7 @@ SHUResult ECSPlugin_Init(ECSPlugin plugin)
     }
 
     const ECSPanelTypeDesc canvas = {
-        .name = SKETCH_NAME("canvas"),
+        .name = "canvas",
         .title = "C canvas",
         .stateVersion = SKETCH_STATE_VERSION,
         .minWidth = 64.0f,
@@ -1338,7 +1350,7 @@ SHUResult ECSPlugin_Init(ECSPlugin plugin)
     };
 
     const ECSPanelTypeDesc clock = {
-        .name = SKETCH_NAME("clock"),
+        .name = "clock",
         .title = "C clock",
         .continuous = true,
         .Create = SketchClockCreate,
@@ -1348,7 +1360,7 @@ SHUResult ECSPlugin_Init(ECSPlugin plugin)
 
     SHU_ReturnResult(ECSPanelType_Register(plugin, &canvas));
     SHU_ReturnResult(ECSPanelType_Register(plugin, &clock));
-    SHU_ReturnResult(ECSHandle_RegisterType(plugin, SKETCH_NAME("brush"), SketchBrushDestroy));
+    SHU_ReturnResult(ECSHandle_RegisterType(plugin, "brush", SketchBrushDestroy));
 
     const struct
     {
@@ -1357,21 +1369,21 @@ SHUResult ECSPlugin_Init(ECSPlugin plugin)
         const char *signature;
         const char *description;
     } services[] = {
-        {SKETCH_NAME("strokeCount"), (ECSFunction)SketchStrokeCount, "int(handle<ecs.panel>)", "Counts a canvas's strokes"},
-        {SKETCH_NAME("clear"), (ECSFunction)SketchClear, "void(handle<ecs.panel>)", "Clear the canvas"},
-        {SKETCH_NAME("export"), (ECSFunction)SketchExport, "void(handle<ecs.panel>)", "Export the canvas as an image"},
-        {SKETCH_NAME("copy"), (ECSFunction)SketchCopy, "void(handle<ecs.panel>)", "Copy the canvas's strokes"},
-        {SKETCH_NAME("paste"), (ECSFunction)SketchPaste, "void(handle<ecs.panel>)", "Paste strokes"},
-        {SKETCH_NAME("open"), (ECSFunction)SketchOpen, "void(string)", "Open a canvas with the strokes of a file"},
-        {SKETCH_NAME("openBeside"), (ECSFunction)SketchOpenBeside, "void(handle<ecs.panel>)", "Open a canvas beside this one"},
-        {SKETCH_NAME("gather"), (ECSFunction)SketchGather, "void(handle<ecs.panel>)", "Gather every canvas into this group"},
-        {SKETCH_NAME("closeOthers"), (ECSFunction)SketchCloseOthers, "int(handle<ecs.panel>)", "Close the other canvases"},
-        {SKETCH_NAME("nextWorkspace"), (ECSFunction)SketchNextWorkspace, "void()", "Switch to the next workspace"},
-        {SKETCH_NAME("stats"), (ECSFunction)SketchStats, "int(out value)", "Counts strokes, canvases and saves"},
-        {SKETCH_NAME("eachCanvas"), (ECSFunction)SketchEachCanvas, "int(fn<void(handle<ecs.panel>, int)>)", "Calls a function with every canvas and its number of strokes"},
-        {SKETCH_NAME("pixels"), (ECSFunction)SketchPixels, "buffer(handle<ecs.panel>)", "Gives a canvas as a PPM image"},
-        {SKETCH_NAME("brush"), (ECSFunction)SketchNewBrush, "handle<sketch_c.brush>(int, string)", "Makes a brush of a size and a colour"},
-        {SKETCH_NAME("useBrush"), (ECSFunction)SketchUseBrush, "void(handle<sketch_c.brush>, handle<ecs.panel>)", "Makes a canvas draw with a brush"},
+        {"strokeCount", (ECSFunction)SketchStrokeCount, "int(handle<ecs.panel>)", "Counts a canvas's strokes"},
+        {"clear", (ECSFunction)SketchClear, "void(handle<ecs.panel>)", "Clear the canvas"},
+        {"export", (ECSFunction)SketchExport, "void(handle<ecs.panel>)", "Export the canvas as an image"},
+        {"copy", (ECSFunction)SketchCopy, "void(handle<ecs.panel>)", "Copy the canvas's strokes"},
+        {"paste", (ECSFunction)SketchPaste, "void(handle<ecs.panel>)", "Paste strokes"},
+        {"open", (ECSFunction)SketchOpen, "void(string)", "Open a canvas with the strokes of a file"},
+        {"openBeside", (ECSFunction)SketchOpenBeside, "void(handle<ecs.panel>)", "Open a canvas beside this one"},
+        {"gather", (ECSFunction)SketchGather, "void(handle<ecs.panel>)", "Gather every canvas into this group"},
+        {"closeOthers", (ECSFunction)SketchCloseOthers, "int(handle<ecs.panel>)", "Close the other canvases"},
+        {"nextWorkspace", (ECSFunction)SketchNextWorkspace, "void()", "Switch to the next workspace"},
+        {"stats", (ECSFunction)SketchStats, "int(out value)", "Counts strokes, canvases and saves"},
+        {"eachCanvas", (ECSFunction)SketchEachCanvas, "int(fn<void(handle<ecs.panel>, int)>)", "Calls a function with every canvas and its number of strokes"},
+        {"pixels", (ECSFunction)SketchPixels, "buffer(handle<ecs.panel>)", "Gives a canvas as a PPM image"},
+        {"brush", (ECSFunction)SketchNewBrush, "handle<sketch_c.brush>(int, string)", "Makes a brush of a size and a colour"},
+        {"useBrush", (ECSFunction)SketchUseBrush, "void(handle<sketch_c.brush>, handle<ecs.panel>)", "Makes a canvas draw with a brush"},
     };
 
     for (usz i = 0; i < sizeof(services) / sizeof(*services); i++)
@@ -1395,24 +1407,24 @@ SHUResult ECSPlugin_Init(ECSPlugin plugin)
         SHU_ReturnResult(ECSPanelType_AddMenuEntry(plugin, SKETCH_NAME("canvas"), bindings[i][1]));
     }
 
-    SHU_ReturnResult(ECSEvent_Declare(plugin, SKETCH_NAME("strokeAdded"), "A canvas has a new stroke: { panel = id, strokes = count }"));
+    SHU_ReturnResult(ECSEvent_Declare(plugin, "strokeAdded", "A canvas has a new stroke: { panel = id, strokes = count }"));
 
     const char *const events[] = {SKETCH_NAME("strokeAdded"), "ecs.panelOpened", "ecs.panelClosed", "ecs.workspaceSwitched"};
 
     for (usz i = 0; i < sizeof(events) / sizeof(*events); i++)
     {
-        ECSSubscription subscription = NULL;
-        SHU_ReturnResult(ECSEvent_Subscribe(plugin, events[i], &subscription, SketchOnEvent, NULL));
+        ECSSubscription subscription = nullptr;
+        SHU_ReturnResult(ECSEvent_Subscribe(plugin, events[i], &subscription, SketchOnEvent, nullptr));
     }
 
-    const ECSPluginStateDesc state = {.version = SKETCH_STATE_VERSION, .Save = SketchSaveState, .Restore = SketchRestoreState};
-    SHU_ReturnResult(ECSPlugin_RegisterState(plugin, &state));
-    SHU_ReturnResult(ECSTimer_Start(plugin, &SKETCH.statsTimer, 60.0, true, SketchLogStats, NULL));
+    const ECSPluginDesc desc = {.stateVersion = SKETCH_STATE_VERSION, .SaveState = SketchSaveState, .RestoreState = SketchRestoreState, .Destroy = SketchDestroy};
+    SHU_ReturnResult(ECSPlugin_Register(plugin, &desc));
+    SHU_ReturnResult(ECSTimer_Start(plugin, &SKETCH.statsTimer, 60.0, true, SketchLogStats, nullptr));
 
     // a service is called through its lookup like any other plugin would call it
-    SketchStatsFunction stats = NULL;
-    ECSValue *numbers = NULL;
-    ECSValue *explanation = NULL;
+    SketchStatsFunction stats = nullptr;
+    ECSValue *numbers = nullptr;
+    ECSValue *explanation = nullptr;
     SHU_ReturnResult(ECSService_GetFunction(plugin, (ECSFunction *)&stats, SKETCH_NAME("stats"), "int(out value)"));
     SHU_ReturnResult(ECSService_GetFunction(plugin, (ECSFunction *)&SKETCH.eachCanvas, SKETCH_NAME("eachCanvas"), "int(fn<void(handle<ecs.panel>, int)>)"));
     SHU_ReturnResult(ECSValue_Create(&numbers));
@@ -1420,22 +1432,12 @@ SHUResult ECSPlugin_Init(ECSPlugin plugin)
 
     if (ECSSetting_Explain(SKETCH_NAME("brushSize"), explanation) == SHUResult_Ok)
     {
-        ECS_Log(plugin, ECSLogLevel_Debug, "brushSize comes from the %s layer.", ECSValue_GetString(ECSValue_GetTableField(explanation, "layer"), "?"));
+        ECS_LogDebug(plugin, "brushSize comes from the %s layer.", ECSValue_GetString(ECSValue_GetTableField(explanation, "layer"), "?"));
     }
 
     i32 total = stats(numbers);
-    ECS_Log(plugin, ECSLogLevel_Info, "Ready with %lld settings; %d strokes so far.", (long long)ECSValue_GetInteger(ECSValue_GetTableField(numbers, "settings"), 0), total);
+    ECS_LogInfo(plugin, "Ready with %lld settings; %d strokes so far.", (long long)ECSValue_GetInteger(ECSValue_GetTableField(numbers, "settings"), 0), total);
     ECSValue_Destroy(&explanation);
     ECSValue_Destroy(&numbers);
     return SHUResult_Ok;
-}
-
-void ECSPlugin_Shutdown(ECSPlugin plugin)
-{
-    ECSTimer_Stop(&SKETCH.statsTimer);
-    ECS_Log(plugin, ECSLogLevel_Info, "Goodbye after %lld strokes.", (long long)SKETCH.total);
-    free(SKETCH.canvases);
-    free(SKETCH.pixels);
-    SKETCH.canvases = NULL;
-    SKETCH.pixels = NULL;
 }

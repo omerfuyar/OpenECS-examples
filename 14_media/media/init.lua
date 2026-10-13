@@ -1,33 +1,44 @@
--- A picture that plays a sound when it is clicked: the image standard plugin reads and draws image files, and the audio plugin plays sound files.
--- Both read a file once and keep it, so loading the same path again gives the same picture or sound.
+-- A picture that plays a sound when it is clicked. Loaders read files, and executors use what they read:
+-- the image plugin reads an image file into an image of the draw plugin, which draws it; the audio plugin reads a sound file into a sound of the mixer plugin, which plays it.
 
 local ecs = require("ecs")
 local image = require("image")
+local draw = require("draw")
 local audio = require("audio")
+local mixer = require("mixer")
 
 -- a plugin's files are found from its folder
-local picture = image.load(ecs.plugin.folder .. "note.svg")
+local PICTURE = ecs.plugin.folder .. "note.svg"
 local sound = audio.load(ecs.plugin.folder .. "click.wav")
 
+-- the picture's own size, from reading it at a scale of 1
+local naturalWidth, naturalHeight = draw.imageSize(image.load(PICTURE, 1))
+
 ecs.panel.registerType({
-  name = "media.panel",
+  name = "panel",
   title = "Media",
 
   create = function(panel)
-    return { panel = panel, plays = 0, rect = { 0, 0, 0, 0 }, scale = 1 }
+    return { panel = panel, plays = 0, rect = { 0, 0, 0, 0 }, scale = 1, readAt = 0 }
   end,
 
   draw = function(media, surface)
-    surface:fill(0, 0, surface.width, surface.height, 0xFF202020)
+    surface:fill(0, 0, surface.width, surface.height, "#202020")
 
-    -- the picture is as large as fits the panel, centred, in layout units; an SVG file is drawn sharp at that size
+    -- the picture is as large as fits the panel, centred, in layout units
     local width, height = surface.width / surface.scale, surface.height / surface.scale
-    local pictureWidth, pictureHeight = image.size(picture)
-    local scale = math.min(width / pictureWidth, height / pictureHeight) * 0.8
-    local w, h = pictureWidth * scale, pictureHeight * scale
+    local scale = math.min(width / naturalWidth, height / naturalHeight) * 0.8
+    local w, h = naturalWidth * scale, naturalHeight * scale
     media.rect = { (width - w) / 2, (height - h) / 2, w, h }
     media.scale = surface.scale
-    image.draw(surface, picture, media.rect[1], media.rect[2], w, h)
+
+    -- an SVG file is read again at each new size, in pixels, so it is drawn sharp
+    if media.readAt ~= scale * surface.scale then
+      media.readAt = scale * surface.scale
+      media.picture = image.load(PICTURE, media.readAt)
+    end
+
+    draw.image(surface, media.picture, media.rect[1], media.rect[2], w, h)
   end,
 
   event = function(media, event)
@@ -37,9 +48,9 @@ ecs.panel.registerType({
 
     -- a click on the picture plays the sound; each play is a voice, so clicks can overlap
     if event.type == "pointerDown" and px >= x and px <= x + w and py >= y and py <= y + h then
-      if audio.play(sound, 0.8, false) > 0 then
+      if mixer.play(sound, 0.8, false) > 0 then
         media.plays = media.plays + 1
-        media.panel:setTitle(("Media (%d)"):format(media.plays))
+        media.panel.title = ("Media (%d)"):format(media.plays)
       end
     end
   end,

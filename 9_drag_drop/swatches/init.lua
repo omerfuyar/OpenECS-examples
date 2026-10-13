@@ -4,12 +4,12 @@ local ecs = require("ecs")
 
 local draw = require("draw") -- the functions of a plugin the manifest depends on
 
-local COLORS = { 0xFFBF616A, 0xFFD08770, 0xFFEBCB8B, 0xFFA3BE8C, 0xFF5E81AC, 0xFFB48EAD }
+local COLORS = { "#BF616A", "#D08770", "#EBCB8B", "#A3BE8C", "#5E81AC", "#B48EAD" }
 local SWATCH = 48 -- in layout units
 
 -- the palette: one row of squares
 ecs.panel.registerType({
-  name = "swatches.palette",
+  name = "palette",
   title = "Palette",
 
   create = function(panel)
@@ -18,10 +18,10 @@ ecs.panel.registerType({
 
   draw = function(palette, surface)
     palette.scale = surface.scale
-    surface:fill(0, 0, surface.width, surface.height, draw.color("background"))
+    surface:fill(0, 0, surface.width, surface.height, "background")
 
-    for i, argb in ipairs(COLORS) do
-      draw.fill(surface, (i - 1) * SWATCH, 0, SWATCH, SWATCH, argb)
+    for i, color in ipairs(COLORS) do
+      draw.fill(surface, (i - 1) * SWATCH, 0, SWATCH, SWATCH, color)
     end
   end,
 
@@ -30,32 +30,32 @@ ecs.panel.registerType({
       return
     end
 
-    local argb = COLORS[math.floor(event.x / palette.scale / SWATCH) + 1]
+    local color = COLORS[math.floor(event.x / palette.scale / SWATCH) + 1]
 
-    if argb then
+    if color then
       -- call it while the button that was pressed on this panel is held; the type names what kind of value it carries
-      palette.panel:startDrag("swatches.color", argb)
+      palette.panel:startDrag("swatches.color", color)
     end
   end,
 })
 
 -- the sample: one colour, and the names of the files dropped last
 ecs.panel.registerType({
-  name = "swatches.sample",
+  name = "sample",
   title = "Sample",
   stateVersion = 1,
 
   create = function(panel, saved)
     -- the types the panel takes; panels that take the dragged type are outlined during a drag
     panel:acceptDrops({ "swatches.color", "file-list" })
-    return { panel = panel, color = saved and saved.color or 0xFF4C566A, files = {} }
+    return { panel = panel, color = saved and saved.color or "#4C566A", files = {} }
   end,
 
   draw = function(sample, surface)
     surface:fill(0, 0, surface.width, surface.height, sample.color)
 
     for i, name in ipairs(sample.files) do
-      draw.text(surface, name, 16, 16 + (i - 1) * 24, 16, draw.color("text"))
+      draw.text(surface, draw.font("ui"), name, 16, 16 + (i - 1) * 24, 16, "text")
     end
   end,
 

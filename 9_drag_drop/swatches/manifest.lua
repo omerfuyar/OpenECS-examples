@@ -5,5 +5,5 @@ return {
   api = 1,
   description = "A palette whose colours drag onto samples",
   depends = { draw = "0.1" },
-  lua = "init.lua",
+  type = "lua",
 }

@@ -4,7 +4,7 @@ local ecs = require("ecs")
 
 -- an event is a named message with a value; any plugin that depends on this one can subscribe to it
 -- a plugin emits only the events it declared, while it loads
-ecs.event.declare("ticker.tick", "Ten times a second: the number of ticks so far")
+ecs.event.declare("tick", "Ten times a second: the number of ticks so far")
 
 local ticks = 0
 
@@ -15,7 +15,9 @@ local timer = ecs.timer.start(0.1, true, function()
   ecs.event.emit("ticker.tick", ticks) -- subscribers get it after this function returns, not during the call
 end)
 
--- runs once, before the program exits
-ecs.plugin.onShutdown(function()
-  timer:stop()
-end)
+-- the plugin's own life: destroy runs once, before the program exits, as a panel type's destroy runs when a panel closes
+ecs.plugin.register({
+  destroy = function()
+    timer:stop()
+  end,
+})

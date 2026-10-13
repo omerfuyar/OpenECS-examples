@@ -5,5 +5,5 @@ return {
   api = 1,
   description = "A number that keys step up and down",
   depends = { draw = "0.1" },
-  lua = "init.lua",
+  type = "lua",
 }

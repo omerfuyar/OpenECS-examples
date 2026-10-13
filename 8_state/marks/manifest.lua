@@ -5,5 +5,5 @@ return {
   api = 1,
   description = "Panels that keep the dots clicked on them",
   depends = { draw = "0.1" },
-  lua = "init.lua",
+  type = "lua",
 }

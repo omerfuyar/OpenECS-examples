@@ -7,13 +7,13 @@ local shown = {} -- the title of every open panel, by its handle
 
 -- the settings window lists the setting with its description, and checks what the user types against its type
 ecs.settings.declare({
-  name = "shapes.color",
+  name = "color",
   type = "color",
   description = "Colour of the shapes",
   default = "#A3BE8C",
   changed = function(color)
     for panel, title in pairs(shown) do
-      panel:setTitle(title .. ", " .. color)
+      panel.title = title .. ", " .. color
       panel:redraw()
     end
   end,
@@ -22,20 +22,20 @@ ecs.settings.declare({
 -- registers a panel type that draws one shape; the panel list shows its title and name
 local function shape(localName, title, drawShape)
   ecs.panel.registerType({
-    name = "shapes." .. localName,
+    name = localName,
     title = title,
     create = function(panel)
       -- the tab shows the colour, so the user sees the setting change
       shown[panel] = title
-      panel:setTitle(title .. ", " .. ecs.settings.get("shapes.color"))
+      panel.title = title .. ", " .. ecs.settings.get("shapes.color")
       return { panel = panel }
     end,
     destroy = function(state)
       shown[state.panel] = nil
     end,
     draw = function(_, surface)
-      surface:fill(0, 0, surface.width, surface.height, 0xFF2E3440)
-      drawShape(surface, draw.color(ecs.settings.get("shapes.color")))
+      surface:fill(0, 0, surface.width, surface.height, "#2E3440")
+      drawShape(surface, ecs.settings.get("shapes.color"))
     end,
   })
 end

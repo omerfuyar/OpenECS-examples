@@ -5,5 +5,5 @@ return {
   version = "0.1.0",
   api = 1,
   description = "The smallest native plugin: one panel of one colour",
-  native = "libhello_c.so", -- the library the build makes from the folder's C files
+  type = "native", -- its code is libhello_c.so in this folder, which the build makes from the folder's C files
 }
