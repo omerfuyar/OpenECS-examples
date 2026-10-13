@@ -26,6 +26,9 @@ return {
   run = function(test)
     local base = "http://127.0.0.1:47201"
     fetch(test, base .. "/")
+
+    -- the plugin drops the request's handle; web keeps the request until its function has it
+    collectgarbage()
     test.match(waitFor(test, 3), { "Serving " .. base .. "/", "200 text/plain: Hello from OpenECS", "  for " .. base .. "/" })
 
     fetch(test, base .. "/missing")
