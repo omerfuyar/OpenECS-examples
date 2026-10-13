@@ -4,8 +4,9 @@ Examples for writing [OpenECS](https://github.com/omerfuyar/OpenECS) plugins, on
 
 - `1_hello` to `12_sketch` teach OpenECS: panels, native plugins, settings, services, keys, events, saved state, drag and drop, typed text, popups, and a whole tool in C and in Lua.
 - From `13_terminal`, each teaches standard plugins of [OpenECS-std](https://github.com/omerfuyar/OpenECS-std): `13_terminal` tty, `14_media` image and audio, `15_network` net, `16_model` gltf, and `17_files` fs with Lua's `io`.
+- `18_first_party` shows a tool with the first-party plugins that every tool can have: the settings window, the panel list and the launcher.
 
-Each example holds a preset, `preset.lua`, its plugins and its tests. OpenECS ships the examples in `examples/`, next to the program. Run one with `--fresh`, so it starts from its preset even if you keep sessions (`ecs.keepSession`):
+Each example holds a preset, `preset.lua`, its plugins and its tests. The examples are the tests of OpenECS and its standard plugins too: each test checks what its example shows. OpenECS ships the examples in `examples/`, next to the program. Run one with `--fresh`, so it starts from its preset even if you keep sessions (`ecs.keepSession`):
 
 ``` shell
 ./OpenECS --fresh --preset examples/1_hello/preset.lua
@@ -15,13 +16,13 @@ Each example holds a preset, `preset.lua`, its plugins and its tests. OpenECS sh
 
 ## Building and testing
 
-This repository is a submodule of OpenECS, in its `examples/` folder. OpenECS's build, with `--examples`, compiles and runs `shuild.c`, which copies each example into `bin/examples/` and builds its plugins there. Build and test inside a checkout of OpenECS:
+This repository is a submodule of OpenECS, in its `examples/` folder. OpenECS's build, with `--examples`, compiles and runs `shuild.c`, which copies each example into `bin/examples/` and builds its plugins there. A second build compiles only the plugins whose files changed. Build and test inside a checkout of OpenECS:
 
 ``` shell
 git clone --recursive https://github.com/omerfuyar/OpenECS.git
 cd OpenECS
 .github/scripts/build.sh D
-.github/scripts/test.sh build/Debug/bin/OpenECS examples
+.github/scripts/test.sh build/Debug/bin/OpenECS
 ```
 
 ## Releases
