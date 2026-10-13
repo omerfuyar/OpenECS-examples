@@ -1,6 +1,6 @@
 // The build of OpenECS's examples. It runs inside a checkout of OpenECS, in its examples/ folder: OpenECS's shuild.c compiles this file with shu and shuild
 // from OpenECS's dependencies/ into shuild.ignore here, and runs it with the build type and OpenECS's build folder (README.md).
-// Each numbered folder is copied whole into bin/examples/, its sources and tests too, and the C files of each of its plugin folders are built in the copy.
+// Each numbered folder is copied whole into bin/examples/, its sources and tests too, and the C files of each of its plugin folders are built into the copy.
 #define SHU_IMPLEMENTATION
 #define SHUC_ENABLE_INCREMENTAL
 #define SHUC_NO_RUN_LOG
@@ -8,6 +8,8 @@
 
 #include <ctype.h>
 #include <dirent.h>
+
+#pragma region Setup
 
 typedef enum BuildType
 {
@@ -27,9 +29,33 @@ static struct
     const char *output; // OpenECS's build folder, such as ../build/Debug/
 } CONFIG = {BuildType_Debug, NULL};
 
-#define RunCheck(cmd, ...) SHU_Assert(!SHU_UtilRun(cmd, ##__VA_ARGS__), "Runing " SHUM_COLOR_RED("'%s'") "failed", cmd)
+#pragma endregion Setup
 
-static void PrintUsageAndExit(void)
+#pragma region Declarations
+
+/// @brief Runs a shell command, and stops the build if it fails.
+#define RunCheck(cmd, ...) SHU_Assert(!SHU_UtilRun(cmd, ##__VA_ARGS__), "Running " SHUM_COLOR_RED("'%s'") " failed", cmd)
+
+static void SetupConfiguration(int argc, char **argv);
+static void ForEachFolder(const char *path, bool numbered, void (*function)(const char *path, const char *name));
+static void BuildExample(const char *path, const char *name);
+
+#pragma endregion Declarations
+
+int main(int argc, char **argv)
+{
+    SHU_CompilerTryConfigure("gcc");
+    SetupConfiguration(argc, argv);
+
+    // the copies keep their files' times, and the plugins are built from these folders into the copies, so a second build compiles only what changed
+    SHUI_String folder;
+    SHUI_SFormat(&folder, "%sbin/examples/", CONFIG.output);
+    RunCheck("mkdir -p %s && cp -rp [0-9]* %s", folder.data, folder.data);
+    ForEachFolder("./", true, BuildExample);
+    return 0;
+}
+
+static void PrintUsageAndExit(int status)
 {
     printf("Usage: ./shuild.ignore -o FOLDER [FLAG...]\n\n"
            "OpenECS's shuild.c runs this build with its --examples flag; see OpenECS's README.md.\n\n"
@@ -37,14 +63,14 @@ static void PrintUsageAndExit(void)
            "  -o, --output FOLDER  OpenECS's build folder, named from this folder, such as ../build/Debug/\n"
            "  -b, --build TYPE     Build type: debug (the default), release, relwithdebinfo or minsizerel\n"
            "  -h, --help           Show this help\n");
-    exit(1);
+    exit(status);
 }
 
 /// @brief Stops the build with what is wrong, the argument, and the usage.
 static void Refuse(const char *what, const char *argument)
 {
     SHU_LogError(0, "%s: " SHUM_COLOR_RED("'%s'"), what, argument);
-    PrintUsageAndExit();
+    PrintUsageAndExit(1);
 }
 
 static void SetupConfiguration(int argc, char **argv)
@@ -76,8 +102,7 @@ static void SetupConfiguration(int argc, char **argv)
         }
         else if (!strcmp(flag, "-h") || !strcmp(flag, "--help"))
         {
-            PrintUsageAndExit();
-            exit(0);
+            PrintUsageAndExit(0);
         }
         else
         {
@@ -180,6 +205,15 @@ static void BuildPlugin(const char *path, const char *name)
     SHUI_SFormat(&include, "../../%sinclude/", CONFIG.output);
     SHUI_SFormat(&output, "%sbin/examples/%s", CONFIG.output, root.data);
 
+    // shuild compiles only the files that changed, so a library that is missing, such as after a clean copy, is built from all of them
+    SHUI_String library;
+    SHUI_SFormat(&library, "%slib%s.so", output.data, name);
+
+    if (SHU_UtilFileExists(library.data) != SHUFileType_Regular)
+    {
+        SHU_CacheClearModule(name);
+    }
+
     SHU_ModuleBegin(name, root.data);
     SetBuildFlags();
     SHU_ModuleAddSourceFile("./");
@@ -193,18 +227,4 @@ static void BuildExample(const char *path, const char *name)
     SHUI_String root;
     SHUI_SFormat(&root, "%s%s/", path, name);
     ForEachFolder(root.data, false, BuildPlugin);
-}
-
-// todo split definitions and declarations, move definitions under main
-
-int main(int argc, char **argv)
-{
-    SHU_CompilerTryConfigure("gcc");
-    SetupConfiguration(argc, argv);
-
-    SHUI_String folder;
-    SHUI_SFormat(&folder, "%sbin/examples/", CONFIG.output);
-    RunCheck("rm -rf %s && mkdir -p %s && cp -r [0-9]* %s", folder.data, folder.data, folder.data);
-    ForEachFolder("./", true, BuildExample);
-    return 0;
 }

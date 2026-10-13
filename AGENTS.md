@@ -20,6 +20,6 @@ OpenECS's DESIGN.md, section 17.6, says what an example is and how its comments 
 
 - Work in a checkout of OpenECS with its submodules, in its `examples/` folder, so you build and test with OpenECS (README.md).
 - Releases are made with OpenECS's, at the same time and with the same version, as OpenECS's AGENTS.md says: `dev` is merged into `main` with a pull request that the owner reviews, and the owner tags it. A release's description is `.github/release-notes/vVERSION.md`; it says what changed in the examples, and OpenECS's description links to it. OpenECS's submodule names the commit that ships.
-- Every example is up to date and its tests pass at each release. Between releases, a change to OpenECS or OpenECS-std may break an example.
+- The examples are the tests of OpenECS and OpenECS-std. A change there that breaks an example changes the example in the same piece of work, so every test passes.
 - After a change here is merged into `dev`, move OpenECS's `examples/` submodule to it in a pull request to OpenECS.
-- Examples teach how OpenECS and its standard plugins behave. Each explains a concept the first time it uses it, and not the example's own logic. Examples 1 to 12 teach OpenECS; from 13, each teaches a standard plugin.
+- Examples teach how OpenECS and its standard plugins behave. Each explains a concept the first time it uses it, and not the example's own logic. Examples 1 to 12 teach OpenECS; from 13, each teaches a standard plugin or a first-party plugin.
