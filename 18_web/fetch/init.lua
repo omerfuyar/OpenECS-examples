@@ -1,6 +1,6 @@
 -- Fetches each typed URL with the web standard plugin, and shows the answer's status, type and first line.
 -- So the example works without the internet, the plugin also serves two pages on this computer with net, at http://127.0.0.1:47201/.
--- A request runs in the background: a timer asks for its status, and takes its answer once it is done, so the program never waits for the network.
+-- A request runs in the background, and a function gets it once it is done, so the program never waits for the network.
 
 local ecs = require("ecs")
 local web = require("web")
@@ -13,7 +13,6 @@ local PAGES = { ["/"] = "Hello from OpenECS", ["/plain"] = "A plain page" }
 
 local server = net.listen(PORT) -- nil if the port is taken
 local clients = {}              -- the server's connections, until each closes
-local requests = {}             -- the requests that run, with the URL each asked for
 local log = { server and "Serving http://127.0.0.1:" .. PORT .. "/" or "Cannot serve on port " .. PORT }
 local panels = {}               -- the open panels, drawn again when the log changes
 
@@ -34,7 +33,7 @@ local function answer(received)
   return ("HTTP/1.1 %s\r\nContent-Type: text/plain\r\nContent-Length: %d\r\nConnection: close\r\n\r\n%s"):format(status, #page, page)
 end
 
--- every 50 ms: accept the server's clients and answer each once, and log the requests that are done
+-- every 50 ms: accept the server's clients and answer each once
 local timer = ecs.timer.start(0.05, true, function()
   local connection = server and net.accept(server)
 
@@ -54,24 +53,6 @@ local timer = ecs.timer.start(0.05, true, function()
 
     if net.status(client.connection) == -1 then
       table.remove(clients, i)
-    end
-  end
-
-  -- status is 0 while a request runs, its HTTP status once it is done, or -1 if it failed
-  for request, url in pairs(requests) do
-    local status = web.status(request)
-
-    if status > 0 then
-      add(("%d %s: %s"):format(status, web.header(request, "Content-Type") or "?", web.body(request):match("[^\n]*")))
-    elseif status < 0 then
-      add("Failed: " .. web.error(request))
-    end
-
-    -- a request that is done is freed now; Lua's garbage collector would free it later too
-    if status ~= 0 then
-      web.free(request)
-      requests[request] = nil
-      add("  for " .. url)
     end
   end
 end)
@@ -107,12 +88,24 @@ ecs.panel.registerType({
       fetch.line = fetch.line:sub(1, -2)
     elseif event.type == "keyDown" and event.key == "Return" and fetch.line ~= "" then
       -- web.get starts a request and gives its handle at once; web.request takes a method, headers and a body too
-      local request = web.get(fetch.line)
+      -- web keeps the function, and calls it on the main thread once the request is done, even if the handle is dropped
+      local url = fetch.line
 
-      if request then
-        requests[request] = fetch.line
-      else
-        add("Cannot request " .. fetch.line)
+      local request = web.get(url, function(done)
+        -- status is the HTTP status, or -1 if the request failed
+        local status = web.status(done)
+
+        if status > 0 then
+          add(("%d %s: %s"):format(status, web.header(done, "Content-Type") or "?", web.body(done):match("[^\n]*")))
+        else
+          add("Failed: " .. web.error(done))
+        end
+
+        add("  for " .. url)
+      end)
+
+      if not request then
+        add("Cannot request " .. url)
       end
 
       fetch.line = ""

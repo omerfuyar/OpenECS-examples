@@ -17,6 +17,17 @@ local function redrawAll()
   end
 end
 
+-- counter keeps this function and calls it with each change, from any plugin; a Lua function becomes a C function pointer for it
+counter.watch(function(name, value)
+  if name == "clicks" then
+    for panel in pairs(panels) do
+      panel.title = ("Tally (%d)"):format(value)
+    end
+
+    redrawAll()
+  end
+end)
+
 ecs.panel.registerType({
   name = "panel",
   title = "Tally",
@@ -37,8 +48,7 @@ ecs.panel.registerType({
 
   event = function(tally, event)
     if event.type == "pointerDown" then
-      tally.panel.title = ("Tally (%d)"):format(counter.add("clicks", 1))
-      redrawAll()
+      counter.add("clicks", 1)
     end
   end,
 })
@@ -51,7 +61,6 @@ assert(ecs.service.register({
     doc = "Sets the click counter back to 0",
     fn = function()
       counter.add("clicks", -counter.get("clicks"))
-      redrawAll()
     end,
   },
 }))
