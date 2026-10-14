@@ -11,6 +11,22 @@ local mixer = require("mixer")
 local PICTURE = ecs.plugin.folder .. "note.svg"
 local sound = audio.load(ecs.plugin.folder .. "click.wav")
 
+-- a tone made here, rather than read from a file: a stream is a sound whose samples are given while it plays
+local RATE = 48000
+
+local function tone(seconds, pitch)
+  local stream = mixer.newStream(1, RATE)
+  local samples = {}
+
+  for i = 1, math.floor(seconds * RATE) do
+    samples[i] = string.pack("f", 0.2 * math.sin(2 * math.pi * pitch * i / RATE))
+  end
+
+  -- queue adds samples to the end; a synthesizer would queue more from a timer while mixer.queued says little waits
+  mixer.queue(stream, table.concat(samples))
+  return stream
+end
+
 -- the picture's own size, from reading it at a scale of 1
 local naturalWidth, naturalHeight = draw.imageSize(image.load(PICTURE, 1))
 
@@ -61,6 +77,15 @@ ecs.panel.registerType({
     local px, py = (event.x or 0) / media.scale, (event.y or 0) / media.scale
 
     -- a click on the picture plays the sound; each play is a voice, so clicks can overlap
+    -- B plays a tone to the left: finish says that no more samples come, so its voice ends once they have played
+    if event.type == "keyDown" and event.key == "B" then
+      local stream = tone(0.3, 440)
+      media.toneQueued = mixer.queued(stream)
+      mixer.finish(stream)
+      media.tone = mixer.play(stream, 1, false)
+      mixer.pan(media.tone, -0.8)
+    end
+
     if event.type == "pointerDown" and px >= x and px <= x + w and py >= y and py <= y + h then
       if mixer.play(sound, 0.8, false) > 0 then
         media.plays = media.plays + 1
@@ -70,6 +95,6 @@ ecs.panel.registerType({
   end,
 
   saveState = function(media)
-    return { plays = media.plays, smooth = media.smooth }
+    return { plays = media.plays, smooth = media.smooth, toneQueued = media.toneQueued, tonePlaying = media.tone ~= nil and mixer.playing(media.tone) }
   end,
 })
