@@ -27,6 +27,13 @@ return {
     test.move(panel.x + 5, panel.y + 5)
     test.match(state().tip, nil, "the tooltip gone")
 
+    -- a click on the first tab gives the tabs the keys, and Right and Left choose the next and the one before
+    test.click(at("tab", 0.02))
+    test.key("Right")
+    test.match(state().tab, "About", "the second tab")
+    test.key("Left")
+    test.match(state().tab, "Options", "the first tab")
+
     test.click(at("sound", 0.05))
     test.match(state().sound, true, "the toggle")
 
