@@ -1,5 +1,6 @@
 -- A picture that plays a sound when it is clicked. Loaders read files, and executors use what they read:
 -- the image plugin reads an image file into an image of the draw plugin, which draws it; the audio plugin reads a sound file into a sound of the mixer plugin, which plays it.
+-- A loader also writes what an executor holds back to a file: image.save writes an image of draw.
 
 local ecs = require("ecs")
 local image = require("image")
@@ -86,6 +87,14 @@ ecs.panel.registerType({
       mixer.pan(media.tone, -0.8)
     end
 
+    -- S writes the picture as drawn to a PNG file in this plugin's folder, and reads it back, which gives the same pixels
+    if event.type == "keyDown" and event.key == "S" and media.picture ~= nil then
+      local path = ecs.plugin.folder .. "ignore.picture.png"
+      local saved = image.save(media.picture, path) and image.load(path, 1)
+      media.saved = saved and draw.imagePixels(saved) == draw.imagePixels(media.picture) or false
+      os.remove(path)
+    end
+
     if event.type == "pointerDown" and px >= x and px <= x + w and py >= y and py <= y + h then
       if mixer.play(sound, 0.8, false) > 0 then
         media.plays = media.plays + 1
@@ -95,6 +104,6 @@ ecs.panel.registerType({
   end,
 
   saveState = function(media)
-    return { plays = media.plays, smooth = media.smooth, toneQueued = media.toneQueued, tonePlaying = media.tone ~= nil and mixer.playing(media.tone) }
+    return { plays = media.plays, smooth = media.smooth, toneQueued = media.toneQueued, tonePlaying = media.tone ~= nil and mixer.playing(media.tone), saved = media.saved }
   end,
 })
