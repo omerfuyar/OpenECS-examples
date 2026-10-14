@@ -1,5 +1,5 @@
 -- A terminal: a grid of characters from the textgrid standard plugin, which draws it with draw, and fills the panel at any size.
--- Typed text goes to a command line, and Return runs it: help, echo, time and clear.
+-- Typed text goes to a command line, and Return runs it: help, echo, bold, time and clear.
 
 local ecs = require("ecs")
 local textgrid = require("textgrid")
@@ -8,13 +8,16 @@ local SIZE = 16 -- the font size, in layout units
 local PROMPT = "> "
 local FOREGROUND, BACKGROUND = "#D0D0D0", "#101418"
 
--- each command gets the text after its name and gives the lines to print
+-- each command gets the text after its name and gives the lines to print, and the style to print them in
 local commands = {
   help = function()
-    return "help, echo TEXT, time, clear"
+    return "help, echo TEXT, bold TEXT, time, clear"
   end,
   echo = function(text)
     return text
+  end,
+  bold = function(text)
+    return text, "bold"
   end,
   time = function()
     return os.date("%H:%M:%S") -- Lua's standard libraries work in plugins
@@ -30,8 +33,12 @@ local function run(terminal, line)
     textgrid.clear(terminal.grid)
     terminal.output = ""
   elseif commands[name] then
-    terminal.output = commands[name](rest)
-    textgrid.print(terminal.grid, terminal.output .. "\n")
+    local style
+    terminal.output, style = commands[name](rest)
+    textgrid.style(terminal.grid, style or "")
+    textgrid.print(terminal.grid, terminal.output)
+    textgrid.style(terminal.grid, "")
+    textgrid.print(terminal.grid, "\n")
   elseif name ~= "" then
     terminal.output = "unknown command: " .. name
     textgrid.print(terminal.grid, terminal.output .. "\n")
@@ -47,7 +54,11 @@ ecs.panel.registerType({
     local terminal = { panel = panel, grid = textgrid.new(80, 24), line = "", output = "" }
     textgrid.colors(terminal.grid, FOREGROUND, BACKGROUND)
     textgrid.clear(terminal.grid)
-    textgrid.print(terminal.grid, "Type help and press Return.\n")
+    textgrid.print(terminal.grid, "Type ")
+    textgrid.style(terminal.grid, "bold underline")
+    textgrid.print(terminal.grid, "help")
+    textgrid.style(terminal.grid, "")
+    textgrid.print(terminal.grid, " and press Return. Wide characters, such as 漢字, take two cells.\n")
     panel:setTextInput(true)
     return terminal
   end,
@@ -83,8 +94,15 @@ ecs.panel.registerType({
     terminal.panel:redraw()
   end,
 
-  -- the last output is saved, so the test can read it
+  -- the last output and its first cells are saved, so the test can read them; a wide character's right half gives an empty text
   saveState = function(terminal)
-    return { output = terminal.output }
+    local _, row = textgrid.cursor(terminal.grid)
+    local cells, styles = {}, {}
+
+    for column = 0, 5 do
+      cells[column + 1], styles[column + 1] = textgrid.get(terminal.grid, column, row - 1)
+    end
+
+    return { output = terminal.output, cells = cells, styles = styles }
   end,
 })
