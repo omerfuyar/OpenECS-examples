@@ -14,5 +14,9 @@ return {
     test.match(math.abs(state.toneQueued - 0.3) < 0.01, true, "the stream's queued seconds")
     test.wait(1)
     test.match(test.session().workspaces[1].windows[1].panels[1].state.tonePlaying, false, "the stream's end")
+
+    -- S writes the picture to a PNG file and reads it back
+    test.key("S")
+    test.match(test.session().workspaces[1].windows[1].panels[1].state.saved, true, "the picture written and read again")
   end,
 }
