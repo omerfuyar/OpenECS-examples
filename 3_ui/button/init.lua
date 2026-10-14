@@ -12,14 +12,14 @@ local SIZES = { "S", "M", "L" }
 local ITEMS = { "First item", "Second item", "Third item" }
 
 -- the elements the test clicks, by id; their rectangles are saved, so the test finds them
-local IDS = { "button", "sound", "volume", "size", "fruit", "item:2", "name", "note" }
+local IDS = { "button", "sound", "volume", "size", "fruit", "count", "item:2", "name", "note" }
 
 ecs.panel.registerType({
   name = "panel",
   title = "Controls",
 
   create = function(panel)
-    return { panel = panel, clicks = 0, sound = false, dark = true, volume = 0.5, size = "M", fruit = "Apple", selected = 1, name = "", rects = {} }
+    return { panel = panel, clicks = 0, sound = false, dark = true, volume = 0.5, size = "M", fruit = "Apple", count = 3, selected = 1, name = "", rects = {} }
   end,
 
   -- draw runs only when the panel needs drawing; a panel type that draws every frame says continuous = true
@@ -40,8 +40,10 @@ ecs.panel.registerType({
 
     ui.show(controls.panel, surface, ui.column({ padding = 24, gap = 12 }, {
       ui.text(("Clicked %d times"):format(controls.clicks), { size = 18 }),
+      -- a tooltip shows when the pointer rests on its element
       ui.button("Click me", {
         id = "button",
+        tooltip = "Counts the clicks in the panel's title",
         onClick = function()
           controls.clicks = controls.clicks + 1
           controls.panel.title = ("Controls (%d)"):format(controls.clicks)
@@ -54,6 +56,8 @@ ecs.panel.registerType({
         ui.row({ gap = 8 }, { ui.text("Volume"), ui.slider(controls.volume, { id = "volume", step = 0.1, grow = 1, onChange = set("volume") }) }),
         ui.row({ gap = 8 }, { ui.text("Size"), ui.selector(controls.size, SIZES, { id = "size", onChange = set("size") }) }),
         ui.row({ gap = 8 }, { ui.text("Fruit"), ui.dropdown(controls.fruit, FRUITS, { id = "fruit", onChange = set("fruit") }) }),
+        -- a number field takes a number from min to max: Return gives what is typed, and Up and Down change it by step
+        ui.row({ gap = 8 }, { ui.text("Count"), ui.number(controls.count, { id = "count", min = 0, max = 10, step = 1, grow = 1, onChange = set("count") }) }),
       }),
       ui.list({ id = "list", height = 90, grow = 0, border = "tabShown", selected = controls.selected, onSelect = set("selected") }, items),
       -- a field keeps what is typed while it has the keys; Left, Right, Home and End move its cursor
@@ -82,6 +86,6 @@ ecs.panel.registerType({
 
   -- the values and the rectangles are saved, so the test can read them
   saveState = function(controls)
-    return { clicks = controls.clicks, sound = controls.sound, volume = controls.volume, size = controls.size, fruit = controls.fruit, selected = controls.selected, name = controls.name, rects = controls.rects }
+    return { clicks = controls.clicks, sound = controls.sound, volume = controls.volume, size = controls.size, fruit = controls.fruit, count = controls.count, tip = ui.tip(controls.panel), selected = controls.selected, name = controls.name, rects = controls.rects }
   end,
 })
