@@ -40,8 +40,10 @@ ecs.panel.registerType({
 
     ui.show(controls.panel, surface, ui.column({ padding = 24, gap = 12 }, {
       ui.text(("Clicked %d times"):format(controls.clicks), { size = 18 }),
+      -- a tooltip shows when the pointer rests on its element
       ui.button("Click me", {
         id = "button",
+        tooltip = "Counts the clicks in the panel's title",
         onClick = function()
           controls.clicks = controls.clicks + 1
           controls.panel.title = ("Controls (%d)"):format(controls.clicks)
@@ -84,6 +86,6 @@ ecs.panel.registerType({
 
   -- the values and the rectangles are saved, so the test can read them
   saveState = function(controls)
-    return { clicks = controls.clicks, sound = controls.sound, volume = controls.volume, size = controls.size, fruit = controls.fruit, count = controls.count, selected = controls.selected, name = controls.name, rects = controls.rects }
+    return { clicks = controls.clicks, sound = controls.sound, volume = controls.volume, size = controls.size, fruit = controls.fruit, count = controls.count, tip = ui.tip(controls.panel), selected = controls.selected, name = controls.name, rects = controls.rects }
   end,
 })

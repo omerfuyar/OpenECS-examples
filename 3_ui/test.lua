@@ -20,6 +20,13 @@ return {
     test.click(panel.x + 5, panel.y + 5)
     test.match(test.panel(1), { title = "Controls (2)" })
 
+    -- the button's tooltip shows when the pointer rests on it, and goes when the pointer leaves
+    test.move(at("button"))
+    test.wait(0.8)
+    test.match(state().tip, "button", "the tooltip")
+    test.move(panel.x + 5, panel.y + 5)
+    test.match(state().tip, nil, "the tooltip gone")
+
     test.click(at("sound", 0.05))
     test.match(state().sound, true, "the toggle")
 
