@@ -18,6 +18,14 @@ return {
     test.wait(1)
     test.match(state().tonePlaying, false, "the stream's end")
 
+    -- T streams a tune of 1.5 seconds: audio reads half a second ahead, and goes on reading while it plays to its end
+    test.key("T")
+    test.match(math.abs(state().tuneQueued - 0.5) < 0.01, true, "the tune's queued seconds")
+    test.wait(1)
+    test.match(state().tunePlaying, true, "the tune, still playing after the first half second")
+    test.wait(1.5)
+    test.match(state().tunePlaying, false, "the tune's end")
+
     -- S writes the picture to a PNG file and reads it back
     test.key("S")
     test.match(state().saved, true, "the picture written and read again")

@@ -1,7 +1,8 @@
 -- A picture that plays a sound when it is clicked. Loaders read files, and executors use what they read:
 -- the image plugin reads an image file into an image of the draw plugin, which draws it; the audio plugin reads a sound file into a sound of the mixer plugin, which plays it.
 -- A loader also writes what an executor holds back to a file: image.save writes an image of draw.
--- R turns the picture and F fades it, S writes it to a file, and B plays a tone. A spinner in the corner is an animated GIF file.
+-- R turns the picture and F fades it, S writes it to a file, B plays a tone, and T plays a tune read from its file as it plays.
+-- A spinner in the corner is an animated GIF file.
 
 local ecs = require("ecs")
 local image = require("image")
@@ -137,6 +138,13 @@ ecs.panel.registerType({
       os.remove(path)
     end
 
+    -- T streams a tune: audio reads a long file a piece at a time while it plays, instead of whole
+    if event.type == "keyDown" and event.key == "T" then
+      local stream = audio.stream(ecs.plugin.folder .. "tune.wav")
+      media.tuneQueued = mixer.queued(stream)
+      media.tune = mixer.play(stream, 0.8, false)
+    end
+
     if event.type == "pointerDown" and px >= x and px <= x + w and py >= y and py <= y + h then
       if mixer.play(sound, 0.8, false) > 0 then
         media.plays = media.plays + 1
@@ -146,6 +154,6 @@ ecs.panel.registerType({
   end,
 
   saveState = function(media)
-    return { plays = media.plays, smooth = media.smooth, toneQueued = media.toneQueued, tonePlaying = media.tone ~= nil and mixer.playing(media.tone), saved = media.saved, probes = media.probes, frames = #media.frames, frameSeconds = media.frames[1].seconds, frame = media.frame }
+    return { plays = media.plays, smooth = media.smooth, toneQueued = media.toneQueued, tonePlaying = media.tone ~= nil and mixer.playing(media.tone), saved = media.saved, probes = media.probes, frames = #media.frames, frameSeconds = media.frames[1].seconds, frame = media.frame, tuneQueued = media.tuneQueued, tunePlaying = media.tune ~= nil and mixer.playing(media.tune) }
   end,
 })
