@@ -15,6 +15,13 @@ local accepted -- the server's end of the connection, once the client is accepte
 local udpServer = net.udp(PORT) -- UDP ports are apart from TCP ports, so the same number serves both
 local udpClient = net.udp(0)    -- port 0: any free port
 local log = { server and "Listening on port " .. PORT or "Cannot listen on port " .. PORT }
+
+-- connectTls starts a TLS connection: its status is 0 until the handshake is done, and the server's certificate is checked against the system's trusted ones
+-- this one goes to a plain server on the next port, which answers in plain text, so its handshake fails and its status becomes -1
+local plain = net.listen(PORT + 1)
+local secure = net.connectTls("127.0.0.1", PORT + 1)
+local plainClient
+local tls = 0 -- the TLS connection's status, saved for the test
 local panels = {} -- the open panels, drawn again when the log changes
 
 local function add(line)
@@ -30,6 +37,14 @@ local timer = ecs.timer.start(0.05, true, function()
   if server and not accepted then
     accepted = net.accept(server)
   end
+
+  plainClient = plainClient or (plain and net.accept(plain))
+
+  if plainClient and net.receive(plainClient, 1024) ~= "" then
+    net.send(plainClient, "not TLS\n")
+  end
+
+  tls = net.status(secure)
 
   if accepted then
     local received = net.receive(accepted, 1024)
@@ -118,7 +133,7 @@ ecs.panel.registerType({
 ecs.plugin.register({
   stateVersion = 1,
   saveState = function()
-    return { log = log }
+    return { log = log, tls = tls }
   end,
   restoreState = function() end,
   destroy = function()
