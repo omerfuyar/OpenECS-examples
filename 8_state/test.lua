@@ -14,5 +14,24 @@ return {
     test.match(panels[2].panels[1].state, { dots = { 40, 40, 80, 80 } }, "the panel the preset gave a state")
     test.match(session.pluginState.marks.state, { placed = 2 }, "the plugin's state")
     test.match(test.panel(1).unsaved, true, "after the clicks")
+
+    -- closing it asks about its unsaved work in a dialog that the core draws; Return presses the chosen button, and Escape the last
+    test.key("Alt+W")
+    test.key("X")
+    local dialog = test.dialog()
+    test.match({ dialog.title, dialog.buttons, dialog.selected }, { "Unsaved work", { "Save", "Discard", "Cancel" }, 1 }, "the question")
+    test.key("Escape")
+    test.match(test.dialog(), nil, "the dialog after Escape")
+    test.match(test.panel(1).unsaved, true, "the panel Cancel kept")
+
+    -- Right chooses the next button, and a click on Discard closes the panel without saving
+    test.key("Alt+W")
+    test.key("X")
+    test.key("Right")
+    test.match(test.dialog().selected, 2, "the chosen button")
+    local discard = test.dialog().rects[2]
+    test.click(discard.x + discard.width / 2, discard.y + discard.height / 2)
+    test.match(test.dialog(), nil, "the dialog after the click")
+    test.match(#test.session().workspaces[1].windows[1].panels, 1, "the panels left")
   end,
 }
