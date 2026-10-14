@@ -28,5 +28,8 @@ return {
     test.text("/udp hi")
     test.key("Return")
     test.match(waitFor(test, "< udp HI"), { "Listening on port 47200", "> hello", "< HELLO", "> udp hi", "< udp HI" })
+
+    -- the TLS connection to the plain server fails its handshake
+    test.match(test.session().pluginState.echo.state.tls, -1, "the TLS connection")
   end,
 }
