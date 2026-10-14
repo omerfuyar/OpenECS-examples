@@ -19,7 +19,7 @@ ecs.panel.registerType({
   title = "Media",
 
   create = function(panel)
-    return { panel = panel, plays = 0, rect = { 0, 0, 0, 0 }, scale = 1, readAt = 0 }
+    return { panel = panel, plays = 0, rect = { 0, 0, 0, 0 }, scale = 1, readAt = 0, smooth = false }
   end,
 
   draw = function(media, surface)
@@ -38,7 +38,21 @@ ecs.panel.registerType({
       media.picture = image.load(PICTURE, media.readAt)
     end
 
+    -- draw also draws shapes: a frame with rounded corners, whose edges are smooth, behind the picture
+    local x, y = media.rect[1] - 8, media.rect[2] - 8
+    draw.rounded(surface, x, y, w + 16, h + 16, 16, "#3A3F4B")
     draw.image(surface, media.picture, media.rect[1], media.rect[2], w, h)
+
+    -- a smooth edge has pixels that the frame covers only in part, so their colour is between the frame's and the background's
+    local seen = {}
+
+    -- the corner's edge crosses the diagonal from the corner about 5 units in, before the picture starts at 8
+    for i = 0, math.floor(7 * surface.scale) do
+      seen[surface:getPixel(math.floor(x * surface.scale) + i, math.floor(y * surface.scale) + i)] = true
+    end
+
+    seen["#202020FF"], seen["#3A3F4BFF"] = nil, nil
+    media.smooth = next(seen) ~= nil
   end,
 
   event = function(media, event)
@@ -56,6 +70,6 @@ ecs.panel.registerType({
   end,
 
   saveState = function(media)
-    return { plays = media.plays }
+    return { plays = media.plays, smooth = media.smooth }
   end,
 })
