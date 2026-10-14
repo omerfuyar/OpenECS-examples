@@ -1,7 +1,8 @@
 -- A picture that plays a sound when it is clicked. Loaders read files, and executors use what they read:
 -- the image plugin reads an image file into an image of the draw plugin, which draws it; the audio plugin reads a sound file into a sound of the mixer plugin, which plays it.
 -- A loader also writes what an executor holds back to a file: image.save writes an image of draw.
--- R turns the picture and F fades it, S writes it to a file, and B plays a tone.
+-- R turns the picture and F fades it, S writes it to a file, B plays a tone, and T plays a tune read from its file as it plays.
+-- A spinner in the corner is an animated GIF file.
 
 local ecs = require("ecs")
 local image = require("image")
@@ -29,6 +30,9 @@ local function tone(seconds, pitch)
   return stream
 end
 
+-- an animated GIF file gives its frames, each an image and the seconds it shows for
+local SPINNER = ecs.plugin.folder .. "spinner.gif"
+
 -- the picture's own size, from reading it at a scale of 1
 local naturalWidth, naturalHeight = draw.imageSize(image.load(PICTURE, 1))
 
@@ -37,7 +41,24 @@ ecs.panel.registerType({
   title = "Media",
 
   create = function(panel)
-    return { panel = panel, plays = 0, rect = { 0, 0, 0, 0 }, scale = 1, readAt = 0, smooth = false, angle = 0, faded = false }
+    local media = { panel = panel, plays = 0, rect = { 0, 0, 0, 0 }, scale = 1, readAt = 0, smooth = false, angle = 0, faded = false }
+    media.frames, media.frame = image.loadFrames(SPINNER, 1), 1
+
+    -- each frame shows for its own seconds, then the next one does
+    local function advance()
+      media.timer = ecs.timer.start(math.max(media.frames[media.frame].seconds, 0.02), false, function()
+        media.frame = media.frame % #media.frames + 1
+        panel:redraw()
+        advance()
+      end)
+    end
+
+    advance()
+    return media
+  end,
+
+  destroy = function(media)
+    media.timer:stop()
   end,
 
   draw = function(media, surface)
@@ -66,6 +87,8 @@ ecs.panel.registerType({
     else
       draw.imageTransformed(surface, media.picture, media.rect[1], media.rect[2], w, h, media.angle, media.faded and "#FFFFFF60" or "#FFFFFF")
     end
+
+    draw.image(surface, media.frames[media.frame].image, 8, 8, 32, 32)
 
     -- two points on either side of the note's left stem, which a half turn swaps
     media.probes = {}
@@ -115,6 +138,13 @@ ecs.panel.registerType({
       os.remove(path)
     end
 
+    -- T streams a tune: audio reads a long file a piece at a time while it plays, instead of whole
+    if event.type == "keyDown" and event.key == "T" then
+      local stream = audio.stream(ecs.plugin.folder .. "tune.wav")
+      media.tuneQueued = mixer.queued(stream)
+      media.tune = mixer.play(stream, 0.8, false)
+    end
+
     if event.type == "pointerDown" and px >= x and px <= x + w and py >= y and py <= y + h then
       if mixer.play(sound, 0.8, false) > 0 then
         media.plays = media.plays + 1
@@ -124,6 +154,6 @@ ecs.panel.registerType({
   end,
 
   saveState = function(media)
-    return { plays = media.plays, smooth = media.smooth, toneQueued = media.toneQueued, tonePlaying = media.tone ~= nil and mixer.playing(media.tone), saved = media.saved, probes = media.probes }
+    return { plays = media.plays, smooth = media.smooth, toneQueued = media.toneQueued, tonePlaying = media.tone ~= nil and mixer.playing(media.tone), saved = media.saved, probes = media.probes, frames = #media.frames, frameSeconds = media.frames[1].seconds, frame = media.frame, tuneQueued = media.tuneQueued, tunePlaying = media.tune ~= nil and mixer.playing(media.tune) }
   end,
 })
