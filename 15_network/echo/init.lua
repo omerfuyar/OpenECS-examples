@@ -22,6 +22,15 @@ local plain = net.listen(PORT + 1)
 local secure = net.connectTls("127.0.0.1", PORT + 1)
 local plainClient
 local tls = 0 -- the TLS connection's status, saved for the test
+
+-- listenTls serves TLS with a certificate and its key; this pair was made for this example, for localhost, and is not secret
+-- the certificate is nobody's trusted one, so trust adds it to the client's; the server sends back in capitals what the client sends
+local secureServer = net.listenTls(PORT + 2, ecs.plugin.folder .. "certificate.pem", ecs.plugin.folder .. "key.pem")
+net.trust(ecs.plugin.folder .. "certificate.pem")
+local secureClient = net.connectTls("localhost", PORT + 2)
+local secureAccepted
+local secureSent = false
+local secureAnswer = "" -- what came back over TLS, saved for the test
 local panels = {} -- the open panels, drawn again when the log changes
 
 local function add(line)
@@ -45,6 +54,23 @@ local timer = ecs.timer.start(0.05, true, function()
   end
 
   tls = net.status(secure)
+
+  secureAccepted = secureAccepted or (secureServer and net.accept(secureServer))
+
+  if secureAccepted then
+    local received = net.receive(secureAccepted, 1024)
+
+    if received ~= "" then
+      net.send(secureAccepted, received:upper())
+    end
+  end
+
+  -- the client sends once its handshake is done, which needs the server's side to move on too
+  if not secureSent and net.status(secureClient) == 1 then
+    secureSent = net.send(secureClient, "secret")
+  end
+
+  secureAnswer = secureAnswer .. net.receive(secureClient, 1024)
 
   if accepted then
     local received = net.receive(accepted, 1024)
@@ -133,7 +159,7 @@ ecs.panel.registerType({
 ecs.plugin.register({
   stateVersion = 1,
   saveState = function()
-    return { log = log, tls = tls }
+    return { log = log, tls = tls, secure = secureAnswer }
   end,
   restoreState = function() end,
   destroy = function()

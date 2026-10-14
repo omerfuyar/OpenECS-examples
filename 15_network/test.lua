@@ -31,5 +31,16 @@ return {
 
     -- the TLS connection to the plain server fails its handshake
     test.match(test.session().pluginState.echo.state.tls, -1, "the TLS connection")
+
+    -- the TLS server, whose certificate the client trusts, sends back in capitals what the client sent
+    for _ = 1, 100 do
+      if test.session().pluginState.echo.state.secure == "SECRET" then
+        break
+      end
+
+      test.wait(0.05)
+    end
+
+    test.match(test.session().pluginState.echo.state.secure, "SECRET", "the TLS server's answer")
   end,
 }
