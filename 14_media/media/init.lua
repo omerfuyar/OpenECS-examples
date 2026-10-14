@@ -1,6 +1,7 @@
 -- A picture that plays a sound when it is clicked. Loaders read files, and executors use what they read:
 -- the image plugin reads an image file into an image of the draw plugin, which draws it; the audio plugin reads a sound file into a sound of the mixer plugin, which plays it.
 -- A loader also writes what an executor holds back to a file: image.save writes an image of draw.
+-- R turns the picture and F fades it, S writes it to a file, and B plays a tone.
 
 local ecs = require("ecs")
 local image = require("image")
@@ -36,7 +37,7 @@ ecs.panel.registerType({
   title = "Media",
 
   create = function(panel)
-    return { panel = panel, plays = 0, rect = { 0, 0, 0, 0 }, scale = 1, readAt = 0, smooth = false }
+    return { panel = panel, plays = 0, rect = { 0, 0, 0, 0 }, scale = 1, readAt = 0, smooth = false, angle = 0, faded = false }
   end,
 
   draw = function(media, surface)
@@ -58,7 +59,20 @@ ecs.panel.registerType({
     -- draw also draws shapes: a frame with rounded corners, whose edges are smooth, behind the picture
     local x, y = media.rect[1] - 8, media.rect[2] - 8
     draw.rounded(surface, x, y, w + 16, h + 16, 16, "#3A3F4B")
-    draw.image(surface, media.picture, media.rect[1], media.rect[2], w, h)
+
+    -- R turns the picture and F fades it; draw.image is the quicker way to draw it as it is
+    if media.angle == 0 and not media.faded then
+      draw.image(surface, media.picture, media.rect[1], media.rect[2], w, h)
+    else
+      draw.imageTransformed(surface, media.picture, media.rect[1], media.rect[2], w, h, media.angle, media.faded and "#FFFFFF60" or "#FFFFFF")
+    end
+
+    -- two points on either side of the note's left stem, which a half turn swaps
+    media.probes = {}
+
+    for i, across in ipairs({ 0.42, 0.58 }) do
+      media.probes[i] = surface:getPixel(math.floor((media.rect[1] + across * w) * surface.scale), math.floor((media.rect[2] + 0.5 * h) * surface.scale))
+    end
 
     -- a smooth edge has pixels that the frame covers only in part, so their colour is between the frame's and the background's
     local seen = {}
@@ -88,6 +102,12 @@ ecs.panel.registerType({
     end
 
     -- S writes the picture as drawn to a PNG file in this plugin's folder, and reads it back, which gives the same pixels
+    if event.type == "keyDown" and (event.key == "R" or event.key == "F") then
+      media.angle = event.key == "R" and (media.angle + 90) % 360 or media.angle
+      media.faded = media.faded ~= (event.key == "F")
+      media.panel:redraw()
+    end
+
     if event.type == "keyDown" and event.key == "S" and media.picture ~= nil then
       local path = ecs.plugin.folder .. "ignore.picture.png"
       local saved = image.save(media.picture, path) and image.load(path, 1)
@@ -104,6 +124,6 @@ ecs.panel.registerType({
   end,
 
   saveState = function(media)
-    return { plays = media.plays, smooth = media.smooth, toneQueued = media.toneQueued, tonePlaying = media.tone ~= nil and mixer.playing(media.tone), saved = media.saved }
+    return { plays = media.plays, smooth = media.smooth, toneQueued = media.toneQueued, tonePlaying = media.tone ~= nil and mixer.playing(media.tone), saved = media.saved, probes = media.probes }
   end,
 })

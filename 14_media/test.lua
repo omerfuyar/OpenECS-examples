@@ -18,5 +18,20 @@ return {
     -- S writes the picture to a PNG file and reads it back
     test.key("S")
     test.match(test.session().workspaces[1].windows[1].panels[1].state.saved, true, "the picture written and read again")
+
+    -- the probe on the note's stem is white and the other blue; two quarter turns swap them, and fading darkens the white one
+    local function red(probe)
+      return tonumber(probe:sub(2, 3), 16)
+    end
+
+    local probes = test.session().workspaces[1].windows[1].panels[1].state.probes
+    test.match({ red(probes[1]) > 200, red(probes[2]) < 100 }, { true, true }, "the stem and beside it")
+    test.key("R")
+    test.key("R")
+    probes = test.session().workspaces[1].windows[1].panels[1].state.probes
+    test.match({ red(probes[1]) < 100, red(probes[2]) > 200 }, { true, true }, "the picture turned by half a turn")
+    test.key("F")
+    probes = test.session().workspaces[1].windows[1].panels[1].state.probes
+    test.match(red(probes[2]) > 100 and red(probes[2]) < 200, true, "the faded picture")
   end,
 }
