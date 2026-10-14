@@ -7,5 +7,12 @@ return {
     test.click(panel.x + 3, panel.y + 3)
     test.match(test.panel(1), { title = "Media (1)" })
     test.match(test.session().workspaces[1].windows[1].panels[1].state.smooth, true, "the frame's smooth corner")
+
+    -- B plays a streamed tone of 0.3 seconds, which ends once it has played; the dummy output plays as fast as a real one
+    test.key("B")
+    local state = test.session().workspaces[1].windows[1].panels[1].state
+    test.match(math.abs(state.toneQueued - 0.3) < 0.01, true, "the stream's queued seconds")
+    test.wait(1)
+    test.match(test.session().workspaces[1].windows[1].panels[1].state.tonePlaying, false, "the stream's end")
   end,
 }
