@@ -18,6 +18,13 @@ return {
     test.wait(1)
     test.match(state().tonePlaying, false, "the stream's end")
 
+    -- E plays a tone of 0.3 seconds with an echo, which rings on for about 1.4 seconds after it
+    test.key("E")
+    test.wait(1)
+    test.match(state().echoPlaying, true, "the echo, ringing after the tone")
+    test.wait(1.5)
+    test.match(state().echoPlaying, false, "the echo's end")
+
     -- V turns the reverb on for the tune, and off again after it
     test.key("V")
     test.match(state().reverb, true, "the reverb")
