@@ -61,7 +61,7 @@ end
 
 -- the state of the WebSocket connection, and the messages that arrived; web keeps them until they are taken
 local function poll()
-  local status = web.socketStatus(socket.handle)
+  local status = web.socket.status(socket.handle)
 
   if status == 1 and not socket.open then
     socket.open = true
@@ -69,7 +69,7 @@ local function poll()
   end
 
   while true do
-    local message, kind = web.socketReceive(socket.handle)
+    local message, kind = web.socket.receive(socket.handle)
 
     if not kind then
       break
@@ -79,8 +79,8 @@ local function poll()
   end
 
   if status == -1 then
-    add("Closed: " .. web.socketError(socket.handle))
-    web.socketClose(socket.handle)
+    add("Closed: " .. web.socket.error(socket.handle))
+    web.socket.close(socket.handle)
     socket = nil
   end
 end
@@ -153,15 +153,15 @@ ecs.panel.registerType({
       fetch.line = fetch.line:sub(1, -2)
     elseif event.type == "keyDown" and event.key == "Return" and socket and not fetch.line:find("^%a+://") then
       -- a line that is not a URL is a message to the WebSocket connection; web sends it in the background, once the connection is open
-      web.socketSend(socket.handle, fetch.line, true)
+      web.socket.send(socket.handle, fetch.line, true)
       fetch.line = ""
     elseif event.type == "keyDown" and event.key == "Return" and fetch.line:find("^wss?://") then
-      -- web.socket starts a connection and gives its handle at once; its state and its messages are asked for, as with net
+      -- web.socket.open starts a connection and gives its handle at once; its state and its messages are asked for, as with net
       if socket then
-        web.socketClose(socket.handle)
+        web.socket.close(socket.handle)
       end
 
-      local handle = web.socket(fetch.line)
+      local handle = web.socket.open(fetch.line)
       socket = handle and { handle = handle, url = fetch.line, open = false }
       add(handle and "Connecting to " .. fetch.line or "Cannot connect to " .. fetch.line)
       fetch.line = ""
