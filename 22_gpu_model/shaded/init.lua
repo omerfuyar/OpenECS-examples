@@ -1,7 +1,7 @@
 -- A glTF model drawn on the GPU with shaders of its own. The gltf standard plugin reads its vertices, normals and triangles; they go to the GPU once,
 -- as a vertex buffer and an index buffer, and each frame the gpu standard plugin draws them with a pipeline: a vertex shader that moves and sees
 -- each vertex, and a fragment shader that lights each pixel. A depth texture keeps the near side in front, so nothing is sorted in Lua.
--- The frame also draws shapes, before and after the model: a shadow under it, as a mesh, and a line at the bottom.
+-- The panel also draws shapes, before and after the model: a shadow under it, as a mesh, and a line at the bottom.
 -- Drag to turn the model, and turn the wheel to come nearer or go back; let go, and it turns on by itself.
 
 local ecs = require("ecs")
@@ -97,7 +97,7 @@ local function pack(...)
   return string.pack("<" .. ("f"):rep(#floats), table.unpack(floats))
 end
 
--- the shadow under the model: a fan of triangles, dark in the middle and clear at its edge, which the frame's mesh blends
+-- the shadow under the model: a fan of triangles, dark in the middle and clear at its edge, which gpu's mesh blends
 local function shadow(x, y, width, height)
   local points, colors, indices = { string.pack("=ff", x, y) }, { string.pack("=I4", 0x90000000) }, {}
   local SIDES = 32
@@ -129,15 +129,9 @@ ecs.panel.registerType({
       view.turn = view.turn + seconds * 0.7
     end
 
-    local frame = gpu.frame(surface)
-
-    if not frame then
-      return
-    end
-
     local width, height = surface.width / surface.scale, surface.height / surface.scale
-    frame:clear(BACKGROUND)
-    frame:mesh(shadow(width / 2, height * 0.85, math.min(width, height) * 0.9, math.min(width, height) * 0.12))
+    gpu.clear(surface, BACKGROUND)
+    gpu.mesh(surface, shadow(width / 2, height * 0.85, math.min(width, height) * 0.9, math.min(width, height) * 0.12))
 
     -- the ring leans on its side, so it tumbles as it turns, then the drag's turn and tilt move it; the camera is in front of it, at its distance
     if pipeline and vertexBuffer and indexBuffer then
@@ -145,7 +139,7 @@ ecs.panel.registerType({
       local camera = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, -view.distance, 1 }
       local viewProjection = multiply(perspective(math.rad(45), width / height, 0.1, 50), camera)
 
-      frame:draw(pipeline, {
+      gpu.draw(surface, pipeline, {
         vertices = vertexBuffer,
         indices = indexBuffer,
         vertexUniforms = pack(modelMatrix, viewProjection),
@@ -154,8 +148,7 @@ ecs.panel.registerType({
     end
 
     -- shapes drawn after the model go over it
-    frame:line(width * 0.1, height - 12, width * 0.9, height - 12, 2, "accent")
-    frame:submit()
+    gpu.line(surface, width * 0.1, height - 12, width * 0.9, height - 12, 2, "accent")
   end,
 
   -- a drag turns and tilts the model; the wheel moves it nearer or farther
