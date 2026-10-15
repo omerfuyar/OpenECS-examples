@@ -4,6 +4,7 @@
 local ecs = require("ecs")
 local gltf = require("gltf")
 local draw = require("draw")
+local image = require("image")
 
 local model = gltf.load(ecs.plugin.folder .. "cube.gltf")
 local info = gltf.describe(model)
@@ -30,6 +31,13 @@ local TRIANGLES = primitive.indices // 3
 -- the material's colour, as a text
 local r, g, b = table.unpack(info.materials[primitive.material].color)
 local COLOR = ("#%02X%02X%02X"):format(math.floor(r * 255), math.floor(g * 255), math.floor(b * 255))
+
+-- a .glb file holds its pictures inside it: the badge's material names its image by number, gltf.image gives that image's bytes, and image.decode makes a picture of them
+local badge = gltf.load(ecs.plugin.folder .. "badge.glb")
+local badgeInfo = gltf.describe(badge)
+local badgeImage = badgeInfo.images[badgeInfo.materials[1].image]
+local TEXTURE = image.decode(gltf.image(badge, badgeInfo.materials[1].image), 1)
+local TEXTURE_WIDTH, TEXTURE_HEIGHT = draw.imageSize(TEXTURE)
 
 ecs.panel.registerType({
   name = "panel",
@@ -59,10 +67,13 @@ ecs.panel.registerType({
     end
 
     draw.lines(surface, table.concat(projected), EDGES, 1, COLOR)
+
+    -- the badge's texture, in the top left corner at four times its size
+    draw.image(surface, TEXTURE, 8, 8, TEXTURE_WIDTH * 4, TEXTURE_HEIGHT * 4)
   end,
 
   -- how many frames it drew, so the test can see it draws every frame
   saveState = function(view)
-    return { drawn = view.drawn, triangles = TRIANGLES, vertices = primitive.vertices }
+    return { drawn = view.drawn, triangles = TRIANGLES, vertices = primitive.vertices, texture = { mimeType = badgeImage.mimeType, file = badgeImage.file, width = TEXTURE_WIDTH, height = TEXTURE_HEIGHT } }
   end,
 })
