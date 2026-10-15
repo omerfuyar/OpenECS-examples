@@ -1,4 +1,4 @@
--- the torus is read from its glTF file and drawn every frame on the GPU: its middle shows the background through its hole, and its ring shows the
+-- the torus is read from its glTF file and drawn every frame on the GPU with its own shaders: a corner shows the background, and the ring shows the
 -- material's colour, lit; a drag turns it, and the wheel moves it nearer
 return {
   preset = "preset.lua",
@@ -12,7 +12,7 @@ return {
 
     test.match({ state().vertices, state().triangles }, { 561, 1024 }, "the torus")
     assert(state().drawn > 1, "frames drawn: " .. tostring(state().drawn))
-    assert(state().shown > 0 and state().shown < 1024, "the triangles that face away are left out: " .. tostring(state().shown))
+    test.match(state().pipeline, true, "the pipeline, from the shaders")
 
     -- a pixel's colour, as red, green and blue
     local function rgb(x, y)

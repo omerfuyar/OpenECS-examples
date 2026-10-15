@@ -5,7 +5,7 @@ return {
   name = "gpu_model",
   version = "0.1.0",
   app = { id = "openecs.example.gpu_model", name = "GPU model" },
-  hint = "A glTF model drawn filled and lit on the GPU; drag to turn it, and turn the wheel to come nearer",
+  hint = "A glTF model drawn on the GPU with its own shaders; drag to turn it, and turn the wheel to come nearer",
   depends = { shaded = "0.1" },
   pluginsDir = ".",
   workspaces = {
