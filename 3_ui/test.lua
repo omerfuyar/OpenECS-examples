@@ -78,6 +78,32 @@ return {
     test.key("Delete")
     test.match(state().name, "Xbc", "the field")
 
+    -- Shift with a move selects, and typing replaces the selection; Ctrl moves by words
+    test.key("Shift+End")
+    test.text("Y")
+    test.match(state().name, "Y", "the selection replaced")
+    test.text("ab cd")
+    test.key("Ctrl+Left")
+    test.key("Ctrl+Shift+Right")
+    test.key("Ctrl+X")
+    test.match(state().name, "Yab ", "the word cut")
+    test.key("Home")
+    test.key("Ctrl+V")
+    test.match(state().name, "cdYab ", "the word pasted")
+
+    -- Ctrl+A selects all, and Backspace deletes the selection
+    test.key("Ctrl+A")
+    test.key("Backspace")
+    test.match(state().name, "", "the field emptied")
+
+    -- a drag across the field selects what it passes over
+    test.text("drag")
+    local fromX, fromY = at("name", 0.01)
+    local toX = at("name", 0.99)
+    test.drag(fromX, fromY, toX, fromY)
+    test.text("Z")
+    test.match(state().name, "Z", "the dragged selection replaced")
+
     -- the note wraps into more than one line
     test.match(state().rects.note.height > state().rects.name.height, true, "the wrapped text")
 
@@ -86,5 +112,45 @@ return {
     test.key("Tab")
     test.key("Space")
     test.match(state().clicks, 3, "the keys")
+
+    -- the About tab holds a tree; a click on a node's arrow opens it, and a click beside the arrow chooses the node
+    test.click(at("tab", 0.02))
+    test.key("Right")
+    test.match(state().tab, "About", "the tab of the tree")
+    local _, srcY = at("tree:src")
+    test.click(panel.x + state().rects["tree:src"].x + 14, srcY)
+    test.match(state().open, { src = true }, "the opened node")
+    test.click(at("tree:lib"))
+    test.match(state().node, "lib", "the chosen node")
+
+    -- Right opens the chosen node, then chooses its first child; Left on a node without children chooses its parent, then closes it
+    test.key("Right")
+    test.match(state().open, { src = true, lib = true }, "the node opened with Right")
+    test.key("Right")
+    test.match(state().node, "util", "the first child, after Right on an open node")
+    test.key("Left")
+    test.match(state().node, "lib", "the parent")
+    test.key("Left")
+    test.match(state().open, { src = true }, "the node closed with Left")
+    test.key("Down")
+    test.match(state().node, "readme", "the node below the closed one")
+
+    -- the Table tab: the rows are sorted by name, a click on a title sorts by its column, and a second click reverses the order
+    test.click(at("tab", 0.02))
+    test.key("Right")
+    test.key("Right")
+    test.match(state().tab, "Table", "the tab of the table")
+    test.match(state().first, "Apple", "the first row by name")
+    local header, row = state().rects["table:header"], state().rects["table:1"]
+    test.match(header.x, row.x, "the header over the rows")
+    test.click(at("table:title:name"))
+    test.match({ state().sort, state().ascending }, { "name", false }, "the order reversed")
+    test.match(state().first, "Cherry", "the first row, names reversed")
+    test.click(at("table:title:price"))
+    test.match({ state().sort, state().ascending, state().first }, { "price", true, "Banana" }, "the rows by price")
+
+    -- a click on a row chooses it
+    test.click(at("table:2"))
+    test.match(state().row, 2, "the chosen row")
   end,
 }
