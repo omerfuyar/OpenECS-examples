@@ -18,6 +18,10 @@ return {
     test.wait(1)
     test.match(state().tonePlaying, false, "the stream's end")
 
+    -- V turns the reverb on for the tune, and off again after it
+    test.key("V")
+    test.match(state().reverb, true, "the reverb")
+
     -- T streams a tune of 1.5 seconds: audio reads half a second ahead, and goes on reading while it plays to its end
     test.key("T")
     test.match(math.abs(state().tuneQueued - 0.5) < 0.01, true, "the tune's queued seconds")
@@ -25,6 +29,8 @@ return {
     test.match(state().tunePlaying, true, "the tune, still playing after the first half second")
     test.wait(2)
     test.match(state().tunePlaying, false, "the tune's end")
+    test.key("V")
+    test.match(state().reverb, false, "the reverb off")
 
     -- S writes the picture to a PNG file and reads it back
     test.key("S")

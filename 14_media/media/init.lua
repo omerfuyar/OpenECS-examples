@@ -1,7 +1,7 @@
 -- A picture that plays a sound when it is clicked. Loaders read files, and executors use what they read:
 -- the image plugin reads an image file into an image of the draw plugin, which draws it; the audio plugin reads a sound file into a sound of the mixer plugin, which plays it.
 -- A loader also writes what an executor holds back to a file: image.save writes an image of draw.
--- R turns the picture and F fades it, S writes it to a file, B plays a tone, and T plays a tune read from its file as it plays.
+-- R turns the picture and F fades it, S writes it to a file, B plays a tone, T plays a tune read from its file as it plays, and V turns a reverb on and off.
 -- A spinner in the corner is an animated GIF file.
 
 local ecs = require("ecs")
@@ -138,6 +138,12 @@ ecs.panel.registerType({
       os.remove(path)
     end
 
+    -- V adds a reverb to everything that plays, as in a room, or takes it away; reverb gives false when there is no output
+    if event.type == "keyDown" and event.key == "V" then
+      local on = not media.reverb
+      media.reverb = mixer.reverb(on and 0.3 or 0, 0.6) and on
+    end
+
     -- T streams a tune: audio reads a long file a piece at a time while it plays, instead of whole
     if event.type == "keyDown" and event.key == "T" then
       local stream = audio.stream(ecs.plugin.folder .. "tune.wav")
@@ -154,6 +160,6 @@ ecs.panel.registerType({
   end,
 
   saveState = function(media)
-    return { plays = media.plays, smooth = media.smooth, toneQueued = media.toneQueued, tonePlaying = media.tone ~= nil and mixer.playing(media.tone), saved = media.saved, probes = media.probes, frames = #media.frames, frameSeconds = media.frames[1].seconds, frame = media.frame, tuneQueued = media.tuneQueued, tunePlaying = media.tune ~= nil and mixer.playing(media.tune) }
+    return { plays = media.plays, smooth = media.smooth, toneQueued = media.toneQueued, tonePlaying = media.tone ~= nil and mixer.playing(media.tone), saved = media.saved, probes = media.probes, frames = #media.frames, frameSeconds = media.frames[1].seconds, frame = media.frame, tuneQueued = media.tuneQueued, tunePlaying = media.tune ~= nil and mixer.playing(media.tune), reverb = media.reverb == true }
   end,
 })
