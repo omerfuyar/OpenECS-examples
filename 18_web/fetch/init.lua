@@ -1,11 +1,13 @@
 -- Fetches each typed URL with the web standard plugin, and shows the answer's status, type and first line.
 -- So the example works without the internet, the plugin also serves two pages on this computer with net, at http://127.0.0.1:47201/.
 -- A request runs in the background, and a function gets it once it is done, so the program never waits for the network.
+-- A ws:// URL opens a WebSocket connection, here to the plugin's echo server at ws://127.0.0.1:47201/echo: then each typed line is a message, and bye closes it.
 
 local ecs = require("ecs")
 local web = require("web")
 local net = require("net")
 local draw = require("draw")
+local websocket = require("websocket") -- the server side of WebSocket, in websocket.lua of the plugin's folder
 
 local PORT = 47201
 local SIZE = 16
@@ -15,6 +17,7 @@ local server = net.listen(PORT) -- nil if the port is taken
 local clients = {}              -- the server's connections, until each closes
 local log = { server and "Serving http://127.0.0.1:" .. PORT .. "/" or "Cannot serve on port " .. PORT }
 local panels = {}               -- the open panels, drawn again when the log changes
+local socket                    -- the WebSocket connection that typed lines go to, and its state
 
 local function add(line)
   log[#log + 1] = line
@@ -33,12 +36,61 @@ local function answer(received)
   return ("HTTP/1.1 %s\r\nContent-Type: text/plain\r\nContent-Length: %d\r\nConnection: close\r\n\r\n%s"):format(status, #page, page)
 end
 
--- every 50 ms: accept the server's clients and answer each once
+-- what an echo client sent: each whole frame is answered, a text or bytes with the same message, and a close or bye with a close
+local function echo(client)
+  while true do
+    local opcode, payload, rest = websocket.decode(client.pending)
+
+    if not opcode then
+      return
+    end
+
+    client.pending = rest
+
+    if opcode == websocket.CLOSE or payload == "bye" then
+      net.send(client.connection, websocket.encode(websocket.CLOSE, ""))
+      net.close(client.connection)
+      return
+    elseif opcode == websocket.PING then
+      net.send(client.connection, websocket.encode(websocket.PONG, payload))
+    elseif opcode == websocket.TEXT or opcode == websocket.BINARY then
+      net.send(client.connection, websocket.encode(opcode, payload))
+    end
+  end
+end
+
+-- the state of the WebSocket connection, and the messages that arrived; web keeps them until they are taken
+local function poll()
+  local status = web.socketStatus(socket.handle)
+
+  if status == 1 and not socket.open then
+    socket.open = true
+    add("Connected to " .. socket.url)
+  end
+
+  while true do
+    local message, kind = web.socketReceive(socket.handle)
+
+    if not kind then
+      break
+    end
+
+    add(("Echo (%s): %s"):format(kind, message))
+  end
+
+  if status == -1 then
+    add("Closed: " .. web.socketError(socket.handle))
+    web.socketClose(socket.handle)
+    socket = nil
+  end
+end
+
+-- every 50 ms: accept the server's clients and answer each, and look at the WebSocket connection
 local timer = ecs.timer.start(0.05, true, function()
   local connection = server and net.accept(server)
 
   if connection then
-    clients[#clients + 1] = { connection = connection, answered = false }
+    clients[#clients + 1] = { connection = connection, answered = false, pending = "" }
   end
 
   -- a client is kept until it closes, so what was sent to it leaves first
@@ -46,14 +98,27 @@ local timer = ecs.timer.start(0.05, true, function()
     local client = clients[i]
     local received = net.receive(client.connection, 4096)
 
-    if received ~= "" and not client.answered then
-      net.send(client.connection, answer(received))
-      client.answered = true
+    -- a request for a WebSocket on /echo turns the connection into one, whose frames go on in both directions; it starts with a greeting
+    if received ~= "" and client.websocket then
+      client.pending = client.pending .. received
+      echo(client)
+    elseif received ~= "" and not client.answered then
+      local upgrade = received:match("^GET /echo ") and websocket.handshake(received)
+      net.send(client.connection, upgrade or answer(received))
+      client.answered, client.websocket = true, upgrade ~= nil
+
+      if upgrade then
+        net.send(client.connection, websocket.encode(websocket.TEXT, "Hello from the echo server"))
+      end
     end
 
     if net.status(client.connection) == -1 then
       table.remove(clients, i)
     end
+  end
+
+  if socket then
+    poll()
   end
 end)
 
@@ -86,6 +151,20 @@ ecs.panel.registerType({
       fetch.line = fetch.line .. event.text
     elseif event.type == "keyDown" and event.key == "Backspace" then
       fetch.line = fetch.line:sub(1, -2)
+    elseif event.type == "keyDown" and event.key == "Return" and socket and not fetch.line:find("^%a+://") then
+      -- a line that is not a URL is a message to the WebSocket connection; web sends it in the background, once the connection is open
+      web.socketSend(socket.handle, fetch.line, true)
+      fetch.line = ""
+    elseif event.type == "keyDown" and event.key == "Return" and fetch.line:find("^wss?://") then
+      -- web.socket starts a connection and gives its handle at once; its state and its messages are asked for, as with net
+      if socket then
+        web.socketClose(socket.handle)
+      end
+
+      local handle = web.socket(fetch.line)
+      socket = handle and { handle = handle, url = fetch.line, open = false }
+      add(handle and "Connecting to " .. fetch.line or "Cannot connect to " .. fetch.line)
+      fetch.line = ""
     elseif event.type == "keyDown" and event.key == "Return" and fetch.line ~= "" then
       -- web.get starts a request and gives its handle at once; web.request takes a method, headers and a body too
       -- web keeps the function, and calls it on the main thread once the request is done, even if the handle is dropped
