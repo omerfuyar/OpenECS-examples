@@ -1,0 +1,104 @@
+{
+ "asset": {
+  "version": "2.0",
+  "generator": "OpenECS example 22_gpu_model"
+ },
+ "scene": 0,
+ "scenes": [
+  {
+   "nodes": [
+    0
+   ]
+  }
+ ],
+ "nodes": [
+  {
+   "mesh": 0,
+   "name": "torus"
+  }
+ ],
+ "meshes": [
+  {
+   "name": "torus",
+   "primitives": [
+    {
+     "attributes": {
+      "POSITION": 0,
+      "NORMAL": 1
+     },
+     "indices": 2,
+     "material": 0
+    }
+   ]
+  }
+ ],
+ "materials": [
+  {
+   "name": "teal",
+   "pbrMetallicRoughness": {
+    "baseColorFactor": [
+     0.36,
+     0.72,
+     0.7,
+     1.0
+    ]
+   }
+  }
+ ],
+ "buffers": [
+  {
+   "uri": "torus.bin",
+   "byteLength": 25752
+  }
+ ],
+ "bufferViews": [
+  {
+   "buffer": 0,
+   "byteOffset": 0,
+   "byteLength": 6732,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 6732,
+   "byteLength": 6732,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 13464,
+   "byteLength": 12288,
+   "target": 34963
+  }
+ ],
+ "accessors": [
+  {
+   "bufferView": 0,
+   "componentType": 5126,
+   "count": 561,
+   "type": "VEC3",
+   "min": [
+    -1.42,
+    -0.42,
+    -1.42
+   ],
+   "max": [
+    1.42,
+    0.42,
+    1.42
+   ]
+  },
+  {
+   "bufferView": 1,
+   "componentType": 5126,
+   "count": 561,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 2,
+   "componentType": 5125,
+   "count": 3072,
+   "type": "SCALAR"
+  }
+ ]
+}
