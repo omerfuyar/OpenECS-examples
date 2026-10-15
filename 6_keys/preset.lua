@@ -5,6 +5,7 @@ return {
   name = "keys",
   version = "0.1.0",
   app = { id = "openecs.example.keys", name = "Keys" },
+  hint = "Up and Down step the number, and Shift+Up too; Ctrl+0, or Alt+W then Z, resets every panel",
   depends = { stepper = "0.1" },
   pluginsDir = ".",
   -- a keys table: keys for the whole tool run any function by name; prefix adds keys after the core prefix (Alt+W),

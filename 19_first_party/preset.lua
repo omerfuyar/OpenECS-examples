@@ -6,6 +6,7 @@ return {
   name = "first party",
   version = "0.1.0",
   app = { id = "openecs.example.firstParty", name = "First party" },
+  hint = "Alt+W, then , opens the settings, N lists the panels to open, and Shift+O opens the launcher",
   -- the core's settings file loads settings, panels and launcher for every tool; a preset names them too when it needs them, as a test loads only the preset's plugins
   depends = { shapes = "0.1", settings = "0.1", panels = "0.1", launcher = "0.1" },
   pluginsDir = ".",

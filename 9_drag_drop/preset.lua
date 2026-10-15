@@ -6,6 +6,7 @@ return {
   name = "dragdrop",
   version = "0.1.0",
   app = { id = "openecs.example.dragdrop", name = "Drag and drop" },
+  hint = "Drag a colour from the palette onto the sample, or drop files on it from a file manager",
   depends = { swatches = "0.1" },
   pluginsDir = ".",
   workspaces = {

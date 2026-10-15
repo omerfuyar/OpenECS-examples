@@ -5,6 +5,7 @@ return {
   name = "model",
   version = "0.1.0",
   app = { id = "openecs.example.model", name = "Model" },
+  hint = "A glTF cube turns, an animated badge spins, and a skinned arm bends; there is nothing to press",
   depends = { model = "0.1" },
   pluginsDir = ".",
   workspaces = {

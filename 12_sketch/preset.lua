@@ -6,6 +6,7 @@ return {
   name = "sketch",
   version = "0.1.0",
   app = { id = "openecs.sketch", name = "Sketch" },
+  hint = "Draw on a canvas with the mouse, and the wheel changes the brush; right-click a tab for its menu, and Ctrl+Tab goes to the next workspace",
   depends = { sketch_c = "0.1", sketch_lua = "0.1" },
   pluginsDir = ".",
   settings = { ["sketch_c.brushColor"] = "red", ["sketch_lua.brushColor"] = "green" },

@@ -5,6 +5,7 @@ return {
   name = "media",
   version = "0.1.0",
   app = { id = "openecs.example.media", name = "Media" },
+  hint = "Click the picture for a sound; R turns it, F fades it, S saves it, B and E play tones, T a tune, M muffles the tune, V adds a reverb",
   depends = { media = "0.1" },
   pluginsDir = ".",
   workspaces = {
