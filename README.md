@@ -3,7 +3,7 @@
 Examples for writing [OpenECS](https://github.com/omerfuyar/OpenECS) plugins, one part at a time. Read them in the order of their numbers: each explains the parts that it is the first to use.
 
 - `1_hello` to `12_sketch` teach OpenECS: panels, native plugins, settings, services, keys, events, saved state, drag and drop, typed text, popups, and a whole tool in C and in Lua.
-- From `13_terminal`, each teaches standard plugins of [OpenECS-std](https://github.com/omerfuyar/OpenECS-std): `13_terminal` textgrid, `14_media` the loaders image and audio with draw and mixer, `15_network` net over TCP and UDP, `16_model` gltf with draw's lines, `17_files` fs with Lua's `io`, and `18_web` web's HTTP and HTTPS requests, from a page that it serves itself with net. `3_ui` already shows ui's controls, in Lua and, on its second workspace, in C with ui's macros.
+- From `13_terminal`, each teaches standard plugins of [OpenECS-std](https://github.com/omerfuyar/OpenECS-std): `13_terminal` textgrid, `14_media` the loaders image and audio with draw and mixer, `15_network` net over TCP and UDP, `16_model` gltf with draw's lines, `17_files` fs with Lua's `io`, and `18_web` web's HTTP and HTTPS requests and WebSocket connections, from a page and an echo server that it serves itself with net. `3_ui` already shows ui's controls, in Lua and, on its second workspace, in C with ui's macros.
 - `19_first_party` shows a tool with the first-party plugins that every tool can have: the settings window, the panel list and the launcher, and tests the themes.
 - `20_workers` shows workers: Lua scripts that run on threads of their own, here four that count primes at once while the panel stays free.
 
