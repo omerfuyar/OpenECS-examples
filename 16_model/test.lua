@@ -18,5 +18,12 @@ return {
     test.match({ near(spin.early[1], 45), near(spin.early[2], 0), near(spin.late[1], -135), near(spin.late[2], 1) }, { true, true, true, true }, "the turn and the step")
     -- flat tangents give a smooth step: halfway in time is halfway in size
     test.match({ near(spin.middle[1], 180) or near(spin.middle[1], -180), near(spin.middle[3], 1.5) }, { true, true }, "the half turn and the growth")
+
+    -- the arm's skin: a vertex on the tip turns with it, and one between the joints moves half as far
+    local arm = state.arm
+    local function at(point, x, y)
+      return near(point[1], x) and near(point[2], y) and near(point[3], 0)
+    end
+    test.match({ arm.joints, at(arm.rest, 0.5, 2), at(arm.top, -1, 1.5), at(arm.middle, 0.25, 1.25) }, { 2, true, true, true }, "the skinned arm")
   end,
 }
