@@ -1,5 +1,16 @@
 -- a typed line goes to the server, which sends it back in capitals; a line that starts with /udp goes and comes back in datagrams
 
+-- waits up to 5 seconds until a function gives true
+local function waitUntil(test, done)
+  for _ = 1, 100 do
+    if done() then
+      return
+    end
+
+    test.wait(0.05)
+  end
+end
+
 -- waits until the log ends with a line, and gives the log
 local function waitFor(test, line)
   local log
@@ -19,8 +30,12 @@ end
 return {
   preset = "preset.lua",
   run = function(test)
+    local function state()
+      return test.session().pluginState.echo.state
+    end
+
     -- the connection is made in the background, while the test waits
-    test.wait(0.5)
+    waitUntil(test, function() return state().connected end)
     test.text("hello")
     test.key("Return")
     test.match(waitFor(test, "< HELLO"), { "Listening on port 47200", "> hello", "< HELLO" })
@@ -30,17 +45,11 @@ return {
     test.match(waitFor(test, "< udp HI"), { "Listening on port 47200", "> hello", "< HELLO", "> udp hi", "< udp HI" })
 
     -- the TLS connection to the plain server fails its handshake
-    test.match(test.session().pluginState.echo.state.tls, -1, "the TLS connection")
+    waitUntil(test, function() return state().tls == -1 end)
+    test.match(state().tls, -1, "the TLS connection")
 
     -- the TLS server, whose certificate the client trusts, sends back in capitals what the client sent
-    for _ = 1, 100 do
-      if test.session().pluginState.echo.state.secure == "SECRET" then
-        break
-      end
-
-      test.wait(0.05)
-    end
-
-    test.match(test.session().pluginState.echo.state.secure, "SECRET", "the TLS server's answer")
+    waitUntil(test, function() return state().secure == "SECRET" end)
+    test.match(state().secure, "SECRET", "the TLS server's answer")
   end,
 }

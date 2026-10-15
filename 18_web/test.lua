@@ -35,9 +35,9 @@ return {
     local log = waitFor(test, 5)
     test.match(log[4], "404 text/plain: Not Found", "the missing page")
 
-    -- the server answers TLS's greeting with plain HTTP, so the request fails
+    -- the server answers TLS's greeting with plain HTTP, so the request fails in its handshake; web's mbedTLS names SSL in the error
     fetch(test, "https://127.0.0.1:47201/")
     log = waitFor(test, 7)
-    test.match(log[6]:match("^Failed: ") ~= nil, true, "the HTTPS request")
+    test.match(log[6]:match("^Failed: .*SSL") ~= nil, true, "the HTTPS request: " .. tostring(log[6]))
   end,
 }

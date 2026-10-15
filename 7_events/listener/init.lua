@@ -9,14 +9,17 @@ local function show(listener)
   listener.panel.title = ("Ticks %d, panels %d%s"):format(listener.ticks, opened, listener.greeted and ", greeted" or "")
 end
 
--- an event's value is data, and handles and bytes too: this one names a panel by its handle, and carries bytes with a zero among them
-ecs.event.declare("opened", "A listener opened: its panel, and a mark of two bytes")
+-- an event's value is data, and handles and bytes too: this one names a panel by its handle, carries bytes with a zero among them,
+-- and a handle of this plugin's own type, which stands for a Lua value
+ecs.event.declare("opened", "A listener opened: its panel, a mark of two bytes, and a note")
+ecs.handle.registerType("note")
 
 ecs.event.subscribe("listener.opened", function(_, value)
   local listener = listeners[value.panel]
 
-  -- the handle comes back as the same handle, and the bytes as the same string
-  if listener and value.mark == "\0\255" then
+  -- the handle comes back as the same handle, and the bytes as the same string; a handle in an event's value lives until the event is delivered,
+  -- even when nothing else keeps it, so the note's value is still there
+  if listener and value.mark == "\0\255" and ecs.handle.value(value.note, "listener.note") == "hello" then
     listener.greeted = true
     show(listener)
   end
@@ -43,7 +46,10 @@ ecs.panel.registerType({
   create = function(panel)
     local listener = { panel = panel, ticks = 0 }
     listeners[panel] = listener
-    ecs.event.emit("listener.opened", { panel = panel, mark = "\0\255" })
+    ecs.event.emit("listener.opened", { panel = panel, mark = "\0\255", note = ecs.handle.new("listener.note", "hello") })
+
+    -- nothing but the event keeps the note now, and a collection before the delivery does not take it
+    collectgarbage()
     return listener
   end,
 

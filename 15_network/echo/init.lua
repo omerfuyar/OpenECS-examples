@@ -159,7 +159,7 @@ ecs.panel.registerType({
 ecs.plugin.register({
   stateVersion = 1,
   saveState = function()
-    return { log = log, tls = tls, secure = secureAnswer }
+    return { log = log, tls = tls, secure = secureAnswer, connected = net.status(client) == 1 }
   end,
   restoreState = function() end,
   destroy = function()
