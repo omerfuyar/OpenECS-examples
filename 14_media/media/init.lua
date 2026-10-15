@@ -25,8 +25,8 @@ local function tone(seconds, pitch)
     samples[i] = string.pack("f", 0.2 * math.sin(2 * math.pi * pitch * i / RATE))
   end
 
-  -- queue adds samples to the end; a synthesizer would queue more from a timer while mixer.queued says little waits
-  mixer.queue(stream, table.concat(samples))
+  -- queue adds samples to the end; a synthesizer would queue more from a timer while the sound's queued says little waits
+  stream:queue(table.concat(samples))
   return stream
 end
 
@@ -34,7 +34,7 @@ end
 local SPINNER = ecs.plugin.folder .. "spinner.gif"
 
 -- the picture's own size, from reading it at a scale of 1
-local naturalWidth, naturalHeight = draw.imageSize(image.load(PICTURE, 1))
+local naturalWidth, naturalHeight = image.load(PICTURE, 1):size()
 
 ecs.panel.registerType({
   name = "panel",
@@ -118,17 +118,17 @@ ecs.panel.registerType({
     -- B plays a tone to the left: finish says that no more samples come, so its voice ends once they have played
     if event.type == "keyDown" and event.key == "B" then
       local stream = tone(0.3, 440)
-      media.toneQueued = mixer.queued(stream)
-      mixer.finish(stream)
-      media.tone = mixer.play(stream, 1, false)
+      media.toneQueued = stream:queued()
+      stream:finish()
+      media.tone = stream:play(1, false)
       mixer.pan(media.tone, -0.8)
     end
 
     -- E plays a tone with an echo: what it played a fifth of a second ago comes back, softer each time, so it rings on after the tone ends
     if event.type == "keyDown" and event.key == "E" then
       local stream = tone(0.3, 660)
-      mixer.finish(stream)
-      media.echoed = mixer.play(stream, 1, false)
+      stream:finish()
+      media.echoed = stream:play(1, false)
       mixer.echo(media.echoed, 0.2, 0.3, 0.6)
     end
 
@@ -142,7 +142,7 @@ ecs.panel.registerType({
     if event.type == "keyDown" and event.key == "S" and media.picture ~= nil then
       local path = ecs.plugin.folder .. "ignore.picture.png"
       local saved = image.save(media.picture, path) and image.load(path, 1)
-      media.saved = saved and draw.imagePixels(saved) == draw.imagePixels(media.picture) or false
+      media.saved = saved and saved:pixels() == media.picture:pixels() or false
       os.remove(path)
     end
 
@@ -161,12 +161,12 @@ ecs.panel.registerType({
     -- T streams a tune: audio reads a long file a piece at a time while it plays, instead of whole
     if event.type == "keyDown" and event.key == "T" then
       local stream = audio.stream(ecs.plugin.folder .. "tune.wav")
-      media.tuneQueued = mixer.queued(stream)
-      media.tune = mixer.play(stream, 0.8, false)
+      media.tuneQueued = stream:queued()
+      media.tune = stream:play(0.8, false)
     end
 
     if event.type == "pointerDown" and px >= x and px <= x + w and py >= y and py <= y + h then
-      if mixer.play(sound, 0.8, false) > 0 then
+      if sound:play(0.8, false) > 0 then
         media.plays = media.plays + 1
         media.panel.title = ("Media (%d)"):format(media.plays)
       end

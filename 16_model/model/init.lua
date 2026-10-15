@@ -7,12 +7,12 @@ local draw = require("draw")
 local image = require("image")
 
 local model = gltf.load(ecs.plugin.folder .. "cube.gltf")
-local info = assert(gltf.describe(model))
+local info = assert(model:describe())
 
 -- the first primitive of the first mesh: its positions, three floats each, and its triangles, three indices each, from 0
 local primitive = info.meshes[1].primitives[1]
-local positions = gltf.attribute(model, 1, 1, "POSITION")
-local indices = gltf.indices(model, 1, 1)
+local positions = model:attribute(1, 1, "POSITION")
+local indices = model:indices(1, 1)
 local points, edges = {}, {}
 
 for i = 0, primitive.vertices - 1 do
@@ -32,30 +32,30 @@ local TRIANGLES = primitive.indices // 3
 local r, g, b = table.unpack(info.materials[primitive.material].color)
 local COLOR = ("#%02X%02X%02X"):format(math.floor(r * 255), math.floor(g * 255), math.floor(b * 255))
 
--- a .glb file holds its pictures inside it: the badge's material names its image by number, gltf.image gives that image's bytes, and image.decode makes a picture of them
+-- a .glb file holds its pictures inside it: the badge's material names its image by number, the model's image gives that image's bytes, and image.decode makes a picture of them
 local badge = gltf.load(ecs.plugin.folder .. "badge.glb")
-local badgeInfo = assert(gltf.describe(badge))
+local badgeInfo = assert(badge:describe())
 local badgeImage = badgeInfo.images[badgeInfo.materials[1].image]
-local TEXTURE = image.decode(gltf.image(badge, badgeInfo.materials[1].image), 1)
-local TEXTURE_WIDTH, TEXTURE_HEIGHT = draw.imageSize(TEXTURE)
+local TEXTURE = image.decode(badge:image(badgeInfo.materials[1].image), 1)
+local TEXTURE_WIDTH, TEXTURE_HEIGHT = TEXTURE:size()
 
--- the badge's animation turns it, moves it and grows it; gltf.pose gives each node's matrix at a time of it, 16 floats column by column
+-- the badge's animation turns it, moves it and grows it; pose gives each node's matrix at a time of it, 16 floats column by column
 local SPIN = badgeInfo.animations[1]
 
 -- the badge node's turn in degrees, its move to the right and its size, at a time of the animation
 local function badgeAt(seconds)
-  local m = { string.unpack("<ffffffffffffffff", gltf.pose(badge, 1, seconds)) }
+  local m = { string.unpack("<ffffffffffffffff", badge:pose(1, seconds)) }
   return math.deg(math.atan(m[2], m[1])), m[13], math.sqrt(m[1] * m[1] + m[2] * m[2] + m[3] * m[3])
 end
 
 -- an arm whose skin bends it: its vertices follow two joints, the root and the tip, and its animation turns the tip a quarter turn in a second;
--- gltf.skin gives the vertices where the joints move them at a time of the animation, three floats each
+-- skin gives the vertices where the joints move them at a time of the animation, three floats each
 local arm = gltf.load(ecs.plugin.folder .. "arm.glb")
-local armInfo = assert(gltf.describe(arm))
+local armInfo = assert(arm:describe())
 local BEND = armInfo.animations[1]
 local ARM_SKIN = assert(armInfo.nodes[1].skin)
 local ARM_VERTICES = armInfo.meshes[1].primitives[1].vertices
-local armIndices = gltf.indices(arm, 1, 1)
+local armIndices = arm:indices(1, 1)
 local armEdges = {}
 
 for i = 0, armInfo.meshes[1].primitives[1].indices - 1, 3 do
@@ -67,7 +67,7 @@ local ARM_EDGES = table.concat(armEdges)
 
 -- a vertex of the arm, from 1, at a time of its animation
 local function armAt(vertex, seconds)
-  return { string.unpack("<fff", gltf.skin(arm, 1, 1, ARM_SKIN, 1, seconds), (vertex - 1) * 12 + 1) }
+  return { string.unpack("<fff", arm:skin(1, 1, ARM_SKIN, 1, seconds), (vertex - 1) * 12 + 1) }
 end
 
 ecs.panel.registerType({
@@ -105,7 +105,7 @@ ecs.panel.registerType({
     local size = TEXTURE_WIDTH * 4 * grow
     -- the arm on the right, bending and straightening again: the animation's time goes there and back
     local bend = view.time % (2 * BEND.duration)
-    local skinned = gltf.skin(arm, 1, 1, ARM_SKIN, 1, bend <= BEND.duration and bend or 2 * BEND.duration - bend)
+    local skinned = arm:skin(1, 1, ARM_SKIN, 1, bend <= BEND.duration and bend or 2 * BEND.duration - bend)
     local armPoints = {}
 
     for i = 0, ARM_VERTICES - 1 do

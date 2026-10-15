@@ -31,21 +31,21 @@ local commands = {
 -- runs a line, prints what it gives, and keeps it as the last output
 local function run(terminal, line)
   local name, rest = line:match("^(%S*)%s*(.*)$")
-  textgrid.print(terminal.grid, PROMPT .. line .. "\n")
+  terminal.grid:print(PROMPT .. line .. "\n")
 
   if name == "clear" then
-    textgrid.clear(terminal.grid)
+    terminal.grid:clear()
     terminal.output = ""
   elseif commands[name] then
     local style
     terminal.output, style = commands[name](rest)
-    textgrid.style(terminal.grid, style or "")
-    textgrid.print(terminal.grid, terminal.output)
-    textgrid.style(terminal.grid, "")
-    textgrid.print(terminal.grid, "\n")
+    terminal.grid:style(style or "")
+    terminal.grid:print(terminal.output)
+    terminal.grid:style("")
+    terminal.grid:print("\n")
   elseif name ~= "" then
     terminal.output = "unknown command: " .. name
-    textgrid.print(terminal.grid, terminal.output .. "\n")
+    terminal.grid:print(terminal.output .. "\n")
   end
 end
 
@@ -57,14 +57,14 @@ ecs.panel.registerType({
     -- a grid is a handle that textgrid owns; the panel keeps it in its state, and Lua frees it with the state
     local terminal = { panel = panel, grid = textgrid.new(80, 24), line = "", output = "", size = SIZE }
     terminals[panel] = terminal
-    textgrid.colors(terminal.grid, FOREGROUND, BACKGROUND)
-    textgrid.clear(terminal.grid)
-    textgrid.print(terminal.grid, "Type ")
-    textgrid.style(terminal.grid, "bold underline")
-    textgrid.print(terminal.grid, "help")
-    textgrid.style(terminal.grid, "")
-    textgrid.print(terminal.grid, " and press Return. Wide characters, such as 漢字, take two cells.\n")
-    textgrid.print(terminal.grid, "Ctrl and + or - change the font size, and Ctrl+0 sets it back.\n")
+    terminal.grid:colors(FOREGROUND, BACKGROUND)
+    terminal.grid:clear()
+    terminal.grid:print("Type ")
+    terminal.grid:style("bold underline")
+    terminal.grid:print("help")
+    terminal.grid:style("")
+    terminal.grid:print(" and press Return. Wide characters, such as 漢字, take two cells.\n")
+    terminal.grid:print("Ctrl and + or - change the font size, and Ctrl+0 sets it back.\n")
     panel:setTextInput(true)
     return terminal
   end,
@@ -72,12 +72,12 @@ ecs.panel.registerType({
   draw = function(terminal, surface)
     -- the grid takes as many cells as fit the panel; resizing keeps the cells that still fit
     local columns, rows = textgrid.fit(surface.width / surface.scale, surface.height / surface.scale, terminal.size)
-    textgrid.resize(terminal.grid, math.max(columns, 1), math.max(rows, 1))
+    terminal.grid:resize(math.max(columns, 1), math.max(rows, 1))
 
     -- the command line is written over the row of the cursor each time, so it never scrolls the grid
-    local _, row = textgrid.cursor(terminal.grid)
-    textgrid.put(terminal.grid, 0, row, (PROMPT .. terminal.line):sub(-columns) .. string.rep(" ", columns))
-    textgrid.setCursor(terminal.grid, math.min(#PROMPT + #terminal.line, columns - 1), row)
+    local _, row = terminal.grid:cursor()
+    terminal.grid:put(0, row, (PROMPT .. terminal.line):sub(-columns) .. string.rep(" ", columns))
+    terminal.grid:setCursor(math.min(#PROMPT + #terminal.line, columns - 1), row)
 
     surface:fill(0, 0, surface.width, surface.height, BACKGROUND)
     textgrid.draw(surface, terminal.grid, 0, 0, terminal.size, true)
@@ -89,8 +89,8 @@ ecs.panel.registerType({
     elseif event.type == "keyDown" and event.key == "Backspace" then
       terminal.line = terminal.line:sub(1, (utf8.offset(terminal.line, -1) or 1) - 1)
     elseif event.type == "keyDown" and event.key == "Return" then
-      local _, row = textgrid.cursor(terminal.grid)
-      textgrid.setCursor(terminal.grid, 0, row)
+      local _, row = terminal.grid:cursor()
+      terminal.grid:setCursor(0, row)
       run(terminal, terminal.line)
       terminal.line = ""
     else
@@ -102,14 +102,14 @@ ecs.panel.registerType({
 
   -- the last output and its first cells are saved, so the test can read them; a wide character's right half gives an empty text
   saveState = function(terminal)
-    local _, row = textgrid.cursor(terminal.grid)
+    local _, row = terminal.grid:cursor()
     local cells, styles = {}, {}
 
     for column = 0, 5 do
-      cells[column + 1], styles[column + 1] = textgrid.get(terminal.grid, column, row - 1)
+      cells[column + 1], styles[column + 1] = terminal.grid:get(column, row - 1)
     end
 
-    local columns = textgrid.size(terminal.grid)
+    local columns = terminal.grid:size()
     return { output = terminal.output, cells = cells, styles = styles, size = terminal.size, columns = columns }
   end,
 

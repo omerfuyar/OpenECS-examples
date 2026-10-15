@@ -43,9 +43,9 @@ end
 return {
   preset = "preset.lua",
   run = function(test)
-    -- the core's settings file binds the panel list to Alt+W, then N
+    -- the core's settings file binds the panel list to Alt+W, then .
     test.key("Alt+W")
-    test.key("N")
+    test.key(".")
     local list = assert(find(test, "panels.list"), "the panel list is open")
 
     -- the types are listed by plugin, then by title, and the list leaves itself out: the launcher's list, settings' window, then shapes' frame and square
@@ -58,12 +58,12 @@ return {
     test.key("Return")
     test.match(find(test, "shapes.frame"), { type = "shapes.frame" }, "the frame opened")
 
-    -- every tool has the launcher: Alt+W, then Shift+O, opens its list of presets and sessions, and a second time gives it the focus
+    -- every tool has the launcher: Alt+W, then /, opens its list of presets and sessions, and a second time gives it the focus
     test.key("Alt+W")
-    test.key("Shift+O")
+    test.key("/")
     test.match(find(test, "launcher.list") ~= nil, true, "the launcher opened")
     test.key("Alt+W")
-    test.key("Shift+O")
+    test.key("/")
     test.match(count(test, "launcher.list"), 1, "one launcher")
   end,
 }

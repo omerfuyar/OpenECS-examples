@@ -39,7 +39,7 @@ end
 
 local function open(browser, folder)
   if browser.watch ~= nil then
-    fs.unwatch(browser.watch)
+    browser.watch:stop()
   end
 
   browser.folder = folder
@@ -107,7 +107,7 @@ ecs.panel.registerType({
 
   destroy = function(browser)
     if browser.watch ~= nil then
-      fs.unwatch(browser.watch)
+      browser.watch:stop()
     end
 
     ui.forget(browser.panel)
