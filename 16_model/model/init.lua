@@ -39,13 +39,44 @@ local badgeImage = badgeInfo.images[badgeInfo.materials[1].image]
 local TEXTURE = image.decode(gltf.image(badge, badgeInfo.materials[1].image), 1)
 local TEXTURE_WIDTH, TEXTURE_HEIGHT = draw.imageSize(TEXTURE)
 
+-- the badge's animation turns it, moves it and grows it; gltf.pose gives each node's matrix at a time of it, 16 floats column by column
+local SPIN = badgeInfo.animations[1]
+
+-- the badge node's turn in degrees, its move to the right and its size, at a time of the animation
+local function badgeAt(seconds)
+  local m = { string.unpack("<ffffffffffffffff", gltf.pose(badge, 1, seconds)) }
+  return math.deg(math.atan(m[2], m[1])), m[13], math.sqrt(m[1] * m[1] + m[2] * m[2] + m[3] * m[3])
+end
+
+-- an arm whose skin bends it: its vertices follow two joints, the root and the tip, and its animation turns the tip a quarter turn in a second;
+-- gltf.skin gives the vertices where the joints move them at a time of the animation, three floats each
+local arm = gltf.load(ecs.plugin.folder .. "arm.glb")
+local armInfo = gltf.describe(arm)
+local BEND = armInfo.animations[1]
+local ARM_SKIN = armInfo.nodes[1].skin
+local ARM_VERTICES = armInfo.meshes[1].primitives[1].vertices
+local armIndices = gltf.indices(arm, 1, 1)
+local armEdges = {}
+
+for i = 0, armInfo.meshes[1].primitives[1].indices - 1, 3 do
+  local a, b, c = string.unpack("<I4I4I4", armIndices, i * 4 + 1)
+  armEdges[#armEdges + 1] = string.pack("=I4I4I4I4I4I4", a, b, b, c, c, a)
+end
+
+local ARM_EDGES = table.concat(armEdges)
+
+-- a vertex of the arm, from 1, at a time of its animation
+local function armAt(vertex, seconds)
+  return { string.unpack("<fff", gltf.skin(arm, 1, 1, ARM_SKIN, 1, seconds), (vertex - 1) * 12 + 1) }
+end
+
 ecs.panel.registerType({
   name = "panel",
   title = "Model",
   continuous = true,
 
   create = function()
-    return { angle = 0, drawn = 0 }
+    return { angle = 0, drawn = 0, time = 0 }
   end,
 
   draw = function(view, surface, seconds)
@@ -68,12 +99,28 @@ ecs.panel.registerType({
 
     draw.lines(surface, table.concat(projected), EDGES, 1, COLOR)
 
-    -- the badge's texture, in the top left corner at four times its size
-    draw.image(surface, TEXTURE, 8, 8, TEXTURE_WIDTH * 4, TEXTURE_HEIGHT * 4)
+    -- the badge's texture near the top left corner, at four times its size, turned, moved and grown as its animation says; the animation goes round
+    view.time = (view.time + seconds) % SPIN.duration
+    local turn, right, grow = badgeAt(view.time)
+    local size = TEXTURE_WIDTH * 4 * grow
+    -- the arm on the right, bending and straightening again: the animation's time goes there and back
+    local bend = view.time % (2 * BEND.duration)
+    local skinned = gltf.skin(arm, 1, 1, ARM_SKIN, 1, bend <= BEND.duration and bend or 2 * BEND.duration - bend)
+    local armPoints = {}
+
+    for i = 0, ARM_VERTICES - 1 do
+      local x, y = string.unpack("<ff", skinned, i * 12 + 1)
+      armPoints[i + 1] = string.pack("=ff", width - 160 + x * 70, height - 40 - y * 70)
+    end
+
+    draw.lines(surface, table.concat(armPoints), ARM_EDGES, 1, "#E0A040")
+    draw.imageTransformed(surface, TEXTURE, 100 + right * 60 - size / 2, 100 - size / 2, size, size, -turn, "#FFFFFF")
   end,
 
   -- how many frames it drew, so the test can see it draws every frame
   saveState = function(view)
-    return { drawn = view.drawn, triangles = TRIANGLES, vertices = primitive.vertices, texture = { mimeType = badgeImage.mimeType, file = badgeImage.file, width = TEXTURE_WIDTH, height = TEXTURE_HEIGHT } }
+    return { drawn = view.drawn, triangles = TRIANGLES, vertices = primitive.vertices, texture = { mimeType = badgeImage.mimeType, file = badgeImage.file, width = TEXTURE_WIDTH, height = TEXTURE_HEIGHT },
+      spin = { name = SPIN.name, duration = SPIN.duration, early = { badgeAt(0.5) }, late = { badgeAt(2.5) }, middle = { badgeAt(2) } },
+      arm = { rest = armAt(6, 0), top = armAt(6, 1), middle = armAt(4, 1), joints = #armInfo.skins[ARM_SKIN].joints } }
   end,
 })
