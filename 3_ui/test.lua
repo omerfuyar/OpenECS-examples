@@ -78,6 +78,32 @@ return {
     test.key("Delete")
     test.match(state().name, "Xbc", "the field")
 
+    -- Shift with a move selects, and typing replaces the selection; Ctrl moves by words
+    test.key("Shift+End")
+    test.text("Y")
+    test.match(state().name, "Y", "the selection replaced")
+    test.text("ab cd")
+    test.key("Ctrl+Left")
+    test.key("Ctrl+Shift+Right")
+    test.key("Ctrl+X")
+    test.match(state().name, "Yab ", "the word cut")
+    test.key("Home")
+    test.key("Ctrl+V")
+    test.match(state().name, "cdYab ", "the word pasted")
+
+    -- Ctrl+A selects all, and Backspace deletes the selection
+    test.key("Ctrl+A")
+    test.key("Backspace")
+    test.match(state().name, "", "the field emptied")
+
+    -- a drag across the field selects what it passes over
+    test.text("drag")
+    local fromX, fromY = at("name", 0.01)
+    local toX = at("name", 0.99)
+    test.drag(fromX, fromY, toX, fromY)
+    test.text("Z")
+    test.match(state().name, "Z", "the dragged selection replaced")
+
     -- the note wraps into more than one line
     test.match(state().rects.note.height > state().rects.name.height, true, "the wrapped text")
 

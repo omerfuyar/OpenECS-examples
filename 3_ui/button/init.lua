@@ -62,7 +62,7 @@ ecs.panel.registerType({
         ui.row({ gap = 8 }, { ui.text("Count"), ui.number(controls.count, { id = "count", min = 0, max = 10, step = 1, grow = 1, onChange = set("count") }) }),
       }),
       ui.list({ id = "list", height = 90, grow = 0, border = "tabShown", selected = controls.selected, onSelect = set("selected") }, items),
-      -- a field keeps what is typed while it has the keys; Left, Right, Home and End move its cursor
+      -- a field keeps what is typed while it has the keys; Left, Right, Home and End move its cursor, Shift with them selects, and Ctrl+C, Ctrl+X and Ctrl+V copy, cut and paste
       ui.row({ gap = 8 }, { ui.text("Name"), ui.field(controls.name, { id = "name", grow = 1, onChange = set("name") }) }),
       -- text with wrap = true breaks into lines at the width of its column
       ui.text("Tab gives the keys to the next control and Shift+Tab to the one before. Return or Space presses the control that has them, " ..
