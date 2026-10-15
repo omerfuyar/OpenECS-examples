@@ -199,10 +199,13 @@ static void BuildPlugin(const char *path, const char *name)
         return;
     }
 
-    // the plugin sees only OpenECS's plugin interface and SDL, from the build's include/ folder, named from the plugin's folder
+    // the plugin sees only OpenECS's plugin interface and SDL, from the build's include/ folder, and the standard plugins' headers, such as ui.h,
+    // from its definitions/ folder, both named from the plugin's folder (OpenECS DESIGN 17.6)
     SHUI_String include;
+    SHUI_String definitions;
     SHUI_String output;
     SHUI_SFormat(&include, "../../%sinclude/", CONFIG.output);
+    SHUI_SFormat(&definitions, "../../%sdefinitions/", CONFIG.output);
     SHUI_SFormat(&output, "%sbin/examples/%s", CONFIG.output, root.data);
 
     // shuild compiles only the files that changed, so a library that is missing, such as after a clean copy, is built from all of them
@@ -218,6 +221,7 @@ static void BuildPlugin(const char *path, const char *name)
     SetBuildFlags();
     SHU_ModuleAddSourceFile("./");
     SHU_ModuleAddIncludeDirectory(include.data);
+    SHU_ModuleAddIncludeDirectory(definitions.data);
     SHU_ModuleCompile(output.data, SHUModuleType_LibraryDynamic);
 }
 
