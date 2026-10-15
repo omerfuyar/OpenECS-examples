@@ -27,6 +27,8 @@ return {
     test.match(math.abs(state().tuneQueued - 0.5) < 0.01, true, "the tune's queued seconds")
     test.wait(0.8)
     test.match(state().tunePlaying, true, "the tune, still playing after the first half second")
+    test.key("M")
+    test.match(state().muffled, true, "the muffled tune")
     test.wait(2)
     test.match(state().tunePlaying, false, "the tune's end")
     test.key("V")
