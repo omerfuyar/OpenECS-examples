@@ -70,8 +70,10 @@ static i32 CounterGet(const char *name)
 // a callback of type "keep fn<...>" stays valid after the call, so the plugin can call it later; a plain "fn<...>" is valid only during the call
 static bool CounterWatch(CounterWatchFunction watcher)
 {
+    // a watcher that is not stored is released at once, as nothing calls it later
     if (watcher == nullptr || COUNTERS.watcherCount == COUNTER_WATCHERS)
     {
+        ECSService_ReleaseCallback((ECSFunction)watcher);
         return false;
     }
 
