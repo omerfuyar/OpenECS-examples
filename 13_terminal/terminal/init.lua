@@ -1,12 +1,16 @@
 -- A terminal: a grid of characters from the textgrid standard plugin, which draws it with draw, and fills the panel at any size.
 -- Typed text goes to a command line, and Return runs it: help, echo, bold, time and clear.
+-- Ctrl and + or - change the font size, and Ctrl+0 sets it back: the grid draws at any size, and refits the panel.
 
 local ecs = require("ecs")
 local textgrid = require("textgrid")
 
-local SIZE = 16 -- the font size, in layout units
+local SIZE = 16 -- the font size at first, in layout units
+local SMALLEST, LARGEST, STEP = 8, 48, 2
 local PROMPT = "> "
 local FOREGROUND, BACKGROUND = "#D0D0D0", "#101418"
+
+local terminals = {} -- every open terminal's state, by its panel handle
 
 -- each command gets the text after its name and gives the lines to print, and the style to print them in
 local commands = {
@@ -51,7 +55,8 @@ ecs.panel.registerType({
 
   create = function(panel)
     -- a grid is a handle that textgrid owns; the panel keeps it in its state, and Lua frees it with the state
-    local terminal = { panel = panel, grid = textgrid.new(80, 24), line = "", output = "" }
+    local terminal = { panel = panel, grid = textgrid.new(80, 24), line = "", output = "", size = SIZE }
+    terminals[panel] = terminal
     textgrid.colors(terminal.grid, FOREGROUND, BACKGROUND)
     textgrid.clear(terminal.grid)
     textgrid.print(terminal.grid, "Type ")
@@ -59,13 +64,14 @@ ecs.panel.registerType({
     textgrid.print(terminal.grid, "help")
     textgrid.style(terminal.grid, "")
     textgrid.print(terminal.grid, " and press Return. Wide characters, such as 漢字, take two cells.\n")
+    textgrid.print(terminal.grid, "Ctrl and + or - change the font size, and Ctrl+0 sets it back.\n")
     panel:setTextInput(true)
     return terminal
   end,
 
   draw = function(terminal, surface)
     -- the grid takes as many cells as fit the panel; resizing keeps the cells that still fit
-    local columns, rows = textgrid.fit(surface.width / surface.scale, surface.height / surface.scale, SIZE)
+    local columns, rows = textgrid.fit(surface.width / surface.scale, surface.height / surface.scale, terminal.size)
     textgrid.resize(terminal.grid, math.max(columns, 1), math.max(rows, 1))
 
     -- the command line is written over the row of the cursor each time, so it never scrolls the grid
@@ -74,7 +80,7 @@ ecs.panel.registerType({
     textgrid.setCursor(terminal.grid, math.min(#PROMPT + #terminal.line, columns - 1), row)
 
     surface:fill(0, 0, surface.width, surface.height, BACKGROUND)
-    textgrid.draw(surface, terminal.grid, 0, 0, SIZE, true)
+    textgrid.draw(surface, terminal.grid, 0, 0, terminal.size, true)
   end,
 
   event = function(terminal, event)
@@ -103,6 +109,35 @@ ecs.panel.registerType({
       cells[column + 1], styles[column + 1] = textgrid.get(terminal.grid, column, row - 1)
     end
 
-    return { output = terminal.output, cells = cells, styles = styles }
+    local columns = textgrid.size(terminal.grid)
+    return { output = terminal.output, cells = cells, styles = styles, size = terminal.size, columns = columns }
+  end,
+
+  destroy = function(terminal)
+    terminals[terminal.panel] = nil
   end,
 })
+
+-- the font size changes by a step, from SMALLEST to LARGEST; the next draw fits the grid to the panel at the new size
+local function resize(step)
+  return function(panel)
+    local terminal = terminals[panel]
+
+    if terminal then
+      terminal.size = step == 0 and SIZE or math.min(math.max(terminal.size + step, SMALLEST), LARGEST)
+      panel:redraw()
+    end
+  end
+end
+
+-- functions that keys run get the focused panel; the plugin binds them for its panel type, and the user can change the keys
+assert(ecs.service.register({
+  bigger = { sig = "void(handle<ecs.panel> panel)", doc = "Make the font larger", fn = resize(STEP) },
+  smaller = { sig = "void(handle<ecs.panel> panel)", doc = "Make the font smaller", fn = resize(-STEP) },
+  resetSize = { sig = "void(handle<ecs.panel> panel)", doc = "Set the font size back", fn = resize(0) },
+}))
+
+-- Ctrl and = is Ctrl and + on most keyboards; Shift+= gives + itself, and the keypad has its own keys
+for key, service in pairs({ ["Ctrl+="] = "bigger", ["Ctrl+Shift+="] = "bigger", ["Ctrl+Keypad +"] = "bigger", ["Ctrl+-"] = "smaller", ["Ctrl+Keypad -"] = "smaller", ["Ctrl+0"] = "resetSize" }) do
+  assert(ecs.input.bind("terminal.panel", key, "terminal." .. service))
+end
