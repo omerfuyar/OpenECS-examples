@@ -1,4 +1,4 @@
--- a GPU panel shows its four tiles on the background, and keeps showing them after it pops out into a window of its own
+-- each GPU panel, the one in Lua and the one in C, shows its four tiles on the background, and keeps showing them after it pops out into a window of its own
 
 return {
   preset = "preset.lua",
@@ -20,15 +20,15 @@ return {
       test.match(test.pixel(panel.x + 2, panel.y + 2), "#1B2A4A", message .. ": the background")
     end
 
-    check(1, "in the main window")
+    check(1, "the panel in Lua")
 
     -- the same texture shows in the pop-out window, whose renderer is another one on the same device; the other tab shows in the main window
     test.call("ecs.layout.popOut")
     test.match(test.rect(1).window, 2, "the pop-out window")
     test.window(2)
-    check(1, "in its own window")
+    check(1, "the panel in Lua, in its own window")
     test.window(1)
-    check(2, "the other panel")
+    check(2, "the panel in C")
     assert(test.panel(2).fault == nil, test.panel(2).fault)
   end,
 }

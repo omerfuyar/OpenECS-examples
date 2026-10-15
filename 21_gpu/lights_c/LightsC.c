@@ -1,9 +1,9 @@
-// A panel that draws with the GPU. A pixels panel writes its pixels on the CPU, and the core uploads them; a GPU panel draws into a texture on the
-// GPU device that every OS window shows, so it moves to another window without being made again. This one clears its texture, copies four tiles
-// into the middle, and moves a light along the bottom, with SDL's GPU API and no shaders.
+// A panel that draws with the GPU, in C, with SDL's GPU API itself; the Lua plugin lights draws the same with the gpu standard plugin.
+// A pixels panel writes its pixels on the CPU, and the core uploads them; a GPU panel draws into a texture on the GPU device that every OS window
+// shows, so it moves to another window without being made again. This one clears its texture, copies four tiles into the middle, and moves a light
+// along the bottom, with no shaders.
 
 #include "OpenECS.h"
-#include "sdl.h" // the built-in sdl plugin's functions, which its definitions give; sdl.device is the GPU device
 
 #include "SDL3/SDL.h" // a native plugin calls SDL itself, with the executable's copy
 
@@ -14,7 +14,7 @@ static const u32 LIGHTS_TILES[4] = {0xFFBF616A, 0xFFA3BE8C, 0xFFEBCB8B, 0xFF5E81
 static struct
 {
     ECSPlugin plugin;
-    SdlFunctions sdl;
+    SDL_GPUDevice *device; // OpenECS's GPU device, which the panel's texture is on
 } LIGHTS = {0};
 
 /// @brief A panel's state: the texture of its tiles, and where the light is.
@@ -73,7 +73,7 @@ static SHUResult LightsCreate(ECSPanel panel, const ECSValue *savedState, u32 ve
     (void)version;
 
     // without a GPU renderer there is no device, and the panel shows the error
-    SDL_GPUDevice *device = LIGHTS.sdl.device();
+    SDL_GPUDevice *device = LIGHTS.device;
     Lights *lights = device == nullptr ? nullptr : SDL_calloc(1, sizeof(Lights));
 
     if (lights == nullptr || (lights->tiles = LightsMakeTiles(device)) == nullptr)
@@ -89,7 +89,7 @@ static SHUResult LightsCreate(ECSPanel panel, const ECSValue *savedState, u32 ve
 static void LightsDestroy(void *state)
 {
     Lights *lights = state;
-    SDL_ReleaseGPUTexture(LIGHTS.sdl.device(), lights->tiles);
+    SDL_ReleaseGPUTexture(LIGHTS.device, lights->tiles);
     SDL_free(lights);
 }
 
@@ -105,13 +105,13 @@ static void LightsBlit(SDL_GPUCommandBuffer *commands, const Lights *lights, ECS
     SDL_BlitGPUTexture(commands, &blit);
 }
 
-// the surface's texture is the panel's, on the device that sdl.device gives; the panel draws with a command buffer of its own and submits it,
+// the surface's texture is the panel's, on the device that ECSGpu_GetDevice gives; the panel draws with a command buffer of its own and submits it,
 // and the core shows the texture after
 static void LightsDraw(void *state, ECSSurface *surface, f64 seconds)
 {
     Lights *lights = state;
     lights->seconds += seconds;
-    SDL_GPUCommandBuffer *commands = SDL_AcquireGPUCommandBuffer(LIGHTS.sdl.device());
+    SDL_GPUCommandBuffer *commands = SDL_AcquireGPUCommandBuffer(LIGHTS.device);
 
     if (commands == nullptr)
     {
@@ -147,12 +147,12 @@ SHUResult ECSPlugin_Init(ECSPlugin plugin)
 {
     LIGHTS.plugin = plugin;
 
-    // the manifest depends on sdl, so its functions can be looked up
-    SHU_ReturnResult(SdlFunctions_Get(plugin, &LIGHTS.sdl));
+    // OpenECS owns the device, and destroys it after the plugins
+    LIGHTS.device = ECSGpu_GetDevice();
 
     const ECSPanelTypeDesc panel = {
         .name = "panel",
-        .title = "Lights",
+        .title = "Lights in C",
         .surface = ECSSurfaceType_Gpu, // the panel draws into a GPU texture instead of pixels
         .continuous = true,            // the light moves, so the panel draws every frame
         .Create = LightsCreate,
