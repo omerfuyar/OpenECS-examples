@@ -51,32 +51,48 @@ local function sorted(controls)
   return rows
 end
 
+-- the state a new panel starts with: the value of each control, and the rectangles of the elements the test clicks
+local START = {
+  clicks = 0,
+  sound = false,
+  dark = true,
+  volume = 0.5,
+  size = "M",
+  fruit = "Apple",
+  count = 3,
+  tab = "Options",
+  selected = 1,
+  name = "",
+  node = "readme",
+  open = {},
+  sort = "name",
+  ascending = true,
+  rects = {},
+}
+
+-- a copy of a table and of the tables in it, so each panel changes its own state, not START
+local function copy(value)
+  if type(value) ~= "table" then
+    return value
+  end
+
+  local result = {}
+
+  for key, item in pairs(value) do
+    result[key] = copy(item)
+  end
+
+  return result
+end
+
 ecs.panel.registerType({
   name = "panel",
   title = "Controls",
 
   create = function(panel)
-    -- todo find a way to put this in scripts local scope. like local state = {...} and then assign it here. like you did with NODES. because this looks ugly. !!!
-    return {
-      panel = panel,
-      clicks = 0,
-      sound = false,
-      dark = true,
-      volume = 0.5,
-      size = "M",
-      fruit = "Apple",
-      count = 3,
-      tab =
-      "Options",
-      selected = 1,
-      name = "",
-      node = "readme",
-      open = {},
-      sort = "name",
-      ascending = true,
-      row = nil,
-      rects = {}
-    }
+    local controls = copy(START)
+    controls.panel = panel
+    return controls
   end,
 
   -- draw runs only when the panel needs drawing; a panel type that draws every frame says continuous = true
@@ -178,16 +194,14 @@ ecs.panel.registerType({
         { id = "note", wrap = true, color = "textDim" }),
     }))
 
-    -- the rectangles of the elements, in the panel's surface pixels
+    -- the rectangles of the elements, in the panel's surface pixels; ui.rect gives nil for an element that is not shown, such as one on another tab
     for _, id in ipairs(IDS) do
-      -- ??? why dont we just return (ok: boolean, rect: Rectangle) or something similar ???
-      local _, x, y, width, height = ui.rect(controls.panel, id)
-      controls.rects[id] = {
-        x = x * surface.scale,
-        y = y * surface.scale,
-        width = width * surface.scale,
-        height = height *
-            surface.scale
+      local rect = ui.rect(controls.panel, id)
+      controls.rects[id] = rect and {
+        x = rect.x * surface.scale,
+        y = rect.y * surface.scale,
+        width = rect.width * surface.scale,
+        height = rect.height * surface.scale,
       }
     end
   end,

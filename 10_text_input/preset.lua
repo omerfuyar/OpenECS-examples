@@ -5,6 +5,7 @@ return {
   name = "textinput",
   version = "0.1.0",
   app = { id = "openecs.example.textinput", name = "Text input" },
+  hint = "Type in the field; Backspace deletes, and input methods, such as for accented letters, work too",
   depends = { field = "0.1" },
   pluginsDir = ".",
   workspaces = {

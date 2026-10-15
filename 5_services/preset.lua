@@ -5,6 +5,7 @@ return {
   name = "services",
   version = "0.1.0",
   app = { id = "openecs.example.services", name = "Services" },
+  hint = "Click a panel to count: every panel adds to the same counter. Alt+W, then N, opens another panel",
   depends = { tally = "0.1" }, -- tally depends on counter, so counter loads too
   pluginsDir = ".",
   workspaces = {

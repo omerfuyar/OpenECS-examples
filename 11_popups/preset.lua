@@ -6,6 +6,7 @@ return {
   name = "popups",
   version = "0.1.0",
   app = { id = "openecs.example.popups", name = "Popups" },
+  hint = "Right-click the panel to choose its colour from a menu",
   depends = { picker = "0.1" },
   pluginsDir = ".",
   workspaces = {

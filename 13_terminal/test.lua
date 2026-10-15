@@ -25,5 +25,16 @@ return {
     test.key("Return")
     test.match(state().cells, { "h", "i", " ", " ", " ", " " }, "the cells of bold text")
     test.match(state().styles, { "bold", "bold", "", "", "", "" }, "the bold style")
+
+    -- Ctrl and + makes the font larger, so fewer columns fit; Ctrl and - makes it smaller, and Ctrl+0 sets it back
+    local columns = state().columns
+    test.key("Ctrl+=")
+    test.match(state().size, 18, "the larger font")
+    test.match(state().columns < columns, true, "fewer columns")
+    test.key("Ctrl+-")
+    test.key("Ctrl+-")
+    test.match(state().size, 14, "the smaller font")
+    test.key("Ctrl+0")
+    test.match({ state().size, state().columns }, { 16, columns }, "the font size set back")
   end,
 }

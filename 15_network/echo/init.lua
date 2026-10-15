@@ -16,18 +16,18 @@ local udpServer = net.udp(PORT) -- UDP ports are apart from TCP ports, so the sa
 local udpClient = net.udp(0)    -- port 0: any free port
 local log = { server and "Listening on port " .. PORT or "Cannot listen on port " .. PORT }
 
--- connectTls starts a TLS connection: its status is 0 until the handshake is done, and the server's certificate is checked against the system's trusted ones
+-- connectTLS starts a TLS connection: its status is 0 until the handshake is done, and the server's certificate is checked against the system's trusted ones
 -- this one goes to a plain server on the next port, which answers in plain text, so its handshake fails and its status becomes -1
 local plain = net.listen(PORT + 1)
-local secure = net.connectTls("127.0.0.1", PORT + 1)
+local secure = net.connectTLS("127.0.0.1", PORT + 1)
 local plainClient
 local tls = 0 -- the TLS connection's status, saved for the test
 
--- listenTls serves TLS with a certificate and its key; this pair was made for this example, for localhost, and is not secret
+-- listenTLS serves TLS with a certificate and its key; this pair was made for this example, for localhost, and is not secret
 -- the certificate is nobody's trusted one, so trust adds it to the client's; the server sends back in capitals what the client sends
-local secureServer = net.listenTls(PORT + 2, ecs.plugin.folder .. "certificate.pem", ecs.plugin.folder .. "key.pem")
+local secureServer = net.listenTLS(PORT + 2, ecs.plugin.folder .. "certificate.pem", ecs.plugin.folder .. "key.pem")
 net.trust(ecs.plugin.folder .. "certificate.pem")
-local secureClient = net.connectTls("localhost", PORT + 2)
+local secureClient = net.connectTLS("localhost", PORT + 2)
 local secureAccepted
 local secureSent = false
 local secureAnswer = "" -- what came back over TLS, saved for the test

@@ -5,6 +5,7 @@ return {
   name = "web",
   version = "0.1.0",
   app = { id = "openecs.example.web", name = "Web" },
+  hint = "Type a URL, such as http://127.0.0.1:47201/, and press Return to fetch it",
   depends = { fetch = "0.1" },
   pluginsDir = ".",
   workspaces = {
