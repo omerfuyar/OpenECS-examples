@@ -39,13 +39,22 @@ local badgeImage = badgeInfo.images[badgeInfo.materials[1].image]
 local TEXTURE = image.decode(gltf.image(badge, badgeInfo.materials[1].image), 1)
 local TEXTURE_WIDTH, TEXTURE_HEIGHT = draw.imageSize(TEXTURE)
 
+-- the badge's animation turns it, moves it and grows it; gltf.pose gives each node's matrix at a time of it, 16 floats column by column
+local SPIN = badgeInfo.animations[1]
+
+-- the badge node's turn in degrees, its move to the right and its size, at a time of the animation
+local function badgeAt(seconds)
+  local m = { string.unpack("<ffffffffffffffff", gltf.pose(badge, 1, seconds)) }
+  return math.deg(math.atan(m[2], m[1])), m[13], math.sqrt(m[1] * m[1] + m[2] * m[2] + m[3] * m[3])
+end
+
 ecs.panel.registerType({
   name = "panel",
   title = "Model",
   continuous = true,
 
   create = function()
-    return { angle = 0, drawn = 0 }
+    return { angle = 0, drawn = 0, time = 0 }
   end,
 
   draw = function(view, surface, seconds)
@@ -68,12 +77,16 @@ ecs.panel.registerType({
 
     draw.lines(surface, table.concat(projected), EDGES, 1, COLOR)
 
-    -- the badge's texture, in the top left corner at four times its size
-    draw.image(surface, TEXTURE, 8, 8, TEXTURE_WIDTH * 4, TEXTURE_HEIGHT * 4)
+    -- the badge's texture near the top left corner, at four times its size, turned, moved and grown as its animation says; the animation goes round
+    view.time = (view.time + seconds) % SPIN.duration
+    local turn, right, grow = badgeAt(view.time)
+    local size = TEXTURE_WIDTH * 4 * grow
+    draw.imageTransformed(surface, TEXTURE, 100 + right * 60 - size / 2, 100 - size / 2, size, size, -turn, "#FFFFFF")
   end,
 
   -- how many frames it drew, so the test can see it draws every frame
   saveState = function(view)
-    return { drawn = view.drawn, triangles = TRIANGLES, vertices = primitive.vertices, texture = { mimeType = badgeImage.mimeType, file = badgeImage.file, width = TEXTURE_WIDTH, height = TEXTURE_HEIGHT } }
+    return { drawn = view.drawn, triangles = TRIANGLES, vertices = primitive.vertices, texture = { mimeType = badgeImage.mimeType, file = badgeImage.file, width = TEXTURE_WIDTH, height = TEXTURE_HEIGHT },
+      spin = { name = SPIN.name, duration = SPIN.duration, early = { badgeAt(0.5) }, late = { badgeAt(2.5) }, middle = { badgeAt(2) } } }
   end,
 })
