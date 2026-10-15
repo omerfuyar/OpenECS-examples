@@ -7,7 +7,7 @@ local draw = require("draw")
 local image = require("image")
 
 local model = gltf.load(ecs.plugin.folder .. "cube.gltf")
-local info = gltf.describe(model)
+local info = assert(gltf.describe(model))
 
 -- the first primitive of the first mesh: its positions, three floats each, and its triangles, three indices each, from 0
 local primitive = info.meshes[1].primitives[1]
@@ -34,7 +34,7 @@ local COLOR = ("#%02X%02X%02X"):format(math.floor(r * 255), math.floor(g * 255),
 
 -- a .glb file holds its pictures inside it: the badge's material names its image by number, gltf.image gives that image's bytes, and image.decode makes a picture of them
 local badge = gltf.load(ecs.plugin.folder .. "badge.glb")
-local badgeInfo = gltf.describe(badge)
+local badgeInfo = assert(gltf.describe(badge))
 local badgeImage = badgeInfo.images[badgeInfo.materials[1].image]
 local TEXTURE = image.decode(gltf.image(badge, badgeInfo.materials[1].image), 1)
 local TEXTURE_WIDTH, TEXTURE_HEIGHT = draw.imageSize(TEXTURE)
@@ -51,9 +51,9 @@ end
 -- an arm whose skin bends it: its vertices follow two joints, the root and the tip, and its animation turns the tip a quarter turn in a second;
 -- gltf.skin gives the vertices where the joints move them at a time of the animation, three floats each
 local arm = gltf.load(ecs.plugin.folder .. "arm.glb")
-local armInfo = gltf.describe(arm)
+local armInfo = assert(gltf.describe(arm))
 local BEND = armInfo.animations[1]
-local ARM_SKIN = armInfo.nodes[1].skin
+local ARM_SKIN = assert(armInfo.nodes[1].skin)
 local ARM_VERTICES = armInfo.meshes[1].primitives[1].vertices
 local armIndices = gltf.indices(arm, 1, 1)
 local armEdges = {}
