@@ -11,6 +11,10 @@ local FRUITS = { "Apple", "Banana", "Cherry" }
 local SIZES = { "S", "M", "L" }
 local ITEMS = { "First item", "Second item", "Third item" }
 
+-- the Table tab's columns and rows; the panel sorts the rows, and the table shows them in its order
+local COLUMNS = { { id = "name", title = "Fruit" }, { id = "price", title = "Price" }, { id = "stock", title = "In stock" } }
+local FRUIT_ROWS = { { name = "Cherry", price = 4.5, stock = 12 }, { name = "Apple", price = 1.2, stock = 40 }, { name = "Banana", price = 0.8, stock = 25 } }
+
 -- the nodes of the About tab's tree; a node with children opens and closes
 local NODES = {
   { id = "src", label = "src", children = {
@@ -21,14 +25,33 @@ local NODES = {
 }
 
 -- the elements the test clicks, by id; their rectangles are saved, so the test finds them
-local IDS = { "button", "tab", "sound", "volume", "size", "fruit", "count", "item:2", "name", "note", "tree:src", "tree:lib" }
+local IDS = { "button", "tab", "sound", "volume", "size", "fruit", "count", "item:2", "name", "note", "tree:src", "tree:lib", "table:header", "table:1", "table:2", "table:title:name", "table:title:price" }
+
+-- the rows of the Table tab, in the order the panel sorts them
+local function sorted(controls)
+  local rows = {}
+
+  for i, row in ipairs(FRUIT_ROWS) do
+    rows[i] = row
+  end
+
+  table.sort(rows, function(a, b)
+    if controls.ascending then
+      return a[controls.sort] < b[controls.sort]
+    end
+
+    return a[controls.sort] > b[controls.sort]
+  end)
+
+  return rows
+end
 
 ecs.panel.registerType({
   name = "panel",
   title = "Controls",
 
   create = function(panel)
-    return { panel = panel, clicks = 0, sound = false, dark = true, volume = 0.5, size = "M", fruit = "Apple", count = 3, tab = "Options", selected = 1, name = "", node = "readme", open = {}, rects = {} }
+    return { panel = panel, clicks = 0, sound = false, dark = true, volume = 0.5, size = "M", fruit = "Apple", count = 3, tab = "Options", selected = 1, name = "", node = "readme", open = {}, sort = "name", ascending = true, row = nil, rects = {} }
   end,
 
   -- draw runs only when the panel needs drawing; a panel type that draws every frame says continuous = true
@@ -60,7 +83,14 @@ ecs.panel.registerType({
       }),
       ui.separator(),
       -- tabs choose what shows below them; the panel keeps the chosen one and describes only its elements
-      ui.tabs(controls.tab, { "Options", "About" }, { id = "tab", onChange = set("tab") }),
+      ui.tabs(controls.tab, { "Options", "About", "Table" }, { id = "tab", onChange = set("tab") }),
+      -- a table lines its cells up below its columns' titles; a click on a title sorts by that column, and a second one reverses the order
+      controls.tab == "Table" and ui.table({ id = "table", height = 110, grow = 0, stretch = true, border = "tabShown", sort = controls.sort, ascending = controls.ascending,
+        selected = controls.row, onSelect = set("row"),
+        onSort = function(column)
+          controls.ascending = column ~= controls.sort or not controls.ascending
+          controls.sort, controls.row = column, nil
+        end }, COLUMNS, sorted(controls)) or
       -- a tree shows its open nodes' children below them; the panel keeps which nodes are open, and the chosen one
       controls.tab == "About" and ui.column({ gap = 8 }, {
         ui.text("The controls of ui, each changing the panel's state.", { color = "textDim" }),
@@ -113,6 +143,7 @@ ecs.panel.registerType({
 
   -- the values and the rectangles are saved, so the test can read them
   saveState = function(controls)
-    return { clicks = controls.clicks, sound = controls.sound, volume = controls.volume, size = controls.size, fruit = controls.fruit, count = controls.count, tab = controls.tab, tip = ui.tip(controls.panel), selected = controls.selected, name = controls.name, node = controls.node, open = controls.open, rects = controls.rects }
+    return { clicks = controls.clicks, sound = controls.sound, volume = controls.volume, size = controls.size, fruit = controls.fruit, count = controls.count, tab = controls.tab, tip = ui.tip(controls.panel), selected = controls.selected, name = controls.name, node = controls.node, open = controls.open, sort = controls.sort, ascending = controls.ascending, row = controls.row,
+      first = controls.tab == "Table" and sorted(controls)[1].name or nil, rects = controls.rects }
   end,
 })

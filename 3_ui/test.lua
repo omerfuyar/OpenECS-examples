@@ -134,5 +134,23 @@ return {
     test.match(state().open, { src = true }, "the node closed with Left")
     test.key("Down")
     test.match(state().node, "readme", "the node below the closed one")
+
+    -- the Table tab: the rows are sorted by name, a click on a title sorts by its column, and a second click reverses the order
+    test.click(at("tab", 0.02))
+    test.key("Right")
+    test.key("Right")
+    test.match(state().tab, "Table", "the tab of the table")
+    test.match(state().first, "Apple", "the first row by name")
+    local header, row = state().rects["table:header"], state().rects["table:1"]
+    test.match(header.x, row.x, "the header over the rows")
+    test.click(at("table:title:name"))
+    test.match({ state().sort, state().ascending }, { "name", false }, "the order reversed")
+    test.match(state().first, "Cherry", "the first row, names reversed")
+    test.click(at("table:title:price"))
+    test.match({ state().sort, state().ascending, state().first }, { "price", true, "Banana" }, "the rows by price")
+
+    -- a click on a row chooses it
+    test.click(at("table:2"))
+    test.match(state().row, 2, "the chosen row")
   end,
 }
