@@ -7,7 +7,6 @@
 #include "shuild/shuild.h"
 
 #include <ctype.h>
-#include <dirent.h>
 
 #pragma region Setup
 
@@ -147,31 +146,38 @@ static void SetBuildFlags(void)
     }
 }
 
-static bool EndsWith(const char *name, const char *suffix)
+/// @brief A folder that ForEachFolder lists, and what it calls for each folder in it.
+typedef struct FolderVisit
 {
-    size_t nameLength = strlen(name);
-    size_t suffixLength = strlen(suffix);
-    return nameLength >= suffixLength && strcmp(name + nameLength - suffixLength, suffix) == 0;
+    const char *path;
+    bool numbered;
+    void (*function)(const char *path, const char *name);
+} FolderVisit;
+
+static void VisitFolder(const char *entry, SHUFileType type, void *data)
+{
+    const FolderVisit *visit = (const FolderVisit *)data;
+
+    // the entry is the folder's path, with a separator at its end; the function gets its name alone
+    SHUI_String name;
+    SHUI_SFormat(&name, "%.*s", (int)(strlen(entry) - strlen(visit->path) - 1), entry + strlen(visit->path));
+
+    if (type == SHUFileType_Directory && (!visit->numbered || isdigit((unsigned char)name.data[0])))
+    {
+        visit->function(visit->path, name.data);
+    }
 }
 
-/// @brief Calls a function for each folder in a folder, in no order; names starting with a dot are left out, and, with numbered, names that do not start with a digit.
+/// @brief Calls a function for each folder in a folder, sorted by name; names starting with a dot are left out, and, with numbered, names that do not start with a digit.
 static void ForEachFolder(const char *path, bool numbered, void (*function)(const char *path, const char *name))
 {
-    DIR *folder = opendir(path);
-    struct dirent *entry = NULL;
+    FolderVisit visit = {path, numbered, function};
+    SHU_UtilListDirectory(path, false, VisitFolder, &visit);
+}
 
-    while (folder != NULL && (entry = readdir(folder)) != NULL)
-    {
-        if (entry->d_type == DT_DIR && entry->d_name[0] != '.' && (!numbered || isdigit((unsigned char)entry->d_name[0])))
-        {
-            function(path, entry->d_name);
-        }
-    }
-
-    if (folder != NULL)
-    {
-        closedir(folder);
-    }
+static void FindCode(const char *path, SHUFileType type, void *data)
+{
+    *(bool *)data = *(bool *)data || (type == SHUFileType_Regular && SHU_UtilMatch(path, "*.c"));
 }
 
 /// @brief Compiles the C files of a plugin folder of an example into its native library, in the folder's copy in bin/examples/. Does nothing if the folder has no C file.
@@ -181,18 +187,7 @@ static void BuildPlugin(const char *path, const char *name)
     SHUI_SFormat(&root, "%s%s/", path, name);
 
     bool code = false;
-    DIR *folder = opendir(root.data);
-    struct dirent *entry = NULL;
-
-    while (folder != NULL && (entry = readdir(folder)) != NULL)
-    {
-        code = code || EndsWith(entry->d_name, ".c");
-    }
-
-    if (folder != NULL)
-    {
-        closedir(folder);
-    }
+    SHU_UtilListDirectory(root.data, false, FindCode, &code);
 
     if (!code)
     {
@@ -207,15 +202,6 @@ static void BuildPlugin(const char *path, const char *name)
     SHUI_SFormat(&include, "../../%sinclude/", CONFIG.output);
     SHUI_SFormat(&definitions, "../../%sdefinitions/", CONFIG.output);
     SHUI_SFormat(&output, "%sbin/examples/%s", CONFIG.output, root.data);
-
-    // shuild compiles only the files that changed, so a library that is missing, such as after a clean copy, is built from all of them
-    SHUI_String library;
-    SHUI_SFormat(&library, "%slib%s.so", output.data, name);
-
-    if (SHU_UtilFileExists(library.data) != SHUFileType_Regular)
-    {
-        SHU_CacheClearModule(name);
-    }
 
     SHU_ModuleBegin(name, root.data);
     SetBuildFlags();
