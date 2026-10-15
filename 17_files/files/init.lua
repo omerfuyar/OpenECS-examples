@@ -27,11 +27,16 @@ local function preview(path)
   return table.concat(lines, "\n")
 end
 
+-- an entry of fs.list, with a name to show
+---@class files.Entry: fs.Entry
+---@field label string
+
 -- the folder's entries, folders first, each with a name to show
 local function read(browser)
   browser.entries = {}
 
   for _, entry in ipairs(fs.list(browser.folder, "") or {}) do
+    ---@cast entry files.Entry
     entry.label = entry.type == "folder" and entry.name .. "/" or entry.name
     table.insert(browser.entries, entry.type == "folder" and 1 or #browser.entries + 1, entry)
   end
