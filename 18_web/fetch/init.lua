@@ -48,20 +48,20 @@ local function echo(client)
     client.pending = rest
 
     if opcode == websocket.CLOSE or payload == "bye" then
-      net.send(client.connection, websocket.encode(websocket.CLOSE, ""))
-      net.close(client.connection)
+      client.connection:send(websocket.encode(websocket.CLOSE, ""))
+      client.connection:close()
       return
     elseif opcode == websocket.PING then
-      net.send(client.connection, websocket.encode(websocket.PONG, payload))
+      client.connection:send(websocket.encode(websocket.PONG, payload))
     elseif opcode == websocket.TEXT or opcode == websocket.BINARY then
-      net.send(client.connection, websocket.encode(opcode, payload))
+      client.connection:send(websocket.encode(opcode, payload))
     end
   end
 end
 
 -- the state of the WebSocket connection, and the messages that arrived; web keeps them until they are taken
 local function poll()
-  local status = web.socket.status(socket.handle)
+  local status = socket.handle:status()
 
   if status == 1 and not socket.open then
     socket.open = true
@@ -69,7 +69,7 @@ local function poll()
   end
 
   while true do
-    local message, kind = web.socket.receive(socket.handle)
+    local message, kind = socket.handle:receive()
 
     if not kind then
       break
@@ -79,15 +79,15 @@ local function poll()
   end
 
   if status == -1 then
-    add("Closed: " .. web.socket.error(socket.handle))
-    web.socket.close(socket.handle)
+    add("Closed: " .. socket.handle:error())
+    socket.handle:close()
     socket = nil
   end
 end
 
 -- every 50 ms: accept the server's clients and answer each, and look at the WebSocket connection
 local timer = ecs.timer.start(0.05, true, function()
-  local connection = server and net.accept(server)
+  local connection = server and server:accept()
 
   if connection then
     clients[#clients + 1] = { connection = connection, answered = false, pending = "" }
@@ -96,7 +96,7 @@ local timer = ecs.timer.start(0.05, true, function()
   -- a client is kept until it closes, so what was sent to it leaves first
   for i = #clients, 1, -1 do
     local client = clients[i]
-    local received = net.receive(client.connection, 4096)
+    local received = client.connection:receive(4096)
 
     -- a request for a WebSocket on /echo turns the connection into one, whose frames go on in both directions; it starts with a greeting
     if received ~= "" and client.websocket then
@@ -104,15 +104,15 @@ local timer = ecs.timer.start(0.05, true, function()
       echo(client)
     elseif received ~= "" and not client.answered then
       local upgrade = received:match("^GET /echo ") and websocket.handshake(received)
-      net.send(client.connection, upgrade or answer(received))
+      client.connection:send(upgrade or answer(received))
       client.answered, client.websocket = true, upgrade ~= nil
 
       if upgrade then
-        net.send(client.connection, websocket.encode(websocket.TEXT, "Hello from the echo server"))
+        client.connection:send(websocket.encode(websocket.TEXT, "Hello from the echo server"))
       end
     end
 
-    if net.status(client.connection) == -1 then
+    if client.connection:status() == -1 then
       table.remove(clients, i)
     end
   end
@@ -134,7 +134,7 @@ ecs.panel.registerType({
 
   draw = function(fetch, surface)
     surface:fill(0, 0, surface.width, surface.height, "background")
-    local _, height = draw.measure(draw.font("ui"), "Ag", SIZE)
+    local _, height = draw.font("ui"):measure("Ag", SIZE)
     local lines = math.max(1, math.floor(surface.height / surface.scale / height) - 2)
     local first = math.max(1, #log - lines + 1)
 
@@ -153,15 +153,15 @@ ecs.panel.registerType({
       fetch.line = fetch.line:sub(1, -2)
     elseif event.type == "keyDown" and event.key == "Return" and socket and not fetch.line:find("^%a+://") then
       -- a line that is not a URL is a message to the WebSocket connection; web sends it in the background, once the connection is open
-      web.socket.send(socket.handle, fetch.line, true)
+      socket.handle:send(fetch.line, true)
       fetch.line = ""
     elseif event.type == "keyDown" and event.key == "Return" and fetch.line:find("^wss?://") then
-      -- web.socket.open starts a connection and gives its handle at once; its state and its messages are asked for, as with net
+      -- web.socket starts a connection and gives its handle at once; its state and its messages are asked for with its methods, as with net
       if socket then
-        web.socket.close(socket.handle)
+        socket.handle:close()
       end
 
-      local handle = web.socket.open(fetch.line)
+      local handle = web.socket(fetch.line)
       socket = handle and { handle = handle, url = fetch.line, open = false }
       add(handle and "Connecting to " .. fetch.line or "Cannot connect to " .. fetch.line)
       fetch.line = ""
@@ -172,12 +172,12 @@ ecs.panel.registerType({
 
       local request = web.get(url, function(done)
         -- status is the HTTP status, or -1 if the request failed
-        local status = web.status(done)
+        local status = done:status()
 
         if status > 0 then
-          add(("%d %s: %s"):format(status, web.header(done, "Content-Type") or "?", web.body(done):match("[^\n]*")))
+          add(("%d %s: %s"):format(status, done:header("Content-Type") or "?", done:body():match("[^\n]*")))
         else
-          add("Failed: " .. web.error(done))
+          add("Failed: " .. done:error())
         end
 
         add("  for " .. url)

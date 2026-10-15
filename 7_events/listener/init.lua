@@ -14,12 +14,18 @@ end
 ecs.event.declare("opened", "A listener opened: its panel, a mark of two bytes, and a note")
 ecs.handle.registerType("note")
 
+-- a note's text, which is its value; as a method of the type, Lua writes note:text()
+assert(ecs.service.register({
+  text = { sig = "string(handle<listener.note>)", doc = "Gives a note's text", fn = function(note) return ecs.handle.value(note, "listener.note") end },
+}))
+ecs.handle.addMethod("note", "text", "text")
+
 ecs.event.subscribe("listener.opened", function(_, value)
   local listener = listeners[value.panel]
 
   -- the handle comes back as the same handle, and the bytes as the same string; a handle in an event's value lives until the event is delivered,
   -- even when nothing else keeps it, so the note's value is still there
-  if listener and value.mark == "\0\255" and ecs.handle.value(value.note, "listener.note") == "hello" then
+  if listener and value.mark == "\0\255" and value.note:text() == "hello" then
     listener.greeted = true
     show(listener)
   end

@@ -44,43 +44,43 @@ end
 -- every 50 ms: accept the client, answer what the server got, and log what the client got
 local timer = ecs.timer.start(0.05, true, function()
   if server and not accepted then
-    accepted = net.accept(server)
+    accepted = server:accept()
   end
 
-  plainClient = plainClient or (plain and net.accept(plain))
+  plainClient = plainClient or (plain and plain:accept())
 
-  if plainClient and net.receive(plainClient, 1024) ~= "" then
-    net.send(plainClient, "not TLS\n")
+  if plainClient and plainClient:receive(1024) ~= "" then
+    plainClient:send("not TLS\n")
   end
 
-  tls = net.status(secure)
+  tls = secure:status()
 
-  secureAccepted = secureAccepted or (secureServer and net.accept(secureServer))
+  secureAccepted = secureAccepted or (secureServer and secureServer:accept())
 
   if secureAccepted then
-    local received = net.receive(secureAccepted, 1024)
+    local received = secureAccepted:receive(1024)
 
     if received ~= "" then
-      net.send(secureAccepted, received:upper())
+      secureAccepted:send(received:upper())
     end
   end
 
   -- the client sends once its handshake is done, which needs the server's side to move on too
-  if not secureSent and net.status(secureClient) == 1 then
-    secureSent = net.send(secureClient, "secret")
+  if not secureSent and secureClient:status() == 1 then
+    secureSent = secureClient:send("secret")
   end
 
-  secureAnswer = secureAnswer .. net.receive(secureClient, 1024)
+  secureAnswer = secureAnswer .. secureClient:receive(1024)
 
   if accepted then
-    local received = net.receive(accepted, 1024)
+    local received = accepted:receive(1024)
 
     if received ~= "" then
-      net.send(accepted, received:upper())
+      accepted:send(received:upper())
     end
   end
 
-  local answer = net.receive(client, 1024)
+  local answer = client:receive(1024)
 
   if answer ~= "" then
     add("< " .. answer)
@@ -88,15 +88,15 @@ local timer = ecs.timer.start(0.05, true, function()
 
   -- a datagram comes with the address and port it came from, where the answer goes
   if udpServer then
-    local datagram, host, port = net.receiveFrom(udpServer)
+    local datagram, host, port = udpServer:receiveFrom()
 
     if datagram ~= "" then
-      net.sendTo(udpServer, host, port, datagram:upper())
+      udpServer:sendTo(host, port, datagram:upper())
     end
   end
 
   if udpClient then
-    local datagram = net.receiveFrom(udpClient)
+    local datagram = udpClient:receiveFrom()
 
     if datagram ~= "" then
       add("< udp " .. datagram)
@@ -116,7 +116,7 @@ ecs.panel.registerType({
 
   draw = function(echo, surface)
     surface:fill(0, 0, surface.width, surface.height, "background")
-    local _, height = draw.measure(draw.font("ui"), "Ag", SIZE)
+    local _, height = draw.font("ui"):measure("Ag", SIZE)
     local lines = math.max(1, math.floor(surface.height / surface.scale / height) - 2)
 
     -- the last lines of the log, then the line being typed
@@ -135,8 +135,8 @@ ecs.panel.registerType({
 
       -- sendTo queues a datagram, which may be lost on the way; send queues data and gives false while the client is not connected yet
       if datagram then
-        add(udpClient and net.sendTo(udpClient, "127.0.0.1", PORT, datagram) and "> udp " .. datagram or "Cannot send by UDP")
-      elseif net.status(client) == 1 and net.send(client, echo.line) then
+        add(udpClient and udpClient:sendTo("127.0.0.1", PORT, datagram) and "> udp " .. datagram or "Cannot send by UDP")
+      elseif client:status() == 1 and client:send(echo.line) then
         add("> " .. echo.line)
       else
         add("Not connected yet")
@@ -159,7 +159,7 @@ ecs.panel.registerType({
 ecs.plugin.register({
   stateVersion = 1,
   saveState = function()
-    return { log = log, tls = tls, secure = secureAnswer, connected = net.status(client) == 1 }
+    return { log = log, tls = tls, secure = secureAnswer, connected = client:status() == 1 }
   end,
   restoreState = function() end,
   destroy = function()
