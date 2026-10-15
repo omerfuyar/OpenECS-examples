@@ -1,7 +1,7 @@
 -- A picture that plays a sound when it is clicked. Loaders read files, and executors use what they read:
 -- the image plugin reads an image file into an image of the draw plugin, which draws it; the audio plugin reads a sound file into a sound of the mixer plugin, which plays it.
 -- A loader also writes what an executor holds back to a file: image.save writes an image of draw.
--- R turns the picture and F fades it, S writes it to a file, B plays a tone, T plays a tune read from its file as it plays, M muffles the tune, and V turns a reverb on and off.
+-- R turns the picture and F fades it, S writes it to a file, B plays a tone, T plays a tune read from its file as it plays, M muffles the tune, E plays a tone with an echo, and V turns a reverb on and off.
 -- A spinner in the corner is an animated GIF file.
 
 local ecs = require("ecs")
@@ -124,6 +124,14 @@ ecs.panel.registerType({
       mixer.pan(media.tone, -0.8)
     end
 
+    -- E plays a tone with an echo: what it played a fifth of a second ago comes back, softer each time, so it rings on after the tone ends
+    if event.type == "keyDown" and event.key == "E" then
+      local stream = tone(0.3, 660)
+      mixer.finish(stream)
+      media.echoed = mixer.play(stream, 1, false)
+      mixer.echo(media.echoed, 0.2, 0.3, 0.6)
+    end
+
     -- S writes the picture as drawn to a PNG file in this plugin's folder, and reads it back, which gives the same pixels
     if event.type == "keyDown" and (event.key == "R" or event.key == "F") then
       media.angle = event.key == "R" and (media.angle + 90) % 360 or media.angle
@@ -166,6 +174,6 @@ ecs.panel.registerType({
   end,
 
   saveState = function(media)
-    return { plays = media.plays, smooth = media.smooth, toneQueued = media.toneQueued, tonePlaying = media.tone ~= nil and mixer.playing(media.tone), saved = media.saved, probes = media.probes, frames = #media.frames, frameSeconds = media.frames[1].seconds, frame = media.frame, tuneQueued = media.tuneQueued, tunePlaying = media.tune ~= nil and mixer.playing(media.tune), reverb = media.reverb == true, muffled = media.muffled == true }
+    return { plays = media.plays, smooth = media.smooth, toneQueued = media.toneQueued, tonePlaying = media.tone ~= nil and mixer.playing(media.tone), saved = media.saved, probes = media.probes, frames = #media.frames, frameSeconds = media.frames[1].seconds, frame = media.frame, tuneQueued = media.tuneQueued, tunePlaying = media.tune ~= nil and mixer.playing(media.tune), reverb = media.reverb == true, muffled = media.muffled == true, echoPlaying = media.echoed ~= nil and mixer.playing(media.echoed) }
   end,
 })
