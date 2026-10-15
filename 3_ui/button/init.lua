@@ -11,15 +11,24 @@ local FRUITS = { "Apple", "Banana", "Cherry" }
 local SIZES = { "S", "M", "L" }
 local ITEMS = { "First item", "Second item", "Third item" }
 
+-- the nodes of the About tab's tree; a node with children opens and closes
+local NODES = {
+  { id = "src", label = "src", children = {
+    { id = "main", label = "main.c" },
+    { id = "lib", label = "lib", children = { { id = "util", label = "util.c" } } },
+  } },
+  { id = "readme", label = "README.md" },
+}
+
 -- the elements the test clicks, by id; their rectangles are saved, so the test finds them
-local IDS = { "button", "tab", "sound", "volume", "size", "fruit", "count", "item:2", "name", "note" }
+local IDS = { "button", "tab", "sound", "volume", "size", "fruit", "count", "item:2", "name", "note", "tree:src", "tree:lib" }
 
 ecs.panel.registerType({
   name = "panel",
   title = "Controls",
 
   create = function(panel)
-    return { panel = panel, clicks = 0, sound = false, dark = true, volume = 0.5, size = "M", fruit = "Apple", count = 3, tab = "Options", selected = 1, name = "", rects = {} }
+    return { panel = panel, clicks = 0, sound = false, dark = true, volume = 0.5, size = "M", fruit = "Apple", count = 3, tab = "Options", selected = 1, name = "", node = "readme", open = {}, rects = {} }
   end,
 
   -- draw runs only when the panel needs drawing; a panel type that draws every frame says continuous = true
@@ -52,7 +61,14 @@ ecs.panel.registerType({
       ui.separator(),
       -- tabs choose what shows below them; the panel keeps the chosen one and describes only its elements
       ui.tabs(controls.tab, { "Options", "About" }, { id = "tab", onChange = set("tab") }),
-      controls.tab == "About" and ui.text("The controls of ui, each changing the panel's state.", { color = "textDim" }) or ui.group({ title = "Options", gap = 8 }, {
+      -- a tree shows its open nodes' children below them; the panel keeps which nodes are open, and the chosen one
+      controls.tab == "About" and ui.column({ gap = 8 }, {
+        ui.text("The controls of ui, each changing the panel's state.", { color = "textDim" }),
+        ui.tree({ id = "tree", height = 110, grow = 0, border = "tabShown", open = controls.open, selected = controls.node, onSelect = set("node"),
+          onToggle = function(id, open)
+            controls.open[id] = open or nil
+          end }, NODES),
+      }) or ui.group({ title = "Options", gap = 8 }, {
         ui.toggle(controls.sound, { id = "sound", label = "Sound", onChange = set("sound") }),
         ui.toggle(controls.dark, { id = "dark", label = "Dark", look = "switch", onChange = set("dark") }),
         ui.row({ gap = 8 }, { ui.text("Volume"), ui.slider(controls.volume, { id = "volume", step = 0.1, grow = 1, onChange = set("volume") }) }),
@@ -78,8 +94,17 @@ ecs.panel.registerType({
   end,
 
   -- the panel's events go to ui, which calls the callbacks of the elements they reach
+  -- Up and Down choose the tree's next node and the one before, and Right and Left open and close the chosen one, when no element takes them
   event = function(controls, event)
-    ui.event(controls.panel, event)
+    if ui.event(controls.panel, event) or event.type ~= "keyDown" or controls.tab ~= "About" then
+      return
+    end
+
+    if event.key == "Up" or event.key == "Down" then
+      ui.move(controls.panel, "tree", event.key == "Up" and -1 or 1)
+    elseif event.key == "Left" or event.key == "Right" then
+      ui.expand(controls.panel, "tree", event.key == "Right")
+    end
   end,
 
   destroy = function(controls)
@@ -88,6 +113,6 @@ ecs.panel.registerType({
 
   -- the values and the rectangles are saved, so the test can read them
   saveState = function(controls)
-    return { clicks = controls.clicks, sound = controls.sound, volume = controls.volume, size = controls.size, fruit = controls.fruit, count = controls.count, tab = controls.tab, tip = ui.tip(controls.panel), selected = controls.selected, name = controls.name, rects = controls.rects }
+    return { clicks = controls.clicks, sound = controls.sound, volume = controls.volume, size = controls.size, fruit = controls.fruit, count = controls.count, tab = controls.tab, tip = ui.tip(controls.panel), selected = controls.selected, name = controls.name, node = controls.node, open = controls.open, rects = controls.rects }
   end,
 })

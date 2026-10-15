@@ -112,5 +112,27 @@ return {
     test.key("Tab")
     test.key("Space")
     test.match(state().clicks, 3, "the keys")
+
+    -- the About tab holds a tree; a click on a node's arrow opens it, and a click beside the arrow chooses the node
+    test.click(at("tab", 0.02))
+    test.key("Right")
+    test.match(state().tab, "About", "the tab of the tree")
+    local _, srcY = at("tree:src")
+    test.click(panel.x + state().rects["tree:src"].x + 14, srcY)
+    test.match(state().open, { src = true }, "the opened node")
+    test.click(at("tree:lib"))
+    test.match(state().node, "lib", "the chosen node")
+
+    -- Right opens the chosen node, then chooses its first child; Left on a node without children chooses its parent, then closes it
+    test.key("Right")
+    test.match(state().open, { src = true, lib = true }, "the node opened with Right")
+    test.key("Right")
+    test.match(state().node, "util", "the first child, after Right on an open node")
+    test.key("Left")
+    test.match(state().node, "lib", "the parent")
+    test.key("Left")
+    test.match(state().open, { src = true }, "the node closed with Left")
+    test.key("Down")
+    test.match(state().node, "readme", "the node below the closed one")
   end,
 }
