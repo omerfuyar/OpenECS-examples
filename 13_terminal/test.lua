@@ -31,6 +31,24 @@ return {
     test.key("Ctrl+=")
     test.match(state().size, 18, "the larger font")
     test.match(state().columns < columns, true, "fewer columns")
+
+    -- a line that no longer fits wraps onto the next row instead of losing its end, and joins again when it fits
+    local long = string.rep("wrap me ", 12) .. "end"
+    test.text("echo " .. long)
+    test.key("Return")
+
+    for _ = 1, 6 do
+      test.key("Ctrl+=")
+    end
+
+    test.match(state().columns < #long, true, "a row narrower than the line")
+    test.match(state().screen:find(long, 1, true) ~= nil, true, "the line, wrapped")
+
+    for _ = 1, 6 do
+      test.key("Ctrl+-")
+    end
+
+    test.match(state().screen:find(long, 1, true) ~= nil, true, "the line, joined again")
     test.key("Ctrl+-")
     test.key("Ctrl+-")
     test.match(state().size, 14, "the smaller font")

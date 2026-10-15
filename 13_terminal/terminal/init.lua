@@ -70,7 +70,7 @@ ecs.panel.registerType({
   end,
 
   draw = function(terminal, surface)
-    -- the grid takes as many cells as fit the panel; resizing keeps the cells that still fit
+    -- the grid takes as many cells as fit the panel; resizing wraps its lines again at the new width
     local columns, rows = textgrid.fit(surface.width / surface.scale, surface.height / surface.scale, terminal.size)
     terminal.grid:resize(math.max(columns, 1), math.max(rows, 1))
 
@@ -109,8 +109,17 @@ ecs.panel.registerType({
       cells[column + 1], styles[column + 1] = terminal.grid:get(column, row - 1)
     end
 
-    local columns = terminal.grid:size()
-    return { output = terminal.output, cells = cells, styles = styles, size = terminal.size, columns = columns }
+    -- and the text of every row, one after another, for the test to find lines that wrap
+    local columns, rows = terminal.grid:size()
+    local screen = {}
+
+    for row = 0, rows - 1 do
+      for column = 0, columns - 1 do
+        screen[#screen + 1] = terminal.grid:get(column, row)
+      end
+    end
+
+    return { output = terminal.output, cells = cells, styles = styles, size = terminal.size, columns = columns, screen = table.concat(screen) }
   end,
 
   destroy = function(terminal)
