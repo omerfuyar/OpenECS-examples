@@ -24,8 +24,10 @@ static const char *const BUILD_TYPE_STRINGS[] = {"Debug", "Release", "RelWithDeb
 static struct
 {
     BuildType type;
-    const char *output; // OpenECS's build folder, such as ../build/Debug/
-} CONFIG = {BuildType_Debug, NULL};
+    const char *output;   // OpenECS's build folder, such as ../build/Debug/
+    const char *compiler; // OpenECS's compiler, such as gcc, or x86_64-w64-mingw32-clang for Windows
+    bool windows;         // the compiler compiles for Windows
+} CONFIG = {BuildType_Debug, NULL, "gcc", false};
 
 #pragma endregion Setup
 
@@ -37,9 +39,25 @@ static void BuildExample(const char *path, const char *name);
 
 #pragma endregion Declarations
 
+/// @brief The compiler that the flags name, or gcc.
+static const char *CompilerArgument(int argc, char **argv)
+{
+    for (int i = 1; i + 1 < argc; i++)
+    {
+        if (!strcmp(argv[i], "-c") || !strcmp(argv[i], "--compiler"))
+        {
+            return argv[i + 1];
+        }
+    }
+
+    return CONFIG.compiler;
+}
+
 int main(int argc, char **argv)
 {
-    SHU_CompilerTryConfigure("gcc");
+    CONFIG.compiler = CompilerArgument(argc, argv);
+    SHU_CompilerTryConfigure(CONFIG.compiler);
+    CONFIG.windows = SHU_CompilerGetTarget() == SHUM_PLATFORM_WINDOWS;
     SetupConfiguration(argc, argv);
 
     ForEachFolder("./", true, BuildExample);
@@ -53,6 +71,7 @@ static void PrintUsageAndExit(int status)
            "Flags:\n"
            "  -o, --output FOLDER  OpenECS's build folder, named from this folder, such as ../build/Debug/\n"
            "  -b, --build TYPE     Build type: debug (the default), release, relwithdebinfo or minsizerel\n"
+           "  -c, --compiler CC    OpenECS's compiler: gcc (the default), clang, or one for Windows, such as x86_64-w64-mingw32-clang\n"
            "  -h, --help           Show this help\n");
     exit(status);
 }
@@ -91,6 +110,11 @@ static void SetupConfiguration(int argc, char **argv)
         {
             CONFIG.output = i + 1 < argc ? argv[++i] : NULL;
         }
+        else if (!strcmp(flag, "-c") || !strcmp(flag, "--compiler"))
+        {
+            // main configured the compiler already
+            i++;
+        }
         else if (!strcmp(flag, "-h") || !strcmp(flag, "--help"))
         {
             PrintUsageAndExit(0);
@@ -106,11 +130,13 @@ static void SetupConfiguration(int argc, char **argv)
         Refuse("The output folder is missing, or does not end with /", CONFIG.output == NULL ? "" : CONFIG.output);
     }
 
-    char *cache = SHU_UtilFormat(".shu/%s/", BUILD_TYPE_STRINGS[CONFIG.type]);
+    // a build for another system has a cache of its own, as OpenECS's build has a folder of its own
+    u8 target = SHU_CompilerGetTarget();
+    char *cache = SHU_UtilFormat(".shu/%s%s%s/", BUILD_TYPE_STRINGS[CONFIG.type], SHUM_PLATFORM_IS_HOST(target) ? "" : "-", SHUM_PLATFORM_IS_HOST(target) ? "" : SHUM_PLATFORM_GET_STRING(target));
     SHU_CacheConfigure(cache);
 }
 
-// the examples' plugins get OpenECS's warnings, and in Debug its static analyzer and sanitizers, as OpenECS's own code does
+// the examples' plugins get OpenECS's warnings, and in Debug gcc's static analyzer and the sanitizers, as OpenECS's own code does, except where MinGW has no sanitizers
 static void SetBuildFlags(void)
 {
     SHU_CompilerClearFlags();
@@ -119,7 +145,18 @@ static void SetBuildFlags(void)
     switch (CONFIG.type)
     {
     case BuildType_Debug:
-        SHU_CompilerAddFlags(SHUM_FLAGS_WARNING_MID " -fanalyzer -fsanitize=address,undefined -fno-omit-frame-pointer" SHUM_FLAGS_DEBUG SHUM_FLAGS_OPTIMIZATION_DEBUG);
+        SHU_CompilerAddFlags(SHUM_FLAGS_WARNING_MID SHUM_FLAGS_DEBUG SHUM_FLAGS_OPTIMIZATION_DEBUG);
+
+        if (SHU_CompilerGetIdentifier() == SHUM_COMPILER_GCC)
+        {
+            SHU_CompilerAddFlags(" -fanalyzer");
+        }
+
+        if (!CONFIG.windows)
+        {
+            SHU_CompilerAddFlags(" -fsanitize=address,undefined -fno-omit-frame-pointer");
+        }
+
         SHU_CompilerAddDefinitions("DEBUG", NULL, "SDL_ASSERT_LEVEL", "2");
         break;
     case BuildType_Release:
@@ -194,6 +231,16 @@ static void BuildPlugin(const char *path, const char *name)
     SHU_ModuleAddSourceFile("./");
     SHU_ModuleAddIncludeDirectory(include);
     SHU_ModuleAddIncludeDirectory(definitions);
+
+    // a DLL calls OpenECS and SDL through their import libraries, in OpenECS's lib/ (OpenECS DESIGN 17.2); elsewhere the calls are resolved when it is loaded
+    if (CONFIG.windows)
+    {
+        SHU_ModuleAddLibraryDirectory(SHU_UtilFormat("%slib/", CONFIG.output));
+        SHU_ModuleLinkLibrary("OpenECS");
+        SHU_ModuleLinkLibrary("SDL3_ttf");
+        SHU_ModuleLinkLibrary("SDL3");
+    }
+
     SHU_ModuleCompile(output, SHUModuleType_LibraryDynamic);
 }
 
