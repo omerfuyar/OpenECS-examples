@@ -1,6 +1,6 @@
 // The smallest native plugin: one panel type that fills itself with one colour. 1_hello does the same in Lua.
 
-#include "OpenECS.h" // the only header a plugin includes; it declares everything the core gives plugins
+#include "OpenECS.h" // the only header a plugin includes from core; it declares everything the core gives plugins
 
 /// @brief The plugin, which the functions that log need. The core gives it to ECSPlugin_Init.
 static ECSPlugin PLUGIN = nullptr;
