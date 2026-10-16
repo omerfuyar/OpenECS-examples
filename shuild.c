@@ -32,9 +32,6 @@ static struct
 
 #pragma region Declarations
 
-/// @brief Runs a shell command, and stops the build if it fails.
-#define RunCheck(cmd, ...) SHU_Assert(!SHU_UtilRun(cmd, ##__VA_ARGS__), "Running " SHUM_COLOR_RED("'%s'") " failed", cmd)
-
 static void SetupConfiguration(int argc, char **argv);
 static void ForEachFolder(const char *path, bool numbered, void (*function)(const char *path, const char *name));
 static void BuildExample(const char *path, const char *name);
@@ -46,10 +43,6 @@ int main(int argc, char **argv)
     SHU_CompilerTryConfigure("gcc");
     SetupConfiguration(argc, argv);
 
-    // the copies keep their files' times, and the plugins are built from these folders into the copies, so a second build compiles only what changed
-    SHUI_String folder;
-    SHUI_SFormat(&folder, "%sbin/examples/", CONFIG.output);
-    RunCheck("mkdir -p %s && cp -rp [0-9]* %s", folder.data, folder.data);
     ForEachFolder("./", true, BuildExample);
     return 0;
 }
@@ -211,10 +204,14 @@ static void BuildPlugin(const char *path, const char *name)
     SHU_ModuleCompile(output.data, SHUModuleType_LibraryDynamic);
 }
 
-/// @brief Builds the plugin folders of an example.
+/// @brief Copies an example's folder whole into bin/examples/, and builds its plugin folders into the copy.
+/// Shuild leaves a copied file that has not changed as is, and the plugins are built from the example's folders, so a second build compiles only what changed.
 static void BuildExample(const char *path, const char *name)
 {
     SHUI_String root;
+    SHUI_String copy;
     SHUI_SFormat(&root, "%s%s/", path, name);
+    SHUI_SFormat(&copy, "%sbin/examples/%s/", CONFIG.output, name);
+    SHU_UtilCopyFile(root.data, copy.data);
     ForEachFolder(root.data, false, BuildPlugin);
 }
