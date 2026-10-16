@@ -6,6 +6,7 @@ return {
   name = "state",
   version = "0.1.0",
   app = { id = "openecs.example.state", name = "State" },
+  hint = "Click to place dots, then quit and start again: the tool's last session brings them back",
   depends = { marks = "0.1" },
   pluginsDir = ".",
   workspaces = {

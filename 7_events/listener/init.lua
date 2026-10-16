@@ -6,8 +6,30 @@ local listeners = {} -- every open listener, by its panel
 local opened = 0
 
 local function show(listener)
-  listener.panel.title = ("Ticks %d, panels %d"):format(listener.ticks, opened)
+  listener.panel.title = ("Ticks %d, panels %d%s"):format(listener.ticks, opened, listener.greeted and ", greeted" or "")
 end
+
+-- an event's value is data, and handles and bytes too: this one names a panel by its handle, carries bytes with a zero among them,
+-- and a handle of this plugin's own type, which stands for a Lua value
+ecs.event.declare("opened", "A listener opened: its panel, a mark of two bytes, and a note")
+ecs.handle.registerType("note")
+
+-- a note's text, which is its value; as a method of the type, Lua writes note:text()
+assert(ecs.service.register({
+  text = { sig = "string(handle<listener.note>)", doc = "Gives a note's text", fn = function(note) return ecs.handle.value(note, "listener.note") end },
+}))
+ecs.handle.addMethod("note", "text", "text")
+
+ecs.event.subscribe("listener.opened", function(_, value)
+  local listener = listeners[value.panel]
+
+  -- the handle comes back as the same handle, and the bytes as the same string; a handle in an event's value lives until the event is delivered,
+  -- even when nothing else keeps it, so the note's value is still there
+  if listener and value.mark == "\0\255" and value.note:text() == "hello" then
+    listener.greeted = true
+    show(listener)
+  end
+end)
 
 -- subscribe after the plugin that declares the event has loaded; the subscription lasts until it is cancelled
 ecs.event.subscribe("ticker.tick", function(_, ticks)
@@ -30,6 +52,10 @@ ecs.panel.registerType({
   create = function(panel)
     local listener = { panel = panel, ticks = 0 }
     listeners[panel] = listener
+    ecs.event.emit("listener.opened", { panel = panel, mark = "\0\255", note = ecs.handle.new("listener.note", "hello") })
+
+    -- nothing but the event keeps the note now, and a collection before the delivery does not take it
+    collectgarbage()
     return listener
   end,
 

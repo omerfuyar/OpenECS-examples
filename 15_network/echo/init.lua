@@ -15,6 +15,22 @@ local accepted -- the server's end of the connection, once the client is accepte
 local udpServer = net.udp(PORT) -- UDP ports are apart from TCP ports, so the same number serves both
 local udpClient = net.udp(0)    -- port 0: any free port
 local log = { server and "Listening on port " .. PORT or "Cannot listen on port " .. PORT }
+
+-- connectTLS starts a TLS connection: its status is 0 until the handshake is done, and the server's certificate is checked against the system's trusted ones
+-- this one goes to a plain server on the next port, which answers in plain text, so its handshake fails and its status becomes -1
+local plain = net.listen(PORT + 1)
+local secure = net.connectTLS("127.0.0.1", PORT + 1)
+local plainClient
+local tls = 0 -- the TLS connection's status, saved for the test
+
+-- listenTLS serves TLS with a certificate and its key; this pair was made for this example, for localhost, and is not secret
+-- the certificate is nobody's trusted one, so trust adds it to the client's; the server sends back in capitals what the client sends
+local secureServer = net.listenTLS(PORT + 2, ecs.plugin.folder .. "certificate.pem", ecs.plugin.folder .. "key.pem")
+net.trust(ecs.plugin.folder .. "certificate.pem")
+local secureClient = net.connectTLS("localhost", PORT + 2)
+local secureAccepted
+local secureSent = false
+local secureAnswer = "" -- what came back over TLS, saved for the test
 local panels = {} -- the open panels, drawn again when the log changes
 
 local function add(line)
@@ -28,18 +44,43 @@ end
 -- every 50 ms: accept the client, answer what the server got, and log what the client got
 local timer = ecs.timer.start(0.05, true, function()
   if server and not accepted then
-    accepted = net.accept(server)
+    accepted = server:accept()
   end
 
-  if accepted then
-    local received = net.receive(accepted, 1024)
+  plainClient = plainClient or (plain and plain:accept())
+
+  if plainClient and plainClient:receive(1024) ~= "" then
+    plainClient:send("not TLS\n")
+  end
+
+  tls = secure:status()
+
+  secureAccepted = secureAccepted or (secureServer and secureServer:accept())
+
+  if secureAccepted then
+    local received = secureAccepted:receive(1024)
 
     if received ~= "" then
-      net.send(accepted, received:upper())
+      secureAccepted:send(received:upper())
     end
   end
 
-  local answer = net.receive(client, 1024)
+  -- the client sends once its handshake is done, which needs the server's side to move on too
+  if not secureSent and secureClient:status() == 1 then
+    secureSent = secureClient:send("secret")
+  end
+
+  secureAnswer = secureAnswer .. secureClient:receive(1024)
+
+  if accepted then
+    local received = accepted:receive(1024)
+
+    if received ~= "" then
+      accepted:send(received:upper())
+    end
+  end
+
+  local answer = client:receive(1024)
 
   if answer ~= "" then
     add("< " .. answer)
@@ -47,15 +88,15 @@ local timer = ecs.timer.start(0.05, true, function()
 
   -- a datagram comes with the address and port it came from, where the answer goes
   if udpServer then
-    local datagram, host, port = net.receiveFrom(udpServer)
+    local datagram, host, port = udpServer:receiveFrom()
 
     if datagram ~= "" then
-      net.sendTo(udpServer, host, port, datagram:upper())
+      udpServer:sendTo(host, port, datagram:upper())
     end
   end
 
   if udpClient then
-    local datagram = net.receiveFrom(udpClient)
+    local datagram = udpClient:receiveFrom()
 
     if datagram ~= "" then
       add("< udp " .. datagram)
@@ -75,7 +116,7 @@ ecs.panel.registerType({
 
   draw = function(echo, surface)
     surface:fill(0, 0, surface.width, surface.height, "background")
-    local _, height = draw.measure(draw.font("ui"), "Ag", SIZE)
+    local _, height = draw.font("ui"):measure("Ag", SIZE)
     local lines = math.max(1, math.floor(surface.height / surface.scale / height) - 2)
 
     -- the last lines of the log, then the line being typed
@@ -94,8 +135,8 @@ ecs.panel.registerType({
 
       -- sendTo queues a datagram, which may be lost on the way; send queues data and gives false while the client is not connected yet
       if datagram then
-        add(udpClient and net.sendTo(udpClient, "127.0.0.1", PORT, datagram) and "> udp " .. datagram or "Cannot send by UDP")
-      elseif net.status(client) == 1 and net.send(client, echo.line) then
+        add(udpClient and udpClient:sendTo("127.0.0.1", PORT, datagram) and "> udp " .. datagram or "Cannot send by UDP")
+      elseif client:status() == 1 and client:send(echo.line) then
         add("> " .. echo.line)
       else
         add("Not connected yet")
@@ -118,7 +159,7 @@ ecs.panel.registerType({
 ecs.plugin.register({
   stateVersion = 1,
   saveState = function()
-    return { log = log }
+    return { log = log, tls = tls, secure = secureAnswer, connected = client:status() == 1 }
   end,
   restoreState = function() end,
   destroy = function()

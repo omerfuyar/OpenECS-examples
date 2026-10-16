@@ -76,7 +76,7 @@ typedef struct SketchClock
 typedef struct SketchExportJob
 {
     char *path;
-    u32 panelId;
+    u32 panelID;
     i32 width;
     i32 height;
     SketchStroke *strokes;
@@ -481,7 +481,7 @@ static void SketchEmitStroke(SketchCanvas *canvas)
 
     if (ECSValue_TableSetField(value, "panel", &field) == SHUResult_Ok)
     {
-        ECSValue_SetInteger(field, ECSPanel_GetId(canvas->panel));
+        ECSValue_SetInteger(field, ECSPanel_GetID(canvas->panel));
     }
 
     if (ECSValue_TableSetField(value, "strokes", &field) == SHUResult_Ok)
@@ -849,7 +849,7 @@ static void SketchExportWork(void *data)
 
     if (message != nullptr)
     {
-        snprintf(message, 256, "Canvas %u is painted; writing %s.", job->panelId, job->path);
+        snprintf(message, 256, "Canvas %u is painted; writing %s.", job->panelID, job->path);
 
         if (ECS_RunOnMainThread(SketchExportProgress, message))
         {
@@ -865,7 +865,7 @@ static void SketchExportWork(void *data)
 static void SketchExportDone(void *data)
 {
     SketchExportJob *job = data;
-    ECSPanel panel = ECSLayout_FindPanel(job->panelId);
+    ECSPanel panel = ECSLayout_FindPanel(job->panelID);
     ECS_Log(SKETCH.plugin, job->written ? ECSLogLevel_Info : ECSLogLevel_Warning, "%s %s %s.", panel == nullptr ? "A closed canvas" : ECSPanel_GetTitle(panel), job->written ? "was exported to" : "could not be exported to", job->path);
     SketchExportFree(job);
 }
@@ -873,8 +873,8 @@ static void SketchExportDone(void *data)
 /// @brief Starts the export of a canvas to the file the user chose.
 static void SketchExportChosen(void *data, const char *const *files, usz count)
 {
-    u32 panelId = (u32)(uintptr_t)data;
-    ECSPanel panel = ECSLayout_FindPanel(panelId);
+    u32 panelID = (u32)(uintptr_t)data;
+    ECSPanel panel = ECSLayout_FindPanel(panelID);
     SketchCanvas *canvas = panel == nullptr || count == 0 ? nullptr : SketchFindCanvas(panel);
 
     if (files == nullptr || canvas == nullptr || canvas->width <= 0)
@@ -892,7 +892,7 @@ static void SketchExportChosen(void *data, const char *const *files, usz count)
         return;
     }
 
-    job->panelId = panelId;
+    job->panelID = panelID;
     job->width = canvas->width;
     job->height = canvas->height;
 
@@ -960,7 +960,7 @@ static void SketchExport(ECSPanel panel)
         .filterCount = 1,
         .location = "canvas.ppm",
         .Done = SketchExportChosen,
-        .data = (void *)(uintptr_t)ECSPanel_GetId(panel),
+        .data = (void *)(uintptr_t)ECSPanel_GetID(panel),
     };
 
     if (SketchFindCanvas(panel) != nullptr && ECSDialog_Show(SKETCH.plugin, &desc))
@@ -1126,7 +1126,7 @@ static i32 SketchStats(ECSValue *retStats)
         {"strokes", SKETCH.total},
         {"saves", SKETCH.saves},
         {"settings", own},
-        {"focus", focus == nullptr ? 0 : ECSPanel_GetId(focus)},
+        {"focus", focus == nullptr ? 0 : ECSPanel_GetID(focus)},
         {"workspace", (i64)ECSWorkspace_GetCurrent()},
     };
 

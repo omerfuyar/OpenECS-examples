@@ -1,5 +1,5 @@
 -- Browses folders and shows the start of a file. Lua plugins have Lua's standard libraries: io reads and writes files, and os renames and removes them.
--- The fs standard plugin does only what those cannot: it lists folders, tells what a path is, makes folders and copies files.
+-- The fs standard plugin does only what those cannot: it lists folders, tells what a path is, makes folders, copies files and watches folders.
 
 local ecs = require("ecs")
 local fs = require("fs")
@@ -32,15 +32,26 @@ local function read(browser)
   browser.entries = {}
 
   for _, entry in ipairs(fs.list(browser.folder, "") or {}) do
-    entry.label = entry.type == "folder" and entry.name .. "/" or entry.name
-    table.insert(browser.entries, entry.type == "folder" and 1 or #browser.entries + 1, entry)
+    local label = entry.type == "folder" and entry.name .. "/" or entry.name
+    table.insert(browser.entries, entry.type == "folder" and 1 or #browser.entries + 1, { name = entry.name, type = entry.type, size = entry.size, label = label })
   end
 end
 
 local function open(browser, folder)
+  if browser.watch ~= nil then
+    browser.watch:stop()
+  end
+
   browser.folder = folder
   browser.text = ""
   read(browser)
+
+  -- the list is read again when an entry of the folder is added, removed or changed
+  browser.watch = fs.watch(folder, function()
+    read(browser)
+    browser.panel:redraw()
+  end)
+
   browser.panel.title = folder:match("([^/]+)/$") or folder
   browser.panel:redraw()
 end
@@ -95,6 +106,10 @@ ecs.panel.registerType({
   end,
 
   destroy = function(browser)
+    if browser.watch ~= nil then
+      browser.watch:stop()
+    end
+
     ui.forget(browser.panel)
   end,
 
