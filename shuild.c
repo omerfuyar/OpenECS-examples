@@ -3,7 +3,6 @@
 // Each numbered folder is copied whole into bin/examples/, its sources and tests too, and the C files of each of its plugin folders are built into the copy.
 #define SHU_IMPLEMENTATION
 #define SHUC_ENABLE_INCREMENTAL
-#define SHUC_NO_RUN_LOG
 #include "shuild/shuild.h"
 
 #include <ctype.h>
@@ -107,9 +106,8 @@ static void SetupConfiguration(int argc, char **argv)
         Refuse("The output folder is missing, or does not end with /", CONFIG.output == NULL ? "" : CONFIG.output);
     }
 
-    SHUI_String cache;
-    SHUI_SFormat(&cache, ".shu/%s/", BUILD_TYPE_STRINGS[CONFIG.type]);
-    SHU_CacheConfigure(cache.data);
+    char *cache = SHU_UtilFormat(".shu/%s/", BUILD_TYPE_STRINGS[CONFIG.type]);
+    SHU_CacheConfigure(cache);
 }
 
 // the examples' plugins get OpenECS's warnings, and in Debug its static analyzer and sanitizers, as OpenECS's own code does
@@ -152,12 +150,11 @@ static void VisitFolder(const char *entry, SHUFileType type, void *data)
     const FolderVisit *visit = (const FolderVisit *)data;
 
     // the entry is the folder's path, with a separator at its end; the function gets its name alone
-    SHUI_String name;
-    SHUI_SFormat(&name, "%.*s", (int)(strlen(entry) - strlen(visit->path) - 1), entry + strlen(visit->path));
+    char *name = SHU_UtilFormat("%.*s", (int)(strlen(entry) - strlen(visit->path) - 1), entry + strlen(visit->path));
 
-    if (type == SHUFileType_Directory && (!visit->numbered || isdigit((unsigned char)name.data[0])))
+    if (type == SHUFileType_Directory && (!visit->numbered || isdigit((unsigned char)name[0])))
     {
-        visit->function(visit->path, name.data);
+        visit->function(visit->path, name);
     }
 }
 
@@ -176,11 +173,10 @@ static void FindCode(const char *path, SHUFileType type, void *data)
 /// @brief Compiles the C files of a plugin folder of an example into its native library, in the folder's copy in bin/examples/. Does nothing if the folder has no C file.
 static void BuildPlugin(const char *path, const char *name)
 {
-    SHUI_String root;
-    SHUI_SFormat(&root, "%s%s/", path, name);
+    char *root = SHU_UtilFormat("%s%s/", path, name);
 
     bool code = false;
-    SHU_UtilListDirectory(root.data, false, FindCode, &code);
+    SHU_UtilListDirectory(root, false, FindCode, &code);
 
     if (!code)
     {
@@ -189,29 +185,24 @@ static void BuildPlugin(const char *path, const char *name)
 
     // the plugin sees only OpenECS's plugin interface and SDL, from the build's include/ folder, and the standard plugins' headers, such as ui.h,
     // from its definitions/ folder, both named from the plugin's folder (OpenECS DESIGN 17.6)
-    SHUI_String include;
-    SHUI_String definitions;
-    SHUI_String output;
-    SHUI_SFormat(&include, "../../%sinclude/", CONFIG.output);
-    SHUI_SFormat(&definitions, "../../%sdefinitions/", CONFIG.output);
-    SHUI_SFormat(&output, "%sbin/examples/%s", CONFIG.output, root.data);
+    char *include = SHU_UtilFormat("../../%sinclude/", CONFIG.output);
+    char *definitions = SHU_UtilFormat("../../%sdefinitions/", CONFIG.output);
+    char *output = SHU_UtilFormat("%sbin/examples/%s", CONFIG.output, root);
 
-    SHU_ModuleBegin(name, root.data);
+    SHU_ModuleBegin(name, root);
     SetBuildFlags();
     SHU_ModuleAddSourceFile("./");
-    SHU_ModuleAddIncludeDirectory(include.data);
-    SHU_ModuleAddIncludeDirectory(definitions.data);
-    SHU_ModuleCompile(output.data, SHUModuleType_LibraryDynamic);
+    SHU_ModuleAddIncludeDirectory(include);
+    SHU_ModuleAddIncludeDirectory(definitions);
+    SHU_ModuleCompile(output, SHUModuleType_LibraryDynamic);
 }
 
 /// @brief Copies an example's folder whole into bin/examples/, and builds its plugin folders into the copy.
 /// Shuild leaves a copied file that has not changed as is, and the plugins are built from the example's folders, so a second build compiles only what changed.
 static void BuildExample(const char *path, const char *name)
 {
-    SHUI_String root;
-    SHUI_String copy;
-    SHUI_SFormat(&root, "%s%s/", path, name);
-    SHUI_SFormat(&copy, "%sbin/examples/%s/", CONFIG.output, name);
-    SHU_UtilCopyFile(root.data, copy.data);
-    ForEachFolder(root.data, false, BuildPlugin);
+    char *root = SHU_UtilFormat("%s%s/", path, name);
+    char *copy = SHU_UtilFormat("%sbin/examples/%s/", CONFIG.output, name);
+    SHU_UtilCopyFile(root, copy);
+    ForEachFolder(root, false, BuildPlugin);
 }
