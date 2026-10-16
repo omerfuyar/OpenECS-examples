@@ -1,4 +1,5 @@
--- each GPU panel, the one in Lua and the one in C, shows its four tiles on the background, and keeps showing them after it pops out into a window of its own
+-- each GPU panel, the one in Lua and the one in C, shows its four tiles on the background, and keeps showing them after it pops out into a window of its own;
+-- the panel in Lua also shows its title, which gpu draws as text
 
 return {
   preset = "preset.lua",
@@ -21,6 +22,16 @@ return {
     end
 
     check(1, "the panel in Lua")
+
+    -- the title's letters cover part of a line through them, and the background shows between them
+    local panel = test.rect(1)
+    local letters, gaps = 0, 0
+
+    for x = panel.x + 8, panel.x + 100 do
+      if test.pixel(x, panel.y + 16) == "#1B2A4A" then gaps = gaps + 1 else letters = letters + 1 end
+    end
+
+    assert(letters > 10 and gaps > 10, ("the title of the panel in Lua: %d pixels of letters and %d of background"):format(letters, gaps))
 
     -- the same texture shows in the pop-out window, whose renderer is another one on the same device; the other tab shows in the main window
     test.call("ecs.layout.popOut")
