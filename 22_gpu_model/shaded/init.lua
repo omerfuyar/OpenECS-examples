@@ -30,7 +30,8 @@ end
 local vertexBuffer = gpu.buffer("vertex", table.concat(vertices))
 local indexBuffer = gpu.buffer("index", model:indices(1, 1))
 
--- the shaders, compiled from torus.vert and torus.frag in the shaders folder to SPIR-V, which Vulkan's drivers take
+-- the shaders, compiled from torus.vert and torus.frag in the shaders folder to SPIR-V, which Vulkan's drivers take,
+-- and from torus.vert.hlsl and torus.frag.hlsl to DXIL, which Direct3D 12's take; gpu uses the one the GPU's driver takes
 local function read(name)
   local file = assert(io.open(ecs.plugin.folder .. "shaders/" .. name, "rb"))
   local bytes = file:read("a")
@@ -39,8 +40,8 @@ local function read(name)
 end
 
 local pipeline = gpu.pipeline({
-  vertex = gpu.shader({ stage = "vertex", spirv = read("torus.vert.spv"), uniforms = 1 }),
-  fragment = gpu.shader({ stage = "fragment", spirv = read("torus.frag.spv"), uniforms = 1 }),
+  vertex = gpu.shader({ stage = "vertex", spirv = read("torus.vert.spv"), dxil = read("torus.vert.dxil"), uniforms = 1 }),
+  fragment = gpu.shader({ stage = "fragment", spirv = read("torus.frag.spv"), dxil = read("torus.frag.dxil"), uniforms = 1 }),
   attributes = { "float3", "float3" },
   depth = true,
 })
