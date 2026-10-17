@@ -2,9 +2,11 @@
 -- as a vertex buffer and an index buffer, and each frame the gpu standard plugin draws them with a pipeline: a vertex shader that moves and sees
 -- each vertex, and a fragment shader that lights each pixel. A depth texture keeps the near side in front, so nothing is sorted in Lua.
 -- The panel also draws shapes, before and after the model: a shadow under it, as a mesh, and a line at the bottom.
+-- A label follows a point of the ring, drawn with shaders of its own from the glyphs that gpu.glyphs gives, at the point's depth, so the ring hides it as it passes behind.
 -- Drag to turn the model, and turn the wheel to come nearer or go back; let go, and it turns on by itself.
 
 local ecs = require("ecs")
+local draw = require("draw")
 local gltf = require("gltf")
 local gpu = require("gpu")
 
@@ -31,7 +33,8 @@ local vertexBuffer = gpu.buffer("vertex", table.concat(vertices))
 local indexBuffer = gpu.buffer("index", model:indices(1, 1))
 
 -- the shaders, compiled from torus.vert and torus.frag in the shaders folder to SPIR-V, which Vulkan's drivers take,
--- and from torus.vert.hlsl and torus.frag.hlsl to DXIL, which Direct3D 12's take; gpu uses the one the GPU's driver takes
+-- and from torus.vert.hlsl and torus.frag.hlsl to DXIL, which Direct3D 12's take; gpu uses the one the GPU's driver takes;
+-- the label's, from label.vert.hlsl and label.frag.hlsl to both, with DXC
 local function read(name)
   local file = assert(io.open(ecs.plugin.folder .. "shaders/" .. name, "rb"))
   local bytes = file:read("a")
@@ -45,6 +48,37 @@ local pipeline = gpu.pipeline({
   attributes = { "float3", "float3" },
   depth = true,
 })
+
+-- the label: each vertex of a glyph is x and y in pixels and u and v in a texture of glyphs, four floats, and blends by the glyph's alpha
+local labelPipeline = gpu.pipeline({
+  vertex = gpu.shader({ stage = "vertex", spirv = read("label.vert.spv"), dxil = read("label.vert.dxil"), uniforms = 1 }),
+  fragment = gpu.shader({ stage = "fragment", spirv = read("label.frag.spv"), dxil = read("label.frag.dxil"), uniforms = 1, samplers = 1 }),
+  attributes = { "float4" },
+  depth = true,
+  blend = "alpha",
+})
+
+local LABEL, LABEL_SIZE = "glTF torus", 18
+local LABEL_POINT = { 1.6, 0, 0, 1 } -- just outside the ring, which is 1.42 wide from its centre
+local font = draw.font("ui")
+
+-- the label's glyphs at a scale, as buffers on the GPU; made again when the scale changes, such as on another display
+local label = nil
+
+local function labelAt(scale)
+  if label and label.scale == scale then
+    return label
+  end
+
+  local glyphs = gpu.glyphs(font, LABEL, LABEL_SIZE * scale)
+  label = { scale = scale, height = glyphs and glyphs.height or 0, parts = {} }
+
+  for _, part in ipairs(glyphs and glyphs.parts or {}) do
+    label.parts[#label.parts + 1] = { atlas = part.atlas, count = part.count, vertices = gpu.buffer("vertex", part.vertices), indices = gpu.buffer("index", part.indices) }
+  end
+
+  return label
+end
 
 -- the material's colour, the way the light goes, from the top left and from in front, and the camera's place, as the fragment shader's uniforms
 local BASE = info.materials[primitive.material].color
@@ -120,7 +154,7 @@ ecs.panel.registerType({
   continuous = true,
 
   create = function()
-    return { turn = 0.6, tilt = 0.3, distance = 5.5, drawn = 0, dragging = nil }
+    return { turn = 0.6, tilt = 0.3, distance = 5.5, drawn = 0, dragging = nil, labelParts = 0 }
   end,
 
   draw = function(view, surface, seconds)
@@ -146,6 +180,25 @@ ecs.panel.registerType({
         vertexUniforms = pack(modelMatrix, viewProjection),
         fragmentUniforms = pack({ BASE[1], BASE[2], BASE[3], 1 }, { 0.45, -0.65, -0.6, 0 }, { 0, 0, view.distance, 1 }),
       })
+
+      -- the label starts a little to the right of its point, with its line's middle at the point's height
+      if labelPipeline then
+        local glyphs = labelAt(surface.scale)
+        local screen = { surface.width, surface.height, 10 * surface.scale, -glyphs.height / 2 }
+
+        for _, part in ipairs(glyphs.parts) do
+          gpu.draw(surface, labelPipeline, {
+            vertices = part.vertices,
+            indices = part.indices,
+            count = part.count,
+            atlas = part.atlas,
+            vertexUniforms = pack(modelMatrix, viewProjection, LABEL_POINT, screen),
+            fragmentUniforms = pack({ 1, 1, 1, 1 }),
+          })
+        end
+
+        view.labelParts = #glyphs.parts
+      end
     end
 
     -- shapes drawn after the model go over it
@@ -169,6 +222,6 @@ ecs.panel.registerType({
 
   -- what the test checks: the model's size, how many frames it drew, and where the camera is
   saveState = function(view)
-    return { vertices = VERTICES, triangles = TRIANGLES, drawn = view.drawn, turn = view.turn, distance = view.distance, pipeline = pipeline ~= nil }
+    return { vertices = VERTICES, triangles = TRIANGLES, drawn = view.drawn, turn = view.turn, distance = view.distance, pipeline = pipeline ~= nil, labelParts = view.labelParts }
   end,
 })
