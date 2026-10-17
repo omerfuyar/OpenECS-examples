@@ -13,6 +13,7 @@ return {
     test.match({ state().vertices, state().triangles }, { 561, 1024 }, "the torus")
     assert(state().drawn > 1, "frames drawn: " .. tostring(state().drawn))
     test.match(state().pipeline, true, "the pipeline, from the shaders")
+    assert(state().labelParts >= 1, "the label's parts: " .. tostring(state().labelParts))
 
     -- a pixel's colour, as red, green and blue
     local function rgb(x, y)
