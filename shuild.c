@@ -79,7 +79,7 @@ static void PrintUsageAndExit(int status)
 /// @brief Stops the build with what is wrong, the argument, and the usage.
 static void Refuse(const char *what, const char *argument)
 {
-    SHU_LogError(0, "%s: " SHUM_COLOR_RED("'%s'"), what, argument);
+    SHU_UtilFail(0, "%s: " SHUM_LOG_VALUE("%s"), what, argument);
     PrintUsageAndExit(1);
 }
 
@@ -224,7 +224,7 @@ static void BuildPlugin(const char *path, const char *name)
     // from its definitions/ folder, both named from the plugin's folder (OpenECS DESIGN 17.6)
     char *include = SHU_UtilFormat("../../%sinclude/", CONFIG.output);
     char *definitions = SHU_UtilFormat("../../%sdefinitions/", CONFIG.output);
-    char *output = SHU_UtilFormat("%sbin/examples/%s", CONFIG.output, root);
+    char *output = SHU_UtilFormat("%sbin/examples/%s", CONFIG.output, strncmp(root, "./", 2) ? root : root + 2);
 
     SHU_ModuleBegin(name, root);
     SetBuildFlags();
