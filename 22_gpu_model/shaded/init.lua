@@ -9,6 +9,7 @@ local ecs = require("ecs")
 local draw = require("draw")
 local gltf = require("gltf")
 local gpu = require("gpu")
+local cglm = require("cglm")
 
 local BACKGROUND = "#101418"
 
@@ -59,7 +60,7 @@ local labelPipeline = gpu.pipeline({
 })
 
 local LABEL, LABEL_SIZE = "glTF torus", 18
-local LABEL_POINT = { 1.6, 0, 0, 1 } -- just outside the ring, which is 1.42 wide from its centre
+local LABEL_POINT = cglm.vec4(1.6, 0, 0, 1) -- just outside the ring, which is 1.42 wide from its centre
 local font = draw.font("ui")
 
 -- the label's glyphs at a scale, as buffers on the GPU; made again when the scale changes, such as on another display
@@ -83,54 +84,9 @@ end
 -- the material's colour, the way the light goes, from the top left and from in front, and the camera's place, as the fragment shader's uniforms
 local BASE = info.materials[primitive.material].color
 
--- 4 by 4 matrices, 16 floats column by column, as the shaders read them
-local function multiply(a, b)
-  local m = {}
-
-  for column = 0, 3 do
-    for row = 1, 4 do
-      local sum = 0
-
-      for k = 0, 3 do
-        sum = sum + a[k * 4 + row] * b[column * 4 + k + 1]
-      end
-
-      m[column * 4 + row] = sum
-    end
-  end
-
-  return m
-end
-
-local function rotation(axis, angle)
-  local c, s = math.cos(angle), math.sin(angle)
-
-  if axis == "x" then
-    return { 1, 0, 0, 0, 0, c, s, 0, 0, -s, c, 0, 0, 0, 0, 1 }
-  elseif axis == "y" then
-    return { c, 0, -s, 0, 0, 1, 0, 0, s, 0, c, 0, 0, 0, 0, 1 }
-  end
-
-  return { c, s, 0, 0, -s, c, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 }
-end
-
--- a perspective that sees down -z from the camera, with depth from 0, near, to 1, far, as SDL's GPU API takes it
-local function perspective(fov, aspect, near, far)
-  local f = 1 / math.tan(fov / 2)
-  return { f / aspect, 0, 0, 0, 0, f, 0, 0, 0, 0, far / (near - far), -1, 0, 0, near * far / (near - far), 0 }
-end
-
-local function pack(...)
-  local floats = {}
-
-  for _, matrix in ipairs({ ... }) do
-    for _, value in ipairs(matrix) do
-      floats[#floats + 1] = value
-    end
-  end
-
-  return string.pack("<" .. ("f"):rep(#floats), table.unpack(floats))
-end
+-- cglm's matrices are 16 floats column by column, as the shaders read them, and its vectors are floats too; both are strings,
+-- so the uniforms are the matrices and vectors joined together
+local X, Y, Z = cglm.vec3(1, 0, 0), cglm.vec3(0, 1, 0), cglm.vec3(0, 0, 1)
 
 -- the shadow under the model: a fan of triangles, dark in the middle and clear at its edge, which gpu's mesh blends
 local function shadow(x, y, width, height)
@@ -170,21 +126,22 @@ ecs.panel.registerType({
 
     -- the ring leans on its side, so it tumbles as it turns, then the drag's turn and tilt move it; the camera is in front of it, at its distance
     if pipeline and vertexBuffer and indexBuffer then
-      local modelMatrix = multiply(rotation("x", view.tilt), multiply(rotation("y", view.turn), rotation("z", math.rad(60))))
-      local camera = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, -view.distance, 1 }
-      local viewProjection = multiply(perspective(math.rad(45), width / height, 0.1, 50), camera)
+      local modelMatrix = cglm.mat4Mul(cglm.rotateMake(view.tilt, X), cglm.mat4Mul(cglm.rotateMake(view.turn, Y), cglm.rotateMake(math.rad(60), Z)))
+      local camera = cglm.translateMake(cglm.vec3(0, 0, -view.distance))
+      -- a perspective that sees down -z from the camera, with depth from 0, near, to 1, far, as SDL's GPU API takes it
+      local viewProjection = cglm.mat4Mul(cglm.perspective(math.rad(45), width / height, 0.1, 50), camera)
 
       gpu.draw(surface, pipeline, {
         vertices = vertexBuffer,
         indices = indexBuffer,
-        vertexUniforms = pack(modelMatrix, viewProjection),
-        fragmentUniforms = pack({ BASE[1], BASE[2], BASE[3], 1 }, { 0.45, -0.65, -0.6, 0 }, { 0, 0, view.distance, 1 }),
+        vertexUniforms = modelMatrix .. viewProjection,
+        fragmentUniforms = cglm.vec4(BASE[1], BASE[2], BASE[3], 1) .. cglm.vec4(0.45, -0.65, -0.6, 0) .. cglm.vec4(0, 0, view.distance, 1),
       })
 
       -- the label starts a little to the right of its point, with its line's middle at the point's height
       if labelPipeline then
         local glyphs = labelAt(surface.scale)
-        local screen = { surface.width, surface.height, 10 * surface.scale, -glyphs.height / 2 }
+        local screen = cglm.vec4(surface.width, surface.height, 10 * surface.scale, -glyphs.height / 2)
 
         for _, part in ipairs(glyphs.parts) do
           gpu.draw(surface, labelPipeline, {
@@ -192,8 +149,8 @@ ecs.panel.registerType({
             indices = part.indices,
             count = part.count,
             atlas = part.atlas,
-            vertexUniforms = pack(modelMatrix, viewProjection, LABEL_POINT, screen),
-            fragmentUniforms = pack({ 1, 1, 1, 1 }),
+            vertexUniforms = modelMatrix .. viewProjection .. LABEL_POINT .. screen,
+            fragmentUniforms = cglm.vec4(1, 1, 1, 1),
           })
         end
 
