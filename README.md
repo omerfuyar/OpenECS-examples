@@ -28,7 +28,10 @@ git clone --recursive https://github.com/omerfuyar/OpenECS.git
 cd OpenECS
 .github/scripts/build.sh D
 .github/scripts/test.sh build/Debug/bin/OpenECS
+.github/scripts/test-wayland.sh build/Debug/bin/OpenECS
 ```
+
+`test-wayland.sh` runs the tests on Wayland, in a headless sway, as OpenECS's README.md says.
 
 ## Releases
 

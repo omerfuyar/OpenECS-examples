@@ -1,5 +1,5 @@
 # Checks every change to dev and main: OpenECS's dev is checked out with its submodules, this repository's commit is put in its examples/ folder,
-# and the examples are built and their tests run. The examples are the tests of OpenECS and its standard plugins.
+# and the examples are built and their tests run, on SDL's offscreen driver and on Wayland. The examples are the tests of OpenECS and its standard plugins.
 name: Checks
 
 on:
@@ -48,6 +48,10 @@ jobs:
 
       - name: Run the examples' tests with the sanitizers
         run: .github/scripts/test.sh build/Debug/bin/OpenECS
+
+      # on Wayland, popups and pop-out windows are windows of their own, which the offscreen driver does not have
+      - name: Run the examples' tests on Wayland
+        run: .github/scripts/test-wayland.sh build/Debug/bin/OpenECS
 
       - name: Keep the build log
         if: failure()
