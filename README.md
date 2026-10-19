@@ -36,3 +36,5 @@ cd OpenECS
 ## Releases
 
 This repository is released with OpenECS and OpenECS-std, at the same time and with the same version. Each release has a description in `.github/release-notes/`.
+
+Each release also has the examples built for Linux and Windows, with OpenECS of the same version, in `examples/`. Unpack it into an OpenECS folder of that version, and run an example with `./OpenECS --fresh --preset examples/1_hello/preset.lua`.
