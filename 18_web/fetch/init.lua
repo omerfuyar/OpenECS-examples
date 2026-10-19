@@ -63,9 +63,16 @@ end
 local function poll()
   local status = socket.handle:status()
 
-  if status == 1 and not socket.open then
-    socket.open = true
-    add("Connected to " .. socket.url)
+  -- web works on a thread of its own, so the connection may open, and a message arrive, after its status is read; a message means it is open
+  local function opened()
+    if not socket.open then
+      socket.open = true
+      add("Connected to " .. socket.url)
+    end
+  end
+
+  if status == 1 then
+    opened()
   end
 
   while true do
@@ -75,6 +82,7 @@ local function poll()
       break
     end
 
+    opened()
     add(("Echo (%s): %s"):format(kind, message))
   end
 

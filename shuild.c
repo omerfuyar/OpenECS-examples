@@ -3,7 +3,6 @@
 // Each numbered folder is copied whole into bin/examples/, its sources and tests too, and the C files of each of its plugin folders are built into the copy.
 #define SHU_IMPLEMENTATION
 #define SHUC_ENABLE_INCREMENTAL
-#define SHUC_NO_RUN_LOG
 #include "shuild/shuild.h"
 
 #include <ctype.h>
@@ -25,8 +24,10 @@ static const char *const BUILD_TYPE_STRINGS[] = {"Debug", "Release", "RelWithDeb
 static struct
 {
     BuildType type;
-    const char *output; // OpenECS's build folder, such as ../build/Debug/
-} CONFIG = {BuildType_Debug, NULL};
+    const char *output;   // OpenECS's build folder, such as ../build/Debug/
+    const char *compiler; // OpenECS's compiler, such as gcc, or x86_64-w64-mingw32-clang for Windows
+    bool windows;         // the compiler compiles for Windows
+} CONFIG = {BuildType_Debug, NULL, "gcc", false};
 
 #pragma endregion Setup
 
@@ -38,9 +39,25 @@ static void BuildExample(const char *path, const char *name);
 
 #pragma endregion Declarations
 
+/// @brief The compiler that the flags name, or gcc.
+static const char *CompilerArgument(int argc, char **argv)
+{
+    for (int i = 1; i + 1 < argc; i++)
+    {
+        if (!strcmp(argv[i], "-c") || !strcmp(argv[i], "--compiler"))
+        {
+            return argv[i + 1];
+        }
+    }
+
+    return CONFIG.compiler;
+}
+
 int main(int argc, char **argv)
 {
-    SHU_CompilerTryConfigure("gcc");
+    CONFIG.compiler = CompilerArgument(argc, argv);
+    SHU_CompilerTryConfigure(CONFIG.compiler);
+    CONFIG.windows = SHU_CompilerGetTarget() == SHUM_PLATFORM_WINDOWS;
     SetupConfiguration(argc, argv);
 
     ForEachFolder("./", true, BuildExample);
@@ -54,6 +71,7 @@ static void PrintUsageAndExit(int status)
            "Flags:\n"
            "  -o, --output FOLDER  OpenECS's build folder, named from this folder, such as ../build/Debug/\n"
            "  -b, --build TYPE     Build type: debug (the default), release, relwithdebinfo or minsizerel\n"
+           "  -c, --compiler CC    OpenECS's compiler: gcc (the default), clang, or one for Windows, such as x86_64-w64-mingw32-clang\n"
            "  -h, --help           Show this help\n");
     exit(status);
 }
@@ -61,7 +79,7 @@ static void PrintUsageAndExit(int status)
 /// @brief Stops the build with what is wrong, the argument, and the usage.
 static void Refuse(const char *what, const char *argument)
 {
-    SHU_LogError(0, "%s: " SHUM_COLOR_RED("'%s'"), what, argument);
+    SHU_UtilFail(0, "%s: " SHUM_LOG_VALUE("%s"), what, argument);
     PrintUsageAndExit(1);
 }
 
@@ -92,6 +110,11 @@ static void SetupConfiguration(int argc, char **argv)
         {
             CONFIG.output = i + 1 < argc ? argv[++i] : NULL;
         }
+        else if (!strcmp(flag, "-c") || !strcmp(flag, "--compiler"))
+        {
+            // main configured the compiler already
+            i++;
+        }
         else if (!strcmp(flag, "-h") || !strcmp(flag, "--help"))
         {
             PrintUsageAndExit(0);
@@ -107,12 +130,13 @@ static void SetupConfiguration(int argc, char **argv)
         Refuse("The output folder is missing, or does not end with /", CONFIG.output == NULL ? "" : CONFIG.output);
     }
 
-    SHUI_String cache;
-    SHUI_SFormat(&cache, ".shu/%s/", BUILD_TYPE_STRINGS[CONFIG.type]);
-    SHU_CacheConfigure(cache.data);
+    // a build for another system has a cache of its own, as OpenECS's build has a folder of its own
+    u8 target = SHU_CompilerGetTarget();
+    char *cache = SHU_UtilFormat(".shu/%s%s%s/", BUILD_TYPE_STRINGS[CONFIG.type], SHUM_PLATFORM_IS_HOST(target) ? "" : "-", SHUM_PLATFORM_IS_HOST(target) ? "" : SHUM_PLATFORM_GET_STRING(target));
+    SHU_CacheConfigure(cache);
 }
 
-// the examples' plugins get OpenECS's warnings, and in Debug its static analyzer and sanitizers, as OpenECS's own code does
+// the examples' plugins get OpenECS's warnings, and in Debug gcc's static analyzer and the sanitizers, as OpenECS's own code does, except where MinGW has no sanitizers
 static void SetBuildFlags(void)
 {
     SHU_CompilerClearFlags();
@@ -121,7 +145,18 @@ static void SetBuildFlags(void)
     switch (CONFIG.type)
     {
     case BuildType_Debug:
-        SHU_CompilerAddFlags(SHUM_FLAGS_WARNING_MID " -fanalyzer -fsanitize=address,undefined -fno-omit-frame-pointer" SHUM_FLAGS_DEBUG SHUM_FLAGS_OPTIMIZATION_DEBUG);
+        SHU_CompilerAddFlags(SHUM_FLAGS_WARNING_MID SHUM_FLAGS_DEBUG SHUM_FLAGS_OPTIMIZATION_DEBUG);
+
+        if (SHU_CompilerGetIdentifier() == SHUM_COMPILER_GCC)
+        {
+            SHU_CompilerAddFlags(" -fanalyzer");
+        }
+
+        if (!CONFIG.windows)
+        {
+            SHU_CompilerAddFlags(" -fsanitize=address,undefined -fno-omit-frame-pointer");
+        }
+
         SHU_CompilerAddDefinitions("DEBUG", NULL, "SDL_ASSERT_LEVEL", "2");
         break;
     case BuildType_Release:
@@ -152,12 +187,11 @@ static void VisitFolder(const char *entry, SHUFileType type, void *data)
     const FolderVisit *visit = (const FolderVisit *)data;
 
     // the entry is the folder's path, with a separator at its end; the function gets its name alone
-    SHUI_String name;
-    SHUI_SFormat(&name, "%.*s", (int)(strlen(entry) - strlen(visit->path) - 1), entry + strlen(visit->path));
+    char *name = SHU_UtilFormat("%.*s", (int)(strlen(entry) - strlen(visit->path) - 1), entry + strlen(visit->path));
 
-    if (type == SHUFileType_Directory && (!visit->numbered || isdigit((unsigned char)name.data[0])))
+    if (type == SHUFileType_Directory && (!visit->numbered || isdigit((unsigned char)name[0])))
     {
-        visit->function(visit->path, name.data);
+        visit->function(visit->path, name);
     }
 }
 
@@ -176,11 +210,10 @@ static void FindCode(const char *path, SHUFileType type, void *data)
 /// @brief Compiles the C files of a plugin folder of an example into its native library, in the folder's copy in bin/examples/. Does nothing if the folder has no C file.
 static void BuildPlugin(const char *path, const char *name)
 {
-    SHUI_String root;
-    SHUI_SFormat(&root, "%s%s/", path, name);
+    char *root = SHU_UtilFormat("%s%s/", path, name);
 
     bool code = false;
-    SHU_UtilListDirectory(root.data, false, FindCode, &code);
+    SHU_UtilListDirectory(root, false, FindCode, &code);
 
     if (!code)
     {
@@ -189,29 +222,34 @@ static void BuildPlugin(const char *path, const char *name)
 
     // the plugin sees only OpenECS's plugin interface and SDL, from the build's include/ folder, and the standard plugins' headers, such as ui.h,
     // from its definitions/ folder, both named from the plugin's folder (OpenECS DESIGN 17.6)
-    SHUI_String include;
-    SHUI_String definitions;
-    SHUI_String output;
-    SHUI_SFormat(&include, "../../%sinclude/", CONFIG.output);
-    SHUI_SFormat(&definitions, "../../%sdefinitions/", CONFIG.output);
-    SHUI_SFormat(&output, "%sbin/examples/%s", CONFIG.output, root.data);
+    char *include = SHU_UtilFormat("../../%sinclude/", CONFIG.output);
+    char *definitions = SHU_UtilFormat("../../%sdefinitions/", CONFIG.output);
+    char *output = SHU_UtilFormat("%sbin/examples/%s", CONFIG.output, strncmp(root, "./", 2) ? root : root + 2);
 
-    SHU_ModuleBegin(name, root.data);
+    SHU_ModuleBegin(name, root);
     SetBuildFlags();
     SHU_ModuleAddSourceFile("./");
-    SHU_ModuleAddIncludeDirectory(include.data);
-    SHU_ModuleAddIncludeDirectory(definitions.data);
-    SHU_ModuleCompile(output.data, SHUModuleType_LibraryDynamic);
+    SHU_ModuleAddIncludeDirectory(include);
+    SHU_ModuleAddIncludeDirectory(definitions);
+
+    // a DLL calls OpenECS and SDL through their import libraries, in OpenECS's lib/ (OpenECS DESIGN 17.2); elsewhere the calls are resolved when it is loaded
+    if (CONFIG.windows)
+    {
+        SHU_ModuleAddLibraryDirectory(SHU_UtilFormat("%slib/", CONFIG.output));
+        SHU_ModuleLinkLibrary("OpenECS");
+        SHU_ModuleLinkLibrary("SDL3_ttf");
+        SHU_ModuleLinkLibrary("SDL3");
+    }
+
+    SHU_ModuleCompile(output, SHUModuleType_LibraryDynamic);
 }
 
 /// @brief Copies an example's folder whole into bin/examples/, and builds its plugin folders into the copy.
 /// Shuild leaves a copied file that has not changed as is, and the plugins are built from the example's folders, so a second build compiles only what changed.
 static void BuildExample(const char *path, const char *name)
 {
-    SHUI_String root;
-    SHUI_String copy;
-    SHUI_SFormat(&root, "%s%s/", path, name);
-    SHUI_SFormat(&copy, "%sbin/examples/%s/", CONFIG.output, name);
-    SHU_UtilCopyFile(root.data, copy.data);
-    ForEachFolder(root.data, false, BuildPlugin);
+    char *root = SHU_UtilFormat("%s%s/", path, name);
+    char *copy = SHU_UtilFormat("%sbin/examples/%s/", CONFIG.output, name);
+    SHU_UtilCopyFile(root, copy);
+    ForEachFolder(root, false, BuildPlugin);
 }

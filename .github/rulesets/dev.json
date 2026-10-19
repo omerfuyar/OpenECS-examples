@@ -47,7 +47,7 @@
             "context": "Debug (Linux)"
           },
           {
-            "context": "Release (Linux)"
+            "context": "Windows"
           },
           {
             "context": "Lua (LuaLS)"
