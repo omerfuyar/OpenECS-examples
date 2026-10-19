@@ -98,7 +98,8 @@ return {
 
     -- a drag across the field selects what it passes over
     test.text("drag")
-    local fromX, fromY = at("name", 0.01)
+    local fromX, fromY = at("name", 0)
+    fromX = fromX + 4 -- before the first letter, however wide the field is
     local toX = at("name", 0.99)
     test.drag(fromX, fromY, toX, fromY)
     test.text("Z")

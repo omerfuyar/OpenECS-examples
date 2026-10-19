@@ -32,8 +32,9 @@ return {
     test.match(state().size, 18, "the larger font")
     test.match(state().columns < columns, true, "fewer columns")
 
-    -- a line that no longer fits wraps onto the next row instead of losing its end, and joins again when it fits
-    local long = string.rep("wrap me ", 12) .. "end"
+    -- a line that no longer fits wraps onto the next row instead of losing its end, and joins again when it fits;
+    -- it fills most of a row now, however wide the window is
+    local long = string.rep("wrap me ", (state().columns - 12) // 8) .. "end"
     test.text("echo " .. long)
     test.key("Return")
 

@@ -190,7 +190,8 @@ ecs.panel.registerType({
       -- text with wrap = true breaks into lines at the width of its column
       ui.text(
         "Tab gives the keys to the next control and Shift+Tab to the one before. Return or Space presses the control that has them, " ..
-        "Left and Right change a selector or a slider, and Escape takes the keys away. A field takes typing as soon as it has the keys.",
+        "Left and Right change a selector or a slider, and Escape takes the keys away. A field takes typing as soon as it has the keys. " ..
+        "In a field, Home and End move the cursor to its start and end, Shift with them selects, and Ctrl+C, Ctrl+X and Ctrl+V copy, cut and paste.",
         { id = "note", wrap = true, color = "textDim" }),
     }))
 
