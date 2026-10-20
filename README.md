@@ -7,7 +7,7 @@ Examples for writing [OpenECS](https://github.com/omerfuyar/OpenECS) plugins, on
 - `19_first_party` shows a tool with the first-party plugins that every tool can have: the settings window, the panel list and the launcher, and tests the themes.
 - `20_workers` shows workers: Lua scripts that run on threads of their own, here four that count primes at once while the panel stays free.
 - `21_gpu` shows GPU panels, which draw into a texture on the GPU that shows in any window the panel moves to: a plugin in Lua draws with the gpu standard plugin, and one in C with SDL's GPU API itself.
-- `22_gpu_model` draws a glTF model on the GPU with shaders of its own: gltf reads its vertices, normals and triangles, which go to the GPU once as buffers, and gpu draws them each frame with a pipeline, cglm's matrices and a depth texture. Drag to turn it.
+- `22_gpu_model` draws a glTF model on the GPU with shaders of its own: gltf reads its vertices, normals and triangles, which go to the GPU once as buffers, and gpu draws them each frame with a pipeline, cglm's matrices and a depth texture. Its shaders are GLSL, which gpu compiles. Drag to turn it.
 - `23_cglm` shows the cglm plugin, which gives cglm's vectors, matrices and quaternions to Lua: a cube's edges, turned and seen in perspective, drawn with draw. Its second workspace has the same cube in C, with cglm's own functions. Drag to turn it.
 
 Each example holds a preset, `preset.lua`, its plugins and its tests. The examples are the tests of OpenECS and its standard plugins too: each test checks what its example shows. OpenECS ships the examples in `examples/`, next to the program. Run one with `--fresh`, so it starts from its preset even if you keep sessions (`ecs.keepSession`):

@@ -1,5 +1,4 @@
 // The torus's fragment shader: it lights each pixel by how much it faces the light, with a highlight where the light reflects towards the eye.
-// Compile it with: glslangValidator -V torus.frag -o torus.frag.spv
 #version 450
 
 layout(location = 0) in vec3 worldNormal;

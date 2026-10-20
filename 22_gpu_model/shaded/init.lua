@@ -33,27 +33,30 @@ end
 local vertexBuffer = gpu.buffer("vertex", table.concat(vertices))
 local indexBuffer = gpu.buffer("index", model:indices(1, 1))
 
--- the shaders, compiled from torus.vert and torus.frag in the shaders folder to SPIR-V, which Vulkan's drivers take,
--- and from torus.vert.hlsl and torus.frag.hlsl to DXIL, which Direct3D 12's take; gpu uses the one the GPU's driver takes;
--- the label's, from label.vert.hlsl and label.frag.hlsl to both, with DXC
+-- the shaders, in GLSL in the shaders folder: gpu compiles them to SPIR-V, which Vulkan's drivers take, and turns that into DXBC for Direct3D 12's;
+-- it counts each shader's uniform blocks and textures itself
 local function read(name)
   local file = assert(io.open(ecs.plugin.folder .. "shaders/" .. name, "rb"))
-  local bytes = file:read("a")
+  local source = file:read("a")
   file:close()
-  return bytes
+  return source
 end
 
 local pipeline = gpu.pipeline({
-  vertex = gpu.shader({ stage = "vertex", spirv = read("torus.vert.spv"), dxil = read("torus.vert.dxil"), uniforms = 1 }),
-  fragment = gpu.shader({ stage = "fragment", spirv = read("torus.frag.spv"), dxil = read("torus.frag.dxil"), uniforms = 1 }),
+  vertex = gpu.shader({ stage = "vertex", glsl = read("torus.vert") }),
+  fragment = gpu.shader({ stage = "fragment", glsl = read("torus.frag") }),
   attributes = { "float3", "float3" },
   depth = true,
 })
 
+-- gpu.compile gives the SPIR-V of GLSL, or why it does not compile, as an editor of shaders would show it
+local COMPILED = #gpu.compile(read("torus.frag"), "fragment")
+local _, COMPILE_ERROR = gpu.compile("#version 450\nvoid main() { missing = 1.0; }", "fragment")
+
 -- the label: each vertex of a glyph is x and y in pixels and u and v in a texture of glyphs, four floats, and blends by the glyph's alpha
 local labelPipeline = gpu.pipeline({
-  vertex = gpu.shader({ stage = "vertex", spirv = read("label.vert.spv"), dxil = read("label.vert.dxil"), uniforms = 1 }),
-  fragment = gpu.shader({ stage = "fragment", spirv = read("label.frag.spv"), dxil = read("label.frag.dxil"), uniforms = 1, samplers = 1 }),
+  vertex = gpu.shader({ stage = "vertex", glsl = read("label.vert") }),
+  fragment = gpu.shader({ stage = "fragment", glsl = read("label.frag") }),
   attributes = { "float4" },
   depth = true,
   blend = "alpha",
@@ -177,8 +180,9 @@ ecs.panel.registerType({
     end
   end,
 
-  -- what the test checks: the model's size, how many frames it drew, and where the camera is
+  -- what the test checks: the model's size, how many frames it drew, where the camera is, and what gpu.compile gave
   saveState = function(view)
-    return { vertices = VERTICES, triangles = TRIANGLES, drawn = view.drawn, turn = view.turn, distance = view.distance, pipeline = pipeline ~= nil, labelParts = view.labelParts }
+    return { vertices = VERTICES, triangles = TRIANGLES, drawn = view.drawn, turn = view.turn, distance = view.distance, pipeline = pipeline ~= nil, labelParts = view.labelParts,
+      compiled = COMPILED, compileError = COMPILE_ERROR }
   end,
 })

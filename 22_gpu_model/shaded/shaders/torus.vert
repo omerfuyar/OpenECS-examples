@@ -1,5 +1,4 @@
 // The torus's vertex shader: it moves each vertex by the model's matrix, and sees it through the camera's.
-// Compile it with: glslangValidator -V torus.vert -o torus.vert.spv
 #version 450
 
 layout(location = 0) in vec3 position;
