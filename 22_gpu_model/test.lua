@@ -1,4 +1,4 @@
--- the torus is read from its glTF file and drawn every frame on the GPU with its own shaders: a corner shows the background, and the ring shows the
+-- the torus is read from its glTF file and drawn every frame on the GPU with its own shaders, which gpu compiles from GLSL: a corner shows the background, and the ring shows the
 -- material's colour, lit; a drag turns it, and the wheel moves it nearer
 return {
   preset = "preset.lua",
@@ -14,6 +14,10 @@ return {
     assert(state().drawn > 1, "frames drawn: " .. tostring(state().drawn))
     test.match(state().pipeline, true, "the pipeline, from the shaders")
     assert(state().labelParts >= 1, "the label's parts: " .. tostring(state().labelParts))
+
+    -- gpu compiles GLSL to SPIR-V, words of 4 bytes, and tells why a shader does not compile
+    assert(state().compiled > 0 and state().compiled % 4 == 0, "the SPIR-V's size: " .. tostring(state().compiled))
+    assert(state().compileError:find("missing"), "the compile error: " .. tostring(state().compileError))
 
     -- a pixel's colour, as red, green and blue
     local function rgb(x, y)
