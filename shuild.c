@@ -56,8 +56,8 @@ static const char *CompilerArgument(int argc, char **argv)
 int main(int argc, char **argv)
 {
     CONFIG.compiler = CompilerArgument(argc, argv);
-    SHU_CompilerTryConfigure(CONFIG.compiler);
-    CONFIG.windows = SHU_CompilerGetTarget() == SHUM_PLATFORM_WINDOWS;
+    SHU_CompilerConfigureTry(CONFIG.compiler);
+    CONFIG.windows = SHU_CompilerGetTarget() == SHUPlatform_Windows;
     SetupConfiguration(argc, argv);
 
     ForEachFolder("./", true, BuildExample);
@@ -131,8 +131,8 @@ static void SetupConfiguration(int argc, char **argv)
     }
 
     // a build for another system has a cache of its own, as OpenECS's build has a folder of its own
-    u8 target = SHU_CompilerGetTarget();
-    char *cache = SHU_UtilFormat(".shu/%s%s%s/", BUILD_TYPE_STRINGS[CONFIG.type], SHUM_PLATFORM_IS_HOST(target) ? "" : "-", SHUM_PLATFORM_IS_HOST(target) ? "" : SHUM_PLATFORM_GET_STRING(target));
+    SHUPlatform target = SHU_CompilerGetTarget();
+    char *cache = SHU_UtilFormat(".shu/%s%s%s/", BUILD_TYPE_STRINGS[CONFIG.type], SHUM_PLATFORM_IS_HOST(target) ? "" : "-", SHUM_PLATFORM_IS_HOST(target) ? "" : SHUPlatform_GetString(target));
     SHU_CacheConfigure(cache);
 }
 
@@ -147,7 +147,7 @@ static void SetBuildFlags(void)
     case BuildType_Debug:
         SHU_CompilerAddFlags(SHUM_FLAGS_WARNING_MID SHUM_FLAGS_DEBUG SHUM_FLAGS_OPTIMIZATION_DEBUG);
 
-        if (SHU_CompilerGetIdentifier() == SHUM_COMPILER_GCC)
+        if (SHU_CompilerGetIdentifier() == SHUCompiler_GCC)
         {
             SHU_CompilerAddFlags(" -fanalyzer");
         }
