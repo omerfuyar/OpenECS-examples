@@ -147,7 +147,7 @@ static void SetBuildFlags(void)
     case BuildType_Debug:
         SHU_CompilerAddFlags(SHUM_FLAGS_WARNING_MID SHUM_FLAGS_DEBUG SHUM_FLAGS_OPTIMIZATION_DEBUG);
 
-        if (SHU_CompilerGetIdentifier() == SHUCompiler_GCC)
+        if (SHU_CompilerGetFamily() == SHUCompiler_GCC)
         {
             SHU_CompilerAddFlags(" -fanalyzer");
         }
