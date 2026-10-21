@@ -7,5 +7,6 @@ return {
     local panel = test.rect(1)
     test.wheel(panel.x + 50, panel.y + 50, 1)
     test.match(test.panel(1), { title = "Hello, OpenECS (34)" }, "after the wheel")
+    test.match(test.session().workspaces[1].windows[1].panels[1].state, { heard = { ["greeter.size"] = 1 } }, "ecs.settingChanged")
   end,
 }

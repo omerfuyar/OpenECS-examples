@@ -27,6 +27,17 @@ ecs.settings.declare({ name = "color", type = "choice", description = "Colour of
 ecs.settings.declare({ name = "size", type = "integer", description = "Size of the greeting; the wheel changes it", default = 32, changed = changed })
 ecs.settings.declare({ name = "background", type = "color", description = "Colour behind the greeting", default = "#2E3440", changed = changed })
 
+-- the core tells every plugin when any setting changes, its own or another's, such as the core's font, which the greeting is drawn in
+local heard = {} -- how many times each setting changed, by its full name
+
+ecs.event.subscribe("ecs.settingChanged", function(_, value)
+  heard[value.name] = (heard[value.name] or 0) + 1
+
+  if value.name == "ecs.font" then
+    changed()
+  end
+end)
+
 ecs.panel.registerType({
   name = "panel",
   title = "Greeting",
@@ -40,6 +51,11 @@ ecs.panel.registerType({
 
   destroy = function(greeting)
     greetings[greeting.panel] = nil
+  end,
+
+  -- the settings that changed are part of the panel's state, so the test can see them
+  saveState = function()
+    return { heard = heard }
   end,
 
   -- get gives the value in effect
