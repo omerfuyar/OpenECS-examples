@@ -133,13 +133,13 @@ static void CubeEvent(void *state, const ECSPanelEvent *event)
 static SHUResult SetNumber(ECSValue *table, const char *name, f64 number)
 {
     ECSValue *field = nullptr;
-    SHU_ReturnResult(ECSValue_TableSetField(table, name, &field));
+    SHU_ReturnResult(ECSValue_SetTableField(table, name, &field));
     ECSValue_SetNumber(field, number);
     return SHUResult_Ok;
 }
 
 // the turn, and where the last corner is in the view, as the Lua plugin saves them, so the test compares the two
-static SHUResult CubeSaveState(void *state, ECSValue *retState)
+static SHUResult CubeSaveState(void *state, ECSValue *retSavedState)
 {
     Cube *cube = state;
     mat4 matrix;
@@ -147,11 +147,11 @@ static SHUResult CubeSaveState(void *state, ECSValue *retState)
     CubeMatrix(cube->turn, matrix);
     CubeProject(matrix, 7, corner);
 
-    ECSValue_SetTable(retState);
-    SHU_ReturnResult(SetNumber(retState, "turn", cube->turn));
+    ECSValue_SetTable(retSavedState);
+    SHU_ReturnResult(SetNumber(retSavedState, "turn", cube->turn));
 
     ECSValue *saved = nullptr;
-    SHU_ReturnResult(ECSValue_TableSetField(retState, "corner", &saved));
+    SHU_ReturnResult(ECSValue_SetTableField(retSavedState, "corner", &saved));
     ECSValue_SetTable(saved);
     SHU_ReturnResult(SetNumber(saved, "x", corner[0]));
     SHU_ReturnResult(SetNumber(saved, "y", corner[1]));

@@ -61,8 +61,8 @@ assert(ecs.service.register({
 
 -- bind gives a function a default key, working while a panel of the plugin's type has focus; the function must exist first
 -- the preset's keys and the user's settings win over these defaults, as preset.lua shows
-assert(ecs.input.bind("stepper.panel", "Up", "stepper.up"))
-assert(ecs.input.bind("stepper.panel", "Down", "stepper.down"))
+assert(ecs.key.bind("stepper.panel", "Up", "stepper.up"))
+assert(ecs.key.bind("stepper.panel", "Down", "stepper.down"))
 
 -- the panel's menu (a right click on its tab) shows these functions with their keys
 ecs.panel.addMenuEntry("stepper.panel", "stepper.up")

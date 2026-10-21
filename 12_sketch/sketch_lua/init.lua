@@ -145,11 +145,11 @@ local function findCanvas(panel)
 end
 
 local function settingSize()
-  return clamp(ecs.settings.get(name("brushSize")) or 6, MIN_SIZE, MAX_SIZE)
+  return clamp(ecs.setting.get(name("brushSize")) or 6, MIN_SIZE, MAX_SIZE)
 end
 
 local function settingColor()
-  return COLORS[ecs.settings.get(name("brushColor"))] or COLORS.white
+  return COLORS[ecs.setting.get(name("brushColor"))] or COLORS.white
 end
 
 -- shows the number of strokes in the canvas's title
@@ -195,10 +195,10 @@ local function brushChanged()
     canvas.panel:redraw()
   end
 
-  ecs.log.debug(("The brush is %d, %s."):format(settingSize(), ecs.settings.get(name("brushColor"))))
+  ecs.log.debug(("The brush is %d, %s."):format(settingSize(), ecs.setting.get(name("brushColor"))))
 end
 
-ecs.settings.declare({
+ecs.setting.declare({
   name = "brushSize",
   type = "integer",
   description =
@@ -206,7 +206,7 @@ ecs.settings.declare({
   default = 6,
   changed = brushChanged
 })
-ecs.settings.declare({
+ecs.setting.declare({
   name = "brushColor",
   type = "choice",
   description = "Colour of the brush",
@@ -215,7 +215,7 @@ ecs.settings.declare({
   choices = COLOR_NAMES,
   changed = brushChanged
 })
-ecs.settings.declare({
+ecs.setting.declare({
   name = "reminderSeconds",
   type = "number",
   description =
@@ -247,7 +247,7 @@ ecs.panel.registerType({
     panel:acceptDrops({ CLIPBOARD_TYPE, "text", "file-list" })
 
     -- a panel timer, so it stops when the canvas closes
-    panel:startTimer(math.max(1, ecs.settings.get(name("reminderSeconds")) or 30), true, function()
+    panel:startTimer(math.max(1, ecs.setting.get(name("reminderSeconds")) or 30), true, function()
       if canvas.unsaved then
         ecs.log.info(panel.title .. " has unsaved strokes.")
       end
@@ -294,8 +294,8 @@ ecs.panel.registerType({
       emitStroke(canvas)
     elseif event.type == "wheel" then
       -- the wheel changes the setting, so every canvas and the settings window see the new size
-      local ok = ecs.settings.set(name("brushSize"),
-        clamp(settingSize() + (event.wheelY > 0 and 1 or -1), MIN_SIZE, MAX_SIZE))
+      local ok = ecs.setting.set(name("brushSize"),
+        clamp(settingSize() + (event.scrollY > 0 and 1 or -1), MIN_SIZE, MAX_SIZE))
 
       if not ok then
         ecs.log.warn("Cannot change the brush size.")
@@ -407,7 +407,7 @@ local function canvasPpm(canvas)
 end
 
 local function exportChosen(id, files)
-  local panel = ecs.layout.find(id)
+  local panel = ecs.layout.findPanel(id)
   local canvas = panel and files and canvases[panel]
 
   if not panel or not canvas or canvas.width <= 0 then
@@ -446,7 +446,7 @@ function services.clear(panel)
 
   -- without a dialog, the canvas is cleared
   if canvas.unsaved then
-    local button = ecs.dialog.message("Clear canvas", "This canvas has unsaved strokes. Clear them?", { "Clear", "Keep" })
+    local button = ecs.dialog.showMessage("Clear canvas", "This canvas has unsaved strokes. Clear them?", { "Clear", "Keep" })
 
     if button == 2 then
       return
@@ -550,7 +550,7 @@ function services.closeOthers(panel)
 end
 
 function services.nextWorkspace()
-  local next = ecs.workspace.getCurrent() % ecs.workspace.count() + 1
+  local next = ecs.workspace.getCurrent() % ecs.workspace.getCount() + 1
   ecs.workspace.switch(next)
   ecs.log.info(("Workspace %d, '%s'."):format(next, ecs.workspace.getName(next)))
 end
@@ -575,7 +575,7 @@ function services.stats()
   local own = 0
 
   -- the plugin's settings are counted from the list of every setting
-  for _, setting in ipairs(ecs.settings.list() or {}) do
+  for _, setting in ipairs(ecs.setting.list() or {}) do
     if setting:sub(1, #NAME + 1) == NAME .. "." then
       own = own + 1
     end
@@ -636,7 +636,7 @@ assert(ecs.service.register({
 
 -- default keys that work while a canvas has the focus; the canvas's menu shows the same functions with their keys
 for key, service in pairs({ Delete = "clear", ["Ctrl+E"] = "export", ["Ctrl+C"] = "copy", ["Ctrl+V"] = "paste", ["Ctrl+B"] = "openBeside", ["Ctrl+G"] = "gather" }) do
-  assert(ecs.input.bind(name("canvas"), key, name(service)))
+  assert(ecs.key.bind(name("canvas"), key, name(service)))
   assert(ecs.panel.addMenuEntry(name("canvas"), name(service)))
 end
 
@@ -689,6 +689,6 @@ ecs.plugin.register({
 
 -- a service is called through its lookup like any other plugin would call it
 local stats = assert(ecs.service.get(name("stats"), "int(out value)"))
-ecs.log.debug("brushSize comes from the " .. ecs.settings.explain(name("brushSize")).layer .. " layer.")
+ecs.log.debug("brushSize comes from the " .. ecs.setting.explain(name("brushSize")).layer .. " layer.")
 local strokes, numbers = stats()
 ecs.log.info(("Ready with %d settings; %d strokes so far."):format(numbers.settings, strokes))

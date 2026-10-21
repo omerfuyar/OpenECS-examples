@@ -148,5 +148,5 @@ assert(ecs.service.register({
 
 -- Ctrl and = is Ctrl and + on most keyboards; Shift+= gives + itself, and the keypad has its own keys
 for key, service in pairs({ ["Ctrl+="] = "bigger", ["Ctrl+Shift+="] = "bigger", ["Ctrl+Keypad +"] = "bigger", ["Ctrl+-"] = "smaller", ["Ctrl+Keypad -"] = "smaller", ["Ctrl+0"] = "resetSize" }) do
-  assert(ecs.input.bind("terminal.panel", key, "terminal." .. service))
+  assert(ecs.key.bind("terminal.panel", key, "terminal." .. service))
 end

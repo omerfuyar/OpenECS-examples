@@ -123,29 +123,29 @@ static void ControlsEvent(void *state, const ECSPanelEvent *event)
 static SHUResult SetNumber(ECSValue *table, const char *name, f64 number)
 {
     ECSValue *field = nullptr;
-    SHU_ReturnResult(ECSValue_TableSetField(table, name, &field));
+    SHU_ReturnResult(ECSValue_SetTableField(table, name, &field));
     ECSValue_SetNumber(field, number);
     return SHUResult_Ok;
 }
 
 // the values and the rectangles are saved, so the test can read them; ui.rect gives an element's rectangle in the last layout
-static SHUResult ControlsSaveState(void *state, ECSValue *retState)
+static SHUResult ControlsSaveState(void *state, ECSValue *retSavedState)
 {
     Controls *controls = state;
     ECSValue *field = nullptr;
-    ECSValue_SetTable(retState);
-    SHU_ReturnResult(SetNumber(retState, "clicks", controls->clicks));
-    SHU_ReturnResult(SetNumber(retState, "volume", controls->volume));
-    SHU_ReturnResult(SetNumber(retState, "selected", controls->selected));
-    SHU_ReturnResult(ECSValue_TableSetField(retState, "sound", &field));
+    ECSValue_SetTable(retSavedState);
+    SHU_ReturnResult(SetNumber(retSavedState, "clicks", controls->clicks));
+    SHU_ReturnResult(SetNumber(retSavedState, "volume", controls->volume));
+    SHU_ReturnResult(SetNumber(retSavedState, "selected", controls->selected));
+    SHU_ReturnResult(ECSValue_SetTableField(retSavedState, "sound", &field));
     ECSValue_SetBool(field, controls->sound);
-    SHU_ReturnResult(ECSValue_TableSetField(retState, "size", &field));
+    SHU_ReturnResult(ECSValue_SetTableField(retSavedState, "size", &field));
     SHU_ReturnResult(ECSValue_SetString(field, SIZES[controls->size]));
-    SHU_ReturnResult(ECSValue_TableSetField(retState, "name", &field));
+    SHU_ReturnResult(ECSValue_SetTableField(retSavedState, "name", &field));
     SHU_ReturnResult(ECSValue_SetString(field, controls->name));
 
     ECSValue *rects = nullptr;
-    SHU_ReturnResult(ECSValue_TableSetField(retState, "rects", &rects));
+    SHU_ReturnResult(ECSValue_SetTableField(retSavedState, "rects", &rects));
     ECSValue_SetTable(rects);
 
     for (usz i = 0; i < sizeof(IDS) / sizeof(IDS[0]); i++)
@@ -155,7 +155,7 @@ static SHUResult ControlsSaveState(void *state, ECSValue *retState)
         if (ECSValue_GetType(rect) == ECSValueType_Table)
         {
             ECSValue *saved = nullptr;
-            SHU_ReturnResult(ECSValue_TableSetField(rects, IDS[i], &saved));
+            SHU_ReturnResult(ECSValue_SetTableField(rects, IDS[i], &saved));
             ECSValue_SetTable(saved);
 
             for (usz j = 0; j < 4; j++)
