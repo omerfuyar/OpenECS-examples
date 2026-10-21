@@ -35,7 +35,7 @@ local function start(counter)
   counter.primes, counter.chunks, counter.seconds, counter.done, counter.running = 0, 0, 0, {}, true
 
   -- the clock counts tenths of a second; a repeating timer skips the calls it missed, so it would fall behind if the main thread were busy
-  counter.clock = counter.panel:startTimer(0.1, true, function()
+  counter.clock = ecs.timer.start(0.1, true, function()
     counter.seconds = counter.seconds + 0.1
     counter.panel:redraw()
   end)

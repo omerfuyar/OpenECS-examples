@@ -416,7 +416,7 @@ static SHUResult SketchCanvasCreate(ECSPanel panel, const ECSValue *savedState, 
 
     f64 seconds = ECSValue_GetNumber(ECSSetting_Get(SKETCH_NAME("reminderSeconds")), 30.0);
 
-    if (ECSPanel_StartTimer(panel, &canvas->reminder, seconds > 1.0 ? seconds : 1.0, true, SketchCanvasRemind, canvas))
+    if (ECSTimer_Start(SKETCH.plugin, &canvas->reminder, seconds > 1.0 ? seconds : 1.0, true, SketchCanvasRemind, canvas))
     {
         ECS_LogWarn(SKETCH.plugin, "Cannot start a canvas's reminder.");
     }
@@ -438,6 +438,8 @@ static void SketchCanvasDestroy(void *state)
         }
     }
 
+    // the plugin owns the canvas's timer, so the canvas stops it
+    ECSTimer_Stop(&canvas->reminder);
     SketchReleaseBrush(canvas->brush);
     SketchFreeStrokes(canvas->strokes, canvas->strokeCount);
     free(canvas);

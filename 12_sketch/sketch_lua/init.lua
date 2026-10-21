@@ -246,8 +246,8 @@ ecs.panel.registerType({
     -- a canvas takes strokes dragged from a canvas, text in their format, and files of it
     panel:acceptDrops({ CLIPBOARD_TYPE, "text", "file-list" })
 
-    -- a panel timer, so it stops when the canvas closes
-    panel:startTimer(math.max(1, ecs.setting.get(name("reminderSeconds")) or 30), true, function()
+    -- the plugin owns the timer, so destroy stops it
+    canvas.reminder = ecs.timer.start(math.max(1, ecs.setting.get(name("reminderSeconds")) or 30), true, function()
       if canvas.unsaved then
         ecs.log.info(panel.title .. " has unsaved strokes.")
       end
@@ -257,6 +257,7 @@ ecs.panel.registerType({
   end,
 
   destroy = function(canvas)
+    canvas.reminder:stop()
     canvases[canvas.panel] = nil
   end,
 

@@ -9,7 +9,7 @@ ecs.event.declare("tick", "Ten times a second: the number of ticks so far")
 local ticks = 0
 
 -- a timer calls a function after some seconds, once or again and again; all Lua code runs on the program's main thread
--- a plugin timer runs until it is stopped; a panel's timer (panel:startTimer) stops when its panel closes
+-- a timer runs until it is stopped; a panel's timer is stopped in its type's destroy
 local timer = ecs.timer.start(0.1, true, function()
   ticks = ticks + 1
   ecs.event.emit("ticker.tick", ticks) -- subscribers get it after this function returns, not during the call
