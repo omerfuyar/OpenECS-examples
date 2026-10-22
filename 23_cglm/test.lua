@@ -1,5 +1,5 @@
 -- the cube in Lua and the cube in C make the same matrices, one with the cglm plugin's functions and one with cglm's own;
--- the plugin's results are what the math gives, and a drag turns each cube by as much
+-- the plugin's results are what the math gives, and a drag turns each cube by as much; the core's Shift+1 after the prefix moves a cube to workspace 1
 return {
   preset = "preset.lua",
   run = function(test)
@@ -47,5 +47,11 @@ return {
     near(state(2).turn, 1.6, "C's turn after a drag")
     near(state(2).corner.x, state(1).corner.x, "C's corner across after the drags")
     near(state(2).corner.y, state(1).corner.y, "C's corner up after the drags")
+
+    -- the prefix, then Shift+1, moves the focused panel to workspace 1, into the group of the cube in Lua
+    test.key("Alt+W")
+    test.key("Shift+1")
+    test.match(#test.session().workspaces[1].windows[1].panels, 2, "the panels of workspace 1 after Shift+1")
+    test.match(#test.session().workspaces[2].windows, 0, "workspace 2 is left without panels")
   end,
 }
