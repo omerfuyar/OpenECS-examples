@@ -282,7 +282,7 @@ static SHUResult SetString(ECSValue *table, const char *name, const char *text)
         return SHUResult_Ok;
     }
 
-    SHU_ReturnResult(ECSValue_TableSetField(table, name, &field));
+    SHU_ReturnResult(ECSValue_SetTableField(table, name, &field));
     return ECSValue_SetString(field, text);
 }
 
@@ -290,7 +290,7 @@ static SHUResult SetString(ECSValue *table, const char *name, const char *text)
 static SHUResult SetBool(ECSValue *table, const char *name, bool value)
 {
     ECSValue *field = nullptr;
-    SHU_ReturnResult(ECSValue_TableSetField(table, name, &field));
+    SHU_ReturnResult(ECSValue_SetTableField(table, name, &field));
     ECSValue_SetBool(field, value);
     return SHUResult_Ok;
 }
@@ -312,7 +312,7 @@ static SHUResult SaveRects(const Controls *controls, ECSValue *retRects)
             continue;
         }
 
-        SHU_ReturnResult(ECSValue_TableSetField(retRects, IDS[i], &saved));
+        SHU_ReturnResult(ECSValue_SetTableField(retRects, IDS[i], &saved));
         ECSValue_SetTable(saved);
 
         for (usz j = 0; j < COUNT(NAMES); j++)
@@ -325,26 +325,26 @@ static SHUResult SaveRects(const Controls *controls, ECSValue *retRects)
 }
 
 // the values and the rectangles are saved, so the test can read them
-static SHUResult ControlsSaveState(void *state, ECSValue *retState)
+static SHUResult ControlsSaveState(void *state, ECSValue *retSavedState)
 {
     Controls *controls = state;
-    ECSValue_SetTable(retState);
-    SHU_ReturnResult(SetNumber(retState, "clicks", controls->clicks));
-    SHU_ReturnResult(SetBool(retState, "sound", controls->sound));
-    SHU_ReturnResult(SetNumber(retState, "volume", controls->volume));
-    SHU_ReturnResult(SetString(retState, "size", SIZES[controls->size]));
-    SHU_ReturnResult(SetString(retState, "fruit", FRUITS[controls->fruit]));
-    SHU_ReturnResult(SetNumber(retState, "count", controls->count));
-    SHU_ReturnResult(SetString(retState, "tab", TABS[controls->tab]));
-    SHU_ReturnResult(SetString(retState, "tip", ECSValue_GetString(UI.functions.tooltip(controls->panel), nullptr)));
-    SHU_ReturnResult(SetNumber(retState, "selected", controls->selected));
-    SHU_ReturnResult(SetString(retState, "name", controls->name));
-    SHU_ReturnResult(SetString(retState, "node", controls->node));
-    SHU_ReturnResult(SetString(retState, "sort", controls->sort));
-    SHU_ReturnResult(SetBool(retState, "ascending", controls->ascending));
+    ECSValue_SetTable(retSavedState);
+    SHU_ReturnResult(SetNumber(retSavedState, "clicks", controls->clicks));
+    SHU_ReturnResult(SetBool(retSavedState, "sound", controls->sound));
+    SHU_ReturnResult(SetNumber(retSavedState, "volume", controls->volume));
+    SHU_ReturnResult(SetString(retSavedState, "size", SIZES[controls->size]));
+    SHU_ReturnResult(SetString(retSavedState, "fruit", FRUITS[controls->fruit]));
+    SHU_ReturnResult(SetNumber(retSavedState, "count", controls->count));
+    SHU_ReturnResult(SetString(retSavedState, "tab", TABS[controls->tab]));
+    SHU_ReturnResult(SetString(retSavedState, "tip", ECSValue_GetString(UI.functions.tooltip(controls->panel), nullptr)));
+    SHU_ReturnResult(SetNumber(retSavedState, "selected", controls->selected));
+    SHU_ReturnResult(SetString(retSavedState, "name", controls->name));
+    SHU_ReturnResult(SetString(retSavedState, "node", controls->node));
+    SHU_ReturnResult(SetString(retSavedState, "sort", controls->sort));
+    SHU_ReturnResult(SetBool(retSavedState, "ascending", controls->ascending));
 
     ECSValue *open = nullptr;
-    SHU_ReturnResult(ECSValue_TableSetField(retState, "open", &open));
+    SHU_ReturnResult(ECSValue_SetTableField(retSavedState, "open", &open));
     ECSValue_SetTable(open);
 
     if (controls->srcOpen)
@@ -359,18 +359,18 @@ static SHUResult ControlsSaveState(void *state, ECSValue *retState)
 
     if (controls->row > 0)
     {
-        SHU_ReturnResult(SetNumber(retState, "row", controls->row));
+        SHU_ReturnResult(SetNumber(retSavedState, "row", controls->row));
     }
 
     if (strcmp(TABS[controls->tab], "Table") == 0)
     {
         FruitRow rows[COUNT(FRUIT_ROWS)];
         SortRows(controls, rows);
-        SHU_ReturnResult(SetString(retState, "first", rows[0].name));
+        SHU_ReturnResult(SetString(retSavedState, "first", rows[0].name));
     }
 
     ECSValue *rects = nullptr;
-    SHU_ReturnResult(ECSValue_TableSetField(retState, "rects", &rects));
+    SHU_ReturnResult(ECSValue_SetTableField(retSavedState, "rects", &rects));
     return SaveRects(controls, rects);
 }
 
