@@ -207,18 +207,10 @@ ecs.panel.registerType({
     end
   end,
 
-  -- the panel's events go to ui, which calls the callbacks of the elements they reach
-  -- Up and Down choose the tree's next node and the one before, and Right and Left open and close the chosen one, when no element takes them
+  -- the panel's events go to ui, which calls the callbacks of the elements they reach; Up and Down choose a list's or the tree's next item and
+  -- the one before, and Right and Left open and close the tree's chosen node
   event = function(controls, event)
-    if ui.event(controls.panel, event) or event.type ~= "keyDown" or controls.tab ~= "About" then
-      return
-    end
-
-    if event.key == "Up" or event.key == "Down" then
-      ui.move(controls.panel, "tree", event.key == "Up" and -1 or 1)
-    elseif event.key == "Left" or event.key == "Right" then
-      ui.expand(controls.panel, "tree", event.key == "Right")
-    end
+    ui.event(controls.panel, event)
   end,
 
   destroy = function(controls)
@@ -235,7 +227,7 @@ ecs.panel.registerType({
       fruit = controls.fruit,
       count = controls.count,
       tab = controls.tab,
-      tip = ui.tip(controls.panel),
+      tip = ui.tooltip(controls.panel),
       selected = controls.selected,
       name = controls.name,
       node = controls.node,
