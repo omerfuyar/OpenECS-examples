@@ -26,7 +26,7 @@ return {
     test.match(test.dialog(), nil, "the dialog after Return")
     test.match(#canvas(1).state.strokes, 0, "the cleared C canvas")
 
-    -- the Lua canvas asks with ecs.dialog.message, which gives the pressed button's number; Right and Return press Keep
+    -- the Lua canvas asks with ecs.dialog.showMessage, which gives the pressed button's number; Right and Return press Keep
     test.call("ecs.workspace.switch2")
     stroke(2)
     test.key("Delete")

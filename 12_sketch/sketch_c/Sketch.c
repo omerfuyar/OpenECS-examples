@@ -416,7 +416,7 @@ static SHUResult SketchCanvasCreate(ECSPanel panel, const ECSValue *savedState, 
 
     f64 seconds = ECSValue_GetNumber(ECSSetting_Get(SKETCH_NAME("reminderSeconds")), 30.0);
 
-    if (ECSPanel_StartTimer(panel, &canvas->reminder, seconds > 1.0 ? seconds : 1.0, true, SketchCanvasRemind, canvas))
+    if (ECSTimer_Start(SKETCH.plugin, &canvas->reminder, seconds > 1.0 ? seconds : 1.0, true, SketchCanvasRemind, canvas))
     {
         ECS_LogWarn(SKETCH.plugin, "Cannot start a canvas's reminder.");
     }
@@ -438,6 +438,8 @@ static void SketchCanvasDestroy(void *state)
         }
     }
 
+    // the plugin owns the canvas's timer, so the canvas stops it
+    ECSTimer_Stop(&canvas->reminder);
     SketchReleaseBrush(canvas->brush);
     SketchFreeStrokes(canvas->strokes, canvas->strokeCount);
     free(canvas);
@@ -479,12 +481,12 @@ static void SketchEmitStroke(SketchCanvas *canvas)
         return;
     }
 
-    if (ECSValue_TableSetField(value, "panel", &field) == SHUResult_Ok)
+    if (ECSValue_SetTableField(value, "panel", &field) == SHUResult_Ok)
     {
         ECSValue_SetInteger(field, ECSPanel_GetID(canvas->panel));
     }
 
-    if (ECSValue_TableSetField(value, "strokes", &field) == SHUResult_Ok)
+    if (ECSValue_SetTableField(value, "strokes", &field) == SHUResult_Ok)
     {
         ECSValue_SetInteger(field, (i64)canvas->strokeCount);
     }
@@ -623,7 +625,7 @@ static void SketchCanvasEvent(void *state, const ECSPanelEvent *event)
 
         if (ECSValue_Create(&size) == SHUResult_Ok)
         {
-            i32 next = SketchSettingSize() + (event->wheel.amountY > 0.0f ? 1 : -1);
+            i32 next = SketchSettingSize() + (event->wheel.scrollY > 0.0f ? 1 : -1);
             ECSValue_SetInteger(size, next < SKETCH_MIN_SIZE ? SKETCH_MIN_SIZE : next > SKETCH_MAX_SIZE ? SKETCH_MAX_SIZE
                                                                                                         : next);
 
@@ -661,11 +663,11 @@ static void SketchCanvasEvent(void *state, const ECSPanelEvent *event)
     }
 }
 
-static SHUResult SketchCanvasSaveState(void *state, ECSValue *retState)
+static SHUResult SketchCanvasSaveState(void *state, ECSValue *retSavedState)
 {
     SketchCanvas *canvas = state;
     ECSValue *strokes = nullptr;
-    SHU_ReturnResult(ECSValue_TableSetField(retState, "strokes", &strokes));
+    SHU_ReturnResult(ECSValue_SetTableField(retSavedState, "strokes", &strokes));
     ECSValue_SetTable(strokes);
 
     for (usz i = 0; i < canvas->strokeCount; i++)
@@ -675,17 +677,17 @@ static SHUResult SketchCanvasSaveState(void *state, ECSValue *retState)
         ECSValue *field = nullptr;
         ECSValue *points = nullptr;
 
-        SHU_ReturnResult(ECSValue_ListAddItem(strokes, &saved));
-        SHU_ReturnResult(ECSValue_TableSetField(saved, "size", &field));
+        SHU_ReturnResult(ECSValue_AddListItem(strokes, &saved));
+        SHU_ReturnResult(ECSValue_SetTableField(saved, "size", &field));
         ECSValue_SetInteger(field, stroke->size);
-        SHU_ReturnResult(ECSValue_TableSetField(saved, "color", &field));
+        SHU_ReturnResult(ECSValue_SetTableField(saved, "color", &field));
         ECSValue_SetInteger(field, stroke->color);
-        SHU_ReturnResult(ECSValue_TableSetField(saved, "points", &points));
+        SHU_ReturnResult(ECSValue_SetTableField(saved, "points", &points));
         ECSValue_SetTable(points);
 
         for (usz p = 0; p < stroke->count; p++)
         {
-            SHU_ReturnResult(ECSValue_ListAddItem(points, &field));
+            SHU_ReturnResult(ECSValue_AddListItem(points, &field));
             ECSValue_SetNumber(field, stroke->points[p]);
         }
     }
@@ -1132,7 +1134,7 @@ static i32 SketchStats(ECSValue *retStats)
 
     for (usz i = 0; i < sizeof(numbers) / sizeof(*numbers); i++)
     {
-        if (ECSValue_TableSetField(retStats, numbers[i].name, &field) == SHUResult_Ok)
+        if (ECSValue_SetTableField(retStats, numbers[i].name, &field) == SHUResult_Ok)
         {
             ECSValue_SetInteger(field, numbers[i].value);
         }
@@ -1283,13 +1285,13 @@ static void SketchLogStats(void *data)
     SKETCH.eachCanvas(SketchLogCanvas);
 }
 
-static SHUResult SketchSaveState(void *data, ECSValue *retState)
+static SHUResult SketchSaveState(void *data, ECSValue *retSavedState)
 {
     (void)data;
     ECSValue *field = nullptr;
-    SHU_ReturnResult(ECSValue_TableSetField(retState, "total", &field));
+    SHU_ReturnResult(ECSValue_SetTableField(retSavedState, "total", &field));
     ECSValue_SetInteger(field, SKETCH.total);
-    SHU_ReturnResult(ECSValue_TableSetField(retState, "saves", &field));
+    SHU_ReturnResult(ECSValue_SetTableField(retSavedState, "saves", &field));
     ECSValue_SetInteger(field, SKETCH.saves);
     return SHUResult_Ok;
 }
@@ -1414,7 +1416,7 @@ SHUResult ECSPlugin_Init(ECSPlugin plugin)
     for (usz i = 0; i < sizeof(events) / sizeof(*events); i++)
     {
         ECSSubscription subscription = nullptr;
-        SHU_ReturnResult(ECSEvent_Subscribe(plugin, events[i], &subscription, SketchOnEvent, nullptr));
+        SHU_ReturnResult(ECSEvent_Subscribe(plugin, &subscription, events[i], SketchOnEvent, nullptr));
     }
 
     const ECSPluginDesc desc = {.stateVersion = SKETCH_STATE_VERSION, .SaveState = SketchSaveState, .RestoreState = SketchRestoreState, .Destroy = SketchDestroy};

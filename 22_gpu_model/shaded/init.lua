@@ -176,7 +176,7 @@ ecs.panel.registerType({
       view.tilt = math.max(-1.5, math.min(1.5, view.tilt + (event.y - view.dragging.y) * 0.01))
       view.dragging = { x = event.x, y = event.y }
     elseif event.type == "wheel" then
-      view.distance = math.max(2, math.min(12, view.distance - event.wheelY * 0.5))
+      view.distance = math.max(2, math.min(12, view.distance - event.scrollY * 0.5))
     end
   end,
 

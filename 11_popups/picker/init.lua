@@ -24,7 +24,7 @@ local function openMenu(picker, x, y)
 
   -- the anchor is a rectangle of the panel, in its surface pixels; the menu opens below it, or above it near the bottom
   menu = picker.panel:openPopup({
-    kind = "menu", -- a menu takes the keys while it is open, and Escape closes it
+    type = "menu", -- a menu takes the keys while it is open, and Escape closes it
     anchor = { x = x, y = y, width = 0, height = 0 },
     width = WIDTH,
     height = ROW * #CHOICES,
