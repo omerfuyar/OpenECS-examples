@@ -9,14 +9,14 @@ return {
   presets = "user/presets",
   sessions = "user/sessions",
   run = function(test)
-    test.match(chosen(test), { kind = "preset", name = "squares" }, "the first entry")
+    test.match(chosen(test), { type = "preset", name = "squares" }, "the first entry")
 
     test.key("Down")
-    test.match(chosen(test), { kind = "session", name = "drawing" }, "after Down")
+    test.match(chosen(test), { type = "session", name = "drawing" }, "after Down")
 
     -- a click chooses the entry under it and opens it; a test cannot open one, so the launcher stays
     local list = test.rect(1)
     test.click(list.x + 100, list.y + 90)
-    test.match(chosen(test), { kind = "preset", name = "squares" }, "after a click on the first entry")
+    test.match(chosen(test), { type = "preset", name = "squares" }, "after a click on the first entry")
   end,
 }
