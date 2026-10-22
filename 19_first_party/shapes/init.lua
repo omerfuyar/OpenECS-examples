@@ -6,7 +6,7 @@ local draw = require("draw")
 local shown = {} -- the title of every open panel, by its handle
 
 -- the settings window lists the setting with its description, and checks what the user types against its type
-ecs.settings.declare({
+ecs.setting.declare({
   name = "color",
   type = "color",
   description = "Colour of the shapes",
@@ -27,7 +27,7 @@ local function shape(localName, title, drawShape)
     create = function(panel)
       -- the tab shows the colour, so the user sees the setting change
       shown[panel] = title
-      panel.title = title .. ", " .. ecs.settings.get("shapes.color")
+      panel.title = title .. ", " .. ecs.setting.get("shapes.color")
       return { panel = panel }
     end,
     destroy = function(state)
@@ -35,7 +35,7 @@ local function shape(localName, title, drawShape)
     end,
     draw = function(_, surface)
       surface:fill(0, 0, surface.width, surface.height, "#2E3440")
-      drawShape(surface, ecs.settings.get("shapes.color"))
+      drawShape(surface, ecs.setting.get("shapes.color"))
     end,
   })
 end
