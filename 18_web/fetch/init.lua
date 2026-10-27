@@ -151,7 +151,7 @@ ecs.panel.registerType({
       draw.text(surface, draw.font("ui"), log[i], 12, 12 + (i - first) * height, SIZE, "text")
     end
 
-    draw.text(surface, draw.font("ui"), "URL: " .. fetch.line, 12, 12 + lines * height, SIZE, "accent")
+    draw.text(surface, draw.font("ui"), "URL: " .. state.line, 12, 12 + lines * height, SIZE, "accent")
   end,
 
   event = function(state, event)
@@ -171,7 +171,7 @@ ecs.panel.registerType({
 
       local handle = web.socket(state.line)
       socket = handle and { handle = handle, url = state.line, open = false }
-      add(handle and "Connecting to " .. fetch.line or "Cannot connect to " .. fetch.line)
+      add(handle and "Connecting to " .. state.line or "Cannot connect to " .. state.line)
       state.line = ""
     elseif event.type == "keyDown" and event.key == "Return" and state.line ~= "" then
       -- web.get starts a request and gives its handle at once; web.request takes a method, headers and a body too

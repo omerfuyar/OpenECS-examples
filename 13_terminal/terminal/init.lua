@@ -76,7 +76,7 @@ ecs.panel.registerType({
 
     -- the command line is written over the row of the cursor each time, so it never scrolls the grid
     local _, row = state.grid:cursor()
-    state.grid:put(0, row, (PROMPT .. terminal.line):sub(-columns) .. string.rep(" ", columns))
+    state.grid:put(0, row, (PROMPT .. state.line):sub(-columns) .. string.rep(" ", columns))
     state.grid:setCursor(math.min(#PROMPT + #state.line, columns - 1), row)
 
     surface:fill(0, 0, surface.width, surface.height, BACKGROUND)

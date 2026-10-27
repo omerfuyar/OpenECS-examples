@@ -124,7 +124,7 @@ ecs.panel.registerType({
       draw.text(surface, draw.font("ui"), log[i], 12, 12 + (i - math.max(1, #log - lines + 1)) * height, SIZE, "text")
     end
 
-    draw.text(surface, draw.font("ui"), "> " .. echo.line, 12, 12 + lines * height, SIZE, "accent")
+    draw.text(surface, draw.font("ui"), "> " .. state.line, 12, 12 + lines * height, SIZE, "accent")
   end,
 
   event = function(state, event)
@@ -137,7 +137,7 @@ ecs.panel.registerType({
       if datagram then
         add(udpClient and udpClient:sendTo("127.0.0.1", PORT, datagram) and "> udp " .. datagram or "Cannot send by UDP")
       elseif client:status() == 1 and client:send(state.line) then
-        add("> " .. echo.line)
+        add("> " .. state.line)
       else
         add("Not connected yet")
       end
