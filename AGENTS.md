@@ -13,7 +13,7 @@ This repository is part of OpenECS. OpenECS's [AGENTS.md](https://github.com/ome
 | `shuild.c`             | The build of the examples, which OpenECS's build compiles and runs.                                                                                                        |
 | `.github/`             | Checks, rulesets and the agents' check script.                                                                                                                             |
 | `.clang-format`        | How clang-format formats the C code, as OpenECS's does.                                                                                                                    |
-| `.clang-tidy`          | What clang-tidy checks in the C code: OpenECS-std's names for a plugin's functions, and common bugs.                                                                       |
+| `.clang-tidy`          | What clang-tidy checks in the C code: OpenECS-std's names for a plugin's functions, how complex functions are, and common bugs.                                                                       |
 | `.claude/`             | Claude Code's settings and notes: it formats each C file it edits; `notes.md` says why the tools are set up as they are. OpenECS's `.claude/skills/` holds the procedures. |
 | `LICENSE.md`           | The license, zlib.                                                                                                                                                         |
 
