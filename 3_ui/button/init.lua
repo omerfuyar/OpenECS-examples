@@ -97,11 +97,11 @@ ecs.panel.registerType({
 
   -- draw runs only when the panel needs drawing; a panel type that draws every frame says continuous = true
   -- ui lays out and draws the elements that draw describes each time, so the panel keeps only its own state
-  draw = function(controls, surface)
+  draw = function(state, surface)
     -- each callback changes the panel's state; ui then asks the core to draw the panel again
     local function set(key)
       return function(value)
-        controls[key] = value
+        state[key] = value
       end
     end
 
@@ -111,22 +111,22 @@ ecs.panel.registerType({
       items[i] = ui.text(text, { id = "item:" .. i })
     end
 
-    ui.show(controls.panel, surface, ui.column({ padding = 24, gap = 12 }, {
-      ui.text(("Clicked %d times"):format(controls.clicks), { size = 18 }),
+    ui.show(state.panel, surface, ui.column({ padding = 24, gap = 12 }, {
+      ui.text(("Clicked %d times"):format(state.clicks), { size = 18 }),
       -- a tooltip shows when the pointer rests on its element
       ui.button("Click me", {
         id = "button",
         tooltip = "Counts the clicks in the panel's title",
         onClick = function()
-          controls.clicks = controls.clicks + 1
-          controls.panel.title = ("Controls (%d)"):format(controls.clicks)
+          state.clicks = state.clicks + 1
+          state.panel.title = ("Controls (%d)"):format(state.clicks)
         end,
       }),
       ui.separator(),
       -- tabs choose what shows below them; the panel keeps the chosen one and describes only its elements
-      ui.tabs(controls.tab, { "Options", "About", "Table" }, { id = "tab", onChange = set("tab") }),
+      ui.tabs(state.tab, { "Options", "About", "Table" }, { id = "tab", onChange = set("tab") }),
       -- a table lines its cells up below its columns' titles; a click on a title sorts by that column, and a second one reverses the order
-      controls.tab == "Table" and
+      state.tab == "Table" and
       ui.table(
         {
           id = "table",
@@ -134,17 +134,17 @@ ecs.panel.registerType({
           grow = 0,
           stretch = true,
           border = "tabShown",
-          sort = controls.sort,
-          ascending = controls.ascending,
-          selected = controls.row,
+          sort = state.sort,
+          ascending = state.ascending,
+          selected = state.row,
           onSelect = set("row"),
           onSort = function(column)
-            controls.ascending = column ~= controls.sort or not controls.ascending
-            controls.sort, controls.row = column, nil
+            state.ascending = column ~= state.sort or not state.ascending
+            state.sort, state.row = column, nil
           end
-        }, COLUMNS, sorted(controls)) or
+        }, COLUMNS, sorted(state)) or
       -- a tree shows its open nodes' children below them; the panel keeps which nodes are open, and the chosen one
-      controls.tab == "About" and ui.column({ gap = 8 }, {
+      state.tab == "About" and ui.column({ gap = 8 }, {
         ui.text("The controls of ui, each changing the panel's state.", { color = "textDim" }),
         ui.tree(
           {
@@ -152,26 +152,26 @@ ecs.panel.registerType({
             height = 110,
             grow = 0,
             border = "tabShown",
-            open = controls.open,
-            selected = controls.node,
+            open = state.open,
+            selected = state.node,
             onSelect = set("node"),
             onToggle = function(id, open)
-              controls.open[id] = open or nil
+              state.open[id] = open or nil
             end
           }, NODES),
       }) or ui.group({ title = "Options", gap = 8 }, {
-        ui.toggle(controls.sound, { id = "sound", label = "Sound", onChange = set("sound") }),
-        ui.toggle(controls.dark, { id = "dark", label = "Dark", look = "switch", onChange = set("dark") }),
+        ui.toggle(state.sound, { id = "sound", label = "Sound", onChange = set("sound") }),
+        ui.toggle(state.dark, { id = "dark", label = "Dark", look = "switch", onChange = set("dark") }),
         ui.row({ gap = 8 },
-          { ui.text("Volume"), ui.slider(controls.volume,
+          { ui.text("Volume"), ui.slider(state.volume,
             { id = "volume", step = 0.1, grow = 1, onChange = set("volume") }) }),
         ui.row({ gap = 8 },
-          { ui.text("Size"), ui.selector(controls.size, SIZES, { id = "size", onChange = set("size") }) }),
+          { ui.text("Size"), ui.selector(state.size, SIZES, { id = "size", onChange = set("size") }) }),
         ui.row({ gap = 8 },
-          { ui.text("Fruit"), ui.dropdown(controls.fruit, FRUITS, { id = "fruit", onChange = set("fruit") }) }),
+          { ui.text("Fruit"), ui.dropdown(state.fruit, FRUITS, { id = "fruit", onChange = set("fruit") }) }),
         -- a number field takes a number from min to max: Return gives what is typed, and Up and Down change it by step
         ui.row({ gap = 8 },
-          { ui.text("Count"), ui.number(controls.count,
+          { ui.text("Count"), ui.number(state.count,
             { id = "count", min = 0, max = 10, step = 1, grow = 1, onChange = set("count") }) }),
       }),
       ui.list(
@@ -180,13 +180,13 @@ ecs.panel.registerType({
           height = 90,
           grow = 0,
           border = "tabShown",
-          selected = controls.selected,
+          selected = state.selected,
           onSelect = set(
             "selected")
         },
         items),
       -- a field keeps what is typed while it has the keys; Left, Right, Home and End move its cursor, Shift with them selects, and Ctrl+C, Ctrl+X and Ctrl+V copy, cut and paste
-      ui.row({ gap = 8 }, { ui.text("Name"), ui.field(controls.name, { id = "name", grow = 1, onChange = set("name") }) }),
+      ui.row({ gap = 8 }, { ui.text("Name"), ui.field(state.name, { id = "name", grow = 1, onChange = set("name") }) }),
       -- text with wrap = true breaks into lines at the width of its column
       ui.text(
         "Tab gives the keys to the next control and Shift+Tab to the one before. Return or Space presses the control that has them, " ..
@@ -197,8 +197,8 @@ ecs.panel.registerType({
 
     -- the rectangles of the elements, in the panel's surface pixels; ui.rect gives nil for an element that is not shown, such as one on another tab
     for _, id in ipairs(IDS) do
-      local rect = ui.rect(controls.panel, id)
-      controls.rects[id] = rect and {
+      local rect = ui.rect(state.panel, id)
+      state.rects[id] = rect and {
         x = rect.x * surface.scale,
         y = rect.y * surface.scale,
         width = rect.width * surface.scale,
@@ -209,34 +209,34 @@ ecs.panel.registerType({
 
   -- the panel's events go to ui, which calls the callbacks of the elements they reach; Up and Down choose a list's or the tree's next item and
   -- the one before, and Right and Left open and close the tree's chosen node
-  event = function(controls, event)
-    ui.event(controls.panel, event)
+  event = function(state, event)
+    ui.event(state.panel, event)
   end,
 
-  destroy = function(controls)
-    ui.forget(controls.panel)
+  destroy = function(state)
+    ui.forget(state.panel)
   end,
 
   -- the values and the rectangles are saved, so the test can read them
-  saveState = function(controls)
+  saveState = function(state)
     return {
-      clicks = controls.clicks,
-      sound = controls.sound,
-      volume = controls.volume,
-      size = controls.size,
-      fruit = controls.fruit,
-      count = controls.count,
-      tab = controls.tab,
-      tip = ui.tooltip(controls.panel),
-      selected = controls.selected,
-      name = controls.name,
-      node = controls.node,
-      open = controls.open,
-      sort = controls.sort,
-      ascending = controls.ascending,
-      row = controls.row,
-      first = controls.tab == "Table" and sorted(controls)[1].name or nil,
-      rects = controls.rects
+      clicks = state.clicks,
+      sound = state.sound,
+      volume = state.volume,
+      size = state.size,
+      fruit = state.fruit,
+      count = state.count,
+      tab = state.tab,
+      tip = ui.tooltip(state.panel),
+      selected = state.selected,
+      name = state.name,
+      node = state.node,
+      open = state.open,
+      sort = state.sort,
+      ascending = state.ascending,
+      row = state.row,
+      first = state.tab == "Table" and sorted(state)[1].name or nil,
+      rects = state.rects
     }
   end,
 })

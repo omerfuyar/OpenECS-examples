@@ -27,33 +27,33 @@ ecs.panel.registerType({
     return marks
   end,
 
-  draw = function(marks, surface)
-    marks.scale = surface.scale
+  draw = function(state, surface)
+    state.scale = surface.scale
     surface:fill(0, 0, surface.width, surface.height, "background")
 
-    for i = 1, #marks.dots - 1, 2 do
-      draw.fill(surface, marks.dots[i] - DOT / 2, marks.dots[i + 1] - DOT / 2, DOT, DOT, "accent")
+    for i = 1, #state.dots - 1, 2 do
+      draw.fill(surface, state.dots[i] - DOT / 2, state.dots[i + 1] - DOT / 2, DOT, DOT, "accent")
     end
   end,
 
-  event = function(marks, event)
+  event = function(state, event)
     if event.type == "pointerDown" and event.button == 1 then
-      table.insert(marks.dots, event.x / marks.scale) -- dots are kept in layout units, so they stay put at any scale
-      table.insert(marks.dots, event.y / marks.scale)
+      table.insert(state.dots, event.x / state.scale) -- dots are kept in layout units, so they stay put at any scale
+      table.insert(state.dots, event.y / state.scale)
       placed = placed + 1
-      marks.panel.unsaved = true -- marks the tab; closing the panel then asks to save
-      marks.panel:redraw()
+      state.panel.unsaved = true -- marks the tab; closing the panel then asks to save
+      state.panel:redraw()
     end
   end,
 
   -- gives what the session keeps: plain values only, such as numbers, strings and tables of them
-  saveState = function(marks)
-    return { dots = marks.dots }
+  saveState = function(state)
+    return { dots = state.dots }
   end,
 
   -- saves the panel's unsaved work, when the user asks or closes it; the dots are already in the session, so it only clears the mark
-  save = function(marks)
-    marks.panel.unsaved = false
+  save = function(state)
+    state.panel.unsaved = false
     return true
   end,
 })

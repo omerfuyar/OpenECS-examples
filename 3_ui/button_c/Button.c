@@ -9,7 +9,7 @@
 #include <stdlib.h>
 
 /// @brief ui's functions, and what the macros describe into.
-static Ui UI;
+static Ui UI_PLUGIN;
 
 #define COUNT(array) (sizeof(array) / sizeof((array)[0]))
 
@@ -68,23 +68,23 @@ static SHUResult ControlsCreate(ECSPanel panel, const ECSValue *savedState, u32 
     (void)savedState;
     (void)version;
 
-    Controls *controls = calloc(1, sizeof(Controls));
+    Controls *state = calloc(1, sizeof(Controls));
 
-    if (controls == nullptr)
+    if (state == nullptr)
     {
         return SHUResult_ErrAllocation;
     }
 
-    *controls = (Controls){.panel = panel, .scale = 1.0f, .dark = true, .volume = 0.5, .size = 1, .count = 3, .selected = 1, .node = "readme", .sort = "name", .ascending = true};
-    *retState = controls;
+    *state = (Controls){.panel = panel, .scale = 1.0f, .dark = true, .volume = 0.5, .size = 1, .count = 3, .selected = 1, .node = "readme", .sort = "name", .ascending = true};
+    *retState = state;
     return SHUResult_Ok;
 }
 
-static void ControlsDestroy(void *state)
+static void ControlsDestroy(void *data)
 {
-    Controls *controls = state;
-    UI.functions.forget(controls->panel);
-    free(controls);
+    Controls *state = data;
+    UI_PLUGIN.functions.forget(state->panel);
+    free(state);
 }
 
 /// @brief Whether a row comes before another in the order the panel sorts them: by its sort column, up or down.
@@ -101,15 +101,15 @@ static void SortRows(const Controls *controls, FruitRow *retRows)
 {
     for (usz i = 0; i < COUNT(FRUIT_ROWS); i++)
     {
-        usz at = i;
+        usz position = i;
 
-        while (at > 0 && RowBefore(controls, &FRUIT_ROWS[i], &retRows[at - 1]))
+        while (position > 0 && RowBefore(controls, &FRUIT_ROWS[i], &retRows[position - 1]))
         {
-            retRows[at] = retRows[at - 1];
-            at--;
+            retRows[position] = retRows[position - 1];
+            position--;
         }
 
-        retRows[at] = FRUIT_ROWS[i];
+        retRows[position] = FRUIT_ROWS[i];
     }
 }
 
@@ -192,15 +192,15 @@ static void DescribeOptions(Controls *controls)
 }
 
 // each draw describes every element; a macro that takes a pointer writes into it what the user changed since the last draw
-static void ControlsDraw(void *state, ECSSurface *surface, f64 seconds)
+static void ControlsDraw(void *data, ECSSurface *surface, f64 seconds)
 {
     (void)seconds;
-    Controls *controls = state;
-    controls->scale = surface->scale;
+    Controls *state = data;
+    state->scale = surface->scale;
     char clicked[64];
-    snprintf(clicked, sizeof(clicked), "Clicked %d times", controls->clicks);
+    snprintf(clicked, sizeof(clicked), "Clicked %d times", state->clicks);
 
-    UI_SHOW(&UI, controls->panel, surface)
+    UI_SHOW(&UI_PLUGIN, state->panel, surface)
     {
         UI_COLUMN(.padding = 24, .gap = 12)
         {
@@ -210,29 +210,29 @@ static void ControlsDraw(void *state, ECSSurface *surface, f64 seconds)
             if (UI_BUTTON("Click me", .id = "button", .tooltip = "Counts the clicks in the panel's title"))
             {
                 char title[64];
-                snprintf(title, sizeof(title), "Controls in C (%d)", ++controls->clicks);
-                ECSPanel_SetTitle(controls->panel, title);
+                snprintf(title, sizeof(title), "Controls in C (%d)", ++state->clicks);
+                ECSPanel_SetTitle(state->panel, title);
             }
 
             UI_SEPARATOR();
 
             // tabs choose what shows below them; the panel keeps the chosen one and describes only its elements
-            UI_TABS(&controls->tab, TABS, .id = "tab");
+            UI_TABS(&state->tab, TABS, .id = "tab");
 
-            if (strcmp(TABS[controls->tab], "Table") == 0)
+            if (strcmp(TABS[state->tab], "Table") == 0)
             {
-                DescribeTable(controls);
+                DescribeTable(state);
             }
-            else if (strcmp(TABS[controls->tab], "About") == 0)
+            else if (strcmp(TABS[state->tab], "About") == 0)
             {
-                DescribeTree(controls);
+                DescribeTree(state);
             }
             else
             {
-                DescribeOptions(controls);
+                DescribeOptions(state);
             }
 
-            UI_LIST(&controls->selected, .id = "list", .height = 90, .grow = UI_FIXED, .border = "tabShown")
+            UI_LIST(&state->selected, .id = "list", .height = 90, .grow = UI_FIXED, .border = "tabShown")
             {
                 for (usz i = 0; i < COUNT(ITEMS); i++)
                 {
@@ -246,7 +246,7 @@ static void ControlsDraw(void *state, ECSSurface *surface, f64 seconds)
             UI_ROW(.gap = 8)
             {
                 UI_TEXT("Name");
-                UI_FIELD(controls->name, sizeof(controls->name), .id = "name", .grow = 1);
+                UI_FIELD(state->name, sizeof(state->name), .id = "name", .grow = 1);
             }
 
             // text with wrap = true breaks into lines at the width of its column
@@ -257,10 +257,10 @@ static void ControlsDraw(void *state, ECSSurface *surface, f64 seconds)
 
 // the panel's events go to ui, which calls the callbacks of the elements they reach; Up and Down choose a list's or the tree's next item and the one
 // before, and Right and Left open and close the tree's chosen node
-static void ControlsEvent(void *state, const ECSPanelEvent *event)
+static void ControlsEvent(void *data, const ECSPanelEvent *event)
 {
-    Controls *controls = state;
-    Ui_Event(&UI, controls->panel, event);
+    Controls *state = data;
+    Ui_Event(&UI_PLUGIN, state->panel, event);
 }
 
 /// @brief Sets a field of a table to a number.
@@ -304,7 +304,7 @@ static SHUResult SaveRects(const Controls *controls, ECSValue *retRects)
 
     for (usz i = 0; i < COUNT(IDS); i++)
     {
-        const ECSValue *rect = UI.functions.rect(controls->panel, IDS[i]);
+        const ECSValue *rect = UI_PLUGIN.functions.rect(controls->panel, IDS[i]);
         ECSValue *saved = nullptr;
 
         if (ECSValue_GetType(rect) != ECSValueType_Table)
@@ -325,59 +325,59 @@ static SHUResult SaveRects(const Controls *controls, ECSValue *retRects)
 }
 
 // the values and the rectangles are saved, so the test can read them
-static SHUResult ControlsSaveState(void *state, ECSValue *retSavedState)
+static SHUResult ControlsSaveState(void *data, ECSValue *retSavedState)
 {
-    Controls *controls = state;
+    Controls *state = data;
     ECSValue_SetTable(retSavedState);
-    SHU_ReturnResult(SetNumber(retSavedState, "clicks", controls->clicks));
-    SHU_ReturnResult(SetBool(retSavedState, "sound", controls->sound));
-    SHU_ReturnResult(SetNumber(retSavedState, "volume", controls->volume));
-    SHU_ReturnResult(SetString(retSavedState, "size", SIZES[controls->size]));
-    SHU_ReturnResult(SetString(retSavedState, "fruit", FRUITS[controls->fruit]));
-    SHU_ReturnResult(SetNumber(retSavedState, "count", controls->count));
-    SHU_ReturnResult(SetString(retSavedState, "tab", TABS[controls->tab]));
-    SHU_ReturnResult(SetString(retSavedState, "tip", ECSValue_GetString(UI.functions.tooltip(controls->panel), nullptr)));
-    SHU_ReturnResult(SetNumber(retSavedState, "selected", controls->selected));
-    SHU_ReturnResult(SetString(retSavedState, "name", controls->name));
-    SHU_ReturnResult(SetString(retSavedState, "node", controls->node));
-    SHU_ReturnResult(SetString(retSavedState, "sort", controls->sort));
-    SHU_ReturnResult(SetBool(retSavedState, "ascending", controls->ascending));
+    SHU_ReturnResult(SetNumber(retSavedState, "clicks", state->clicks));
+    SHU_ReturnResult(SetBool(retSavedState, "sound", state->sound));
+    SHU_ReturnResult(SetNumber(retSavedState, "volume", state->volume));
+    SHU_ReturnResult(SetString(retSavedState, "size", SIZES[state->size]));
+    SHU_ReturnResult(SetString(retSavedState, "fruit", FRUITS[state->fruit]));
+    SHU_ReturnResult(SetNumber(retSavedState, "count", state->count));
+    SHU_ReturnResult(SetString(retSavedState, "tab", TABS[state->tab]));
+    SHU_ReturnResult(SetString(retSavedState, "tip", ECSValue_GetString(UI_PLUGIN.functions.tooltip(state->panel), nullptr)));
+    SHU_ReturnResult(SetNumber(retSavedState, "selected", state->selected));
+    SHU_ReturnResult(SetString(retSavedState, "name", state->name));
+    SHU_ReturnResult(SetString(retSavedState, "node", state->node));
+    SHU_ReturnResult(SetString(retSavedState, "sort", state->sort));
+    SHU_ReturnResult(SetBool(retSavedState, "ascending", state->ascending));
 
     ECSValue *open = nullptr;
     SHU_ReturnResult(ECSValue_SetTableField(retSavedState, "open", &open));
     ECSValue_SetTable(open);
 
-    if (controls->srcOpen)
+    if (state->srcOpen)
     {
         SHU_ReturnResult(SetBool(open, "src", true));
     }
 
-    if (controls->libOpen)
+    if (state->libOpen)
     {
         SHU_ReturnResult(SetBool(open, "lib", true));
     }
 
-    if (controls->row > 0)
+    if (state->row > 0)
     {
-        SHU_ReturnResult(SetNumber(retSavedState, "row", controls->row));
+        SHU_ReturnResult(SetNumber(retSavedState, "row", state->row));
     }
 
-    if (strcmp(TABS[controls->tab], "Table") == 0)
+    if (strcmp(TABS[state->tab], "Table") == 0)
     {
         FruitRow rows[COUNT(FRUIT_ROWS)];
-        SortRows(controls, rows);
+        SortRows(state, rows);
         SHU_ReturnResult(SetString(retSavedState, "first", rows[0].name));
     }
 
     ECSValue *rects = nullptr;
     SHU_ReturnResult(ECSValue_SetTableField(retSavedState, "rects", &rects));
-    return SaveRects(controls, rects);
+    return SaveRects(state, rects);
 }
 
 SHUResult ECSPlugin_Init(ECSPlugin plugin)
 {
     // Ui_Init looks up ui's functions, which the manifest's dependency on ui makes sure exist
-    SHU_ReturnResult(Ui_Init(&UI, plugin));
+    SHU_ReturnResult(Ui_Init(&UI_PLUGIN, plugin));
 
     const ECSPanelTypeDesc controls = {
         .name = "panel",

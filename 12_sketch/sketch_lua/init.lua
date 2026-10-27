@@ -256,43 +256,43 @@ ecs.panel.registerType({
     return canvas
   end,
 
-  destroy = function(canvas)
-    canvas.reminder:stop()
-    canvases[canvas.panel] = nil
+  destroy = function(state)
+    state.reminder:stop()
+    canvases[state.panel] = nil
   end,
 
-  draw = function(canvas, surface)
-    canvas.width, canvas.height = surface.width, surface.height
+  draw = function(state, surface)
+    state.width, state.height = surface.width, surface.height
     surface:fill(0, 0, surface.width, surface.height, hex(BACKGROUND))
 
-    paint(surface.width, surface.height, canvas.strokes, function(x, y, color)
+    paint(surface.width, surface.height, state.strokes, function(x, y, color)
       surface:setPixel(x, y, hex(color))
     end)
   end,
 
-  event = function(canvas, event)
-    local panel = canvas.panel
+  event = function(state, event)
+    local panel = state.panel
 
     if event.type == "pointerDown" and event.button == 1 and event.shift then
       -- Shift and a press drag the canvas's strokes, in the text format of copy
-      if not panel:startDrag(CLIPBOARD_TYPE, strokesToText(canvas.strokes)) then
+      if not panel:startDrag(CLIPBOARD_TYPE, strokesToText(state.strokes)) then
         ecs.log.warn("Cannot drag the strokes.")
       end
     elseif event.type == "pointerDown" and event.button == 1 then
-      local brush = canvas.brush
-      table.insert(canvas.strokes,
+      local brush = state.brush
+      table.insert(state.strokes,
         { size = brush and brush.size or settingSize(), color = brush and brush.color or settingColor(), points = { event.x, event.y } })
-      canvas.drawing = true
+      state.drawing = true
       panel:redraw()
-    elseif event.type == "pointerMove" and canvas.drawing then
-      local points = canvas.strokes[#canvas.strokes].points
+    elseif event.type == "pointerMove" and state.drawing then
+      local points = state.strokes[#state.strokes].points
       points[#points + 1] = event.x
       points[#points + 1] = event.y
       panel:redraw()
-    elseif event.type == "pointerUp" and canvas.drawing then
-      canvas.drawing = false
-      canvasChanged(canvas)
-      emitStroke(canvas)
+    elseif event.type == "pointerUp" and state.drawing then
+      state.drawing = false
+      canvasChanged(state)
+      emitStroke(state)
     elseif event.type == "wheel" then
       -- the wheel changes the setting, so every canvas and the settings window see the new size
       local ok = ecs.setting.set(name("brushSize"),
@@ -308,20 +308,20 @@ ecs.panel.registerType({
     elseif event.type == "hidden" then
       ecs.log.debug(panel.title .. " is hidden.")
     elseif event.type == "drop" then
-      dropStrokes(canvas, event.dataType, event.value)
+      dropStrokes(state, event.dataType, event.value)
     end
   end,
 
-  saveState = function(canvas)
-    return { strokes = canvas.strokes }
+  saveState = function(state)
+    return { strokes = state.strokes }
   end,
 
   -- saves a canvas's unsaved work; its strokes are already in its saved state, so saving only counts it
-  save = function(canvas)
-    canvas.unsaved = false
+  save = function(state)
+    state.unsaved = false
     saves = saves + 1
-    canvas.panel.unsaved = false
-    ecs.log.info(canvas.panel.title .. " is saved.")
+    state.panel.unsaved = false
+    ecs.log.info(state.panel.title .. " is saved.")
     return true
   end,
 })
@@ -338,8 +338,8 @@ ecs.panel.registerType({
     return { panel = panel, time = 0, shownSeconds = -1 }
   end,
 
-  draw = function(clock, surface, seconds)
-    clock.time = clock.time + seconds
+  draw = function(state, surface, seconds)
+    state.time = state.time + seconds
     local width, height = surface.width, surface.height
     surface:fill(0, 0, width, height, hex(BACKGROUND))
 
@@ -358,18 +358,18 @@ ecs.panel.registerType({
       end
     end
 
-    local angle = (clock.time % 60) / 60 * 2 * math.pi
+    local angle = (state.time % 60) / 60 * 2 * math.pi
 
     for t = 0, radius - 1 do
       surface:setPixel(math.floor(cx + math.sin(angle) * t), math.floor(cy - math.cos(angle) * t), hex(CLOCK_HAND))
     end
 
     -- the title changes once a second, not every frame
-    local whole = math.floor(clock.time)
+    local whole = math.floor(state.time)
 
-    if whole ~= clock.shownSeconds then
-      clock.panel.title = ("Lua clock %d:%02d"):format(whole // 60, whole % 60)
-      clock.shownSeconds = whole
+    if whole ~= state.shownSeconds then
+      state.panel.title = ("Lua clock %d:%02d"):format(whole // 60, whole % 60)
+      state.shownSeconds = whole
     end
   end,
 })

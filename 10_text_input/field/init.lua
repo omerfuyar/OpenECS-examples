@@ -24,28 +24,28 @@ ecs.panel.registerType({
     return field
   end,
 
-  draw = function(field, surface)
-    field.scale = surface.scale
+  draw = function(state, surface)
+    state.scale = surface.scale
     surface:fill(0, 0, surface.width, surface.height, "background")
-    local width = draw.text(surface, draw.font("ui"), field.text, MARGIN, MARGIN, SIZE, "text")
-    local _, height = draw.font("ui"):measure(field.text, SIZE)
+    local width = draw.text(surface, draw.font("ui"), state.text, MARGIN, MARGIN, SIZE, "text")
+    local _, height = draw.font("ui"):measure(state.text, SIZE)
     draw.fill(surface, MARGIN + width, MARGIN, 2, height, "accent") -- the cursor
   end,
 
-  event = function(field, event)
+  event = function(state, event)
     if event.type == "text" then
-      field.text = field.text .. event.text
-    elseif event.type == "keyDown" and event.key == "Backspace" and #field.text > 0 then
-      field.text = field.text:sub(1, utf8.offset(field.text, -1) - 1) -- drops the last character, which may be several bytes
+      state.text = state.text .. event.text
+    elseif event.type == "keyDown" and event.key == "Backspace" and #state.text > 0 then
+      state.text = state.text:sub(1, utf8.offset(state.text, -1) - 1) -- drops the last character, which may be several bytes
     else
       return
     end
 
-    placeCursor(field)
-    field.panel:redraw()
+    placeCursor(state)
+    state.panel:redraw()
   end,
 
-  saveState = function(field)
-    return { text = field.text }
+  saveState = function(state)
+    return { text = state.text }
   end,
 })

@@ -59,8 +59,8 @@ ecs.panel.registerType({
     return listener
   end,
 
-  destroy = function(listener)
-    listeners[listener.panel] = nil
+  destroy = function(state)
+    listeners[state.panel] = nil
   end,
 
   draw = function(_, surface)

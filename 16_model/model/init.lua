@@ -79,13 +79,13 @@ ecs.panel.registerType({
     return { angle = 0, drawn = 0, time = 0 }
   end,
 
-  draw = function(view, surface, seconds)
-    view.angle = view.angle + seconds * 0.8
-    view.drawn = view.drawn + 1
+  draw = function(state, surface, seconds)
+    state.angle = state.angle + seconds * 0.8
+    state.drawn = state.drawn + 1
     surface:fill(0, 0, surface.width, surface.height, "#101418")
 
     -- each point turns around the vertical axis, leans towards the viewer, and is drawn with a little perspective, in layout units
-    local cos, sin = math.cos(view.angle), math.sin(view.angle)
+    local cos, sin = math.cos(state.angle), math.sin(state.angle)
     local width, height = surface.width / surface.scale, surface.height / surface.scale
     local scale = math.min(width, height) * 0.3
     local projected = {}
@@ -100,11 +100,11 @@ ecs.panel.registerType({
     draw.lines(surface, table.concat(projected), EDGES, 1, COLOR)
 
     -- the badge's texture near the top left corner, at four times its size, turned, moved and grown as its animation says; the animation goes round
-    view.time = (view.time + seconds) % SPIN.duration
-    local turn, right, grow = badgeAt(view.time)
+    state.time = (state.time + seconds) % SPIN.duration
+    local turn, right, grow = badgeAt(state.time)
     local size = TEXTURE_WIDTH * 4 * grow
     -- the arm on the right, bending and straightening again: the animation's time goes there and back
-    local bend = view.time % (2 * BEND.duration)
+    local bend = state.time % (2 * BEND.duration)
     local skinned = arm:skin(1, 1, ARM_SKIN, 1, bend <= BEND.duration and bend or 2 * BEND.duration - bend)
     local armPoints = {}
 
@@ -118,8 +118,8 @@ ecs.panel.registerType({
   end,
 
   -- how many frames it drew, so the test can see it draws every frame
-  saveState = function(view)
-    return { drawn = view.drawn, triangles = TRIANGLES, vertices = primitive.vertices, texture = { mimeType = badgeImage.mimeType, file = badgeImage.file, width = TEXTURE_WIDTH, height = TEXTURE_HEIGHT },
+  saveState = function(state)
+    return { drawn = state.drawn, triangles = TRIANGLES, vertices = primitive.vertices, texture = { mimeType = badgeImage.mimeType, file = badgeImage.file, width = TEXTURE_WIDTH, height = TEXTURE_HEIGHT },
       spin = { name = SPIN.name, duration = SPIN.duration, early = { badgeAt(0.5) }, late = { badgeAt(2.5) }, middle = { badgeAt(2) } },
       arm = { rest = armAt(6, 0), top = armAt(6, 1), middle = armAt(4, 1), joints = #armInfo.skins[ARM_SKIN].joints } }
   end,

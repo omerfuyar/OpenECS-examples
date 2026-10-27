@@ -92,7 +92,7 @@ ecs.panel.registerType({
     return { panel = panel, limit = "1 000 000", running = false, primes = 0, chunks = 0, seconds = 0, done = {}, workers = {}, rects = {} }
   end,
 
-  draw = function(counter, surface)
+  draw = function(state, surface)
     -- a bar shows a share of the chunks: the first one all the workers' together, and the others each worker's own
     local function bar(label, done)
       return ui.row({ gap = 8, align = "center" }, {
@@ -104,25 +104,25 @@ ecs.panel.registerType({
       })
     end
 
-    local bars = { bar("All", counter.chunks) }
+    local bars = { bar("All", state.chunks) }
 
     for i = 1, WORKERS do
-      bars[i + 1] = bar(("Worker %d"):format(i), counter.done[i] or 0)
+      bars[i + 1] = bar(("Worker %d"):format(i), state.done[i] or 0)
     end
 
-    local status = counter.running and ("Counting: %d of %d chunks, %.1f s"):format(counter.chunks, CHUNKS, counter.seconds)
-        or counter.chunks == CHUNKS and ("%d primes below %s, in about %.1f s"):format(counter.primes, counter.limit, counter.seconds)
+    local status = state.running and ("Counting: %d of %d chunks, %.1f s"):format(state.chunks, CHUNKS, state.seconds)
+        or state.chunks == CHUNKS and ("%d primes below %s, in about %.1f s"):format(state.primes, state.limit, state.seconds)
         or "Press Start to count the primes."
 
-    ui.show(counter.panel, surface, ui.column({ padding = 24, gap = 12 }, {
+    ui.show(state.panel, surface, ui.column({ padding = 24, gap = 12 }, {
       ui.text("Four workers count the primes, each on a thread of its own. Drag the panel or open its menu while they count: it stays free.", { wrap = true }),
       ui.row({ gap = 8, align = "center" }, {
         ui.text("Below"),
-        ui.selector(counter.limit, LIMITS, { id = "limit", onChange = function(limit) counter.limit = limit end }),
+        ui.selector(state.limit, LIMITS, { id = "limit", onChange = function(limit) state.limit = limit end }),
       }),
       ui.row({ gap = 8 }, {
-        ui.button("Start", { id = "start", onClick = function() start(counter) end }),
-        ui.button("Stop", { id = "stop", onClick = function() stop(counter) end }),
+        ui.button("Start", { id = "start", onClick = function() start(state) end }),
+        ui.button("Stop", { id = "stop", onClick = function() stop(state) end }),
       }),
       ui.column({ gap = 6 }, bars),
       ui.text(status, { size = 16 }),
@@ -130,8 +130,8 @@ ecs.panel.registerType({
 
     -- the rectangles of the elements, in the panel's surface pixels
     for _, id in ipairs(IDS) do
-      local rect = ui.rect(counter.panel, id)
-      counter.rects[id] = rect and {
+      local rect = ui.rect(state.panel, id)
+      state.rects[id] = rect and {
         x = rect.x * surface.scale,
         y = rect.y * surface.scale,
         width = rect.width * surface.scale,
@@ -140,17 +140,17 @@ ecs.panel.registerType({
     end
   end,
 
-  event = function(counter, event)
-    ui.event(counter.panel, event)
+  event = function(state, event)
+    ui.event(state.panel, event)
   end,
 
-  destroy = function(counter)
-    stop(counter)
-    ui.forget(counter.panel)
+  destroy = function(state)
+    stop(state)
+    ui.forget(state.panel)
   end,
 
   -- the counts are saved, so the test can read them
-  saveState = function(counter)
-    return { limit = counter.limit, running = counter.running, primes = counter.primes, chunks = counter.chunks, done = counter.done, rects = counter.rects }
+  saveState = function(state)
+    return { limit = state.limit, running = state.running, primes = state.primes, chunks = state.chunks, done = state.done, rects = state.rects }
   end,
 })

@@ -163,22 +163,22 @@ static void SketchFreeStrokes(SketchStroke *strokes, usz count)
 }
 
 /// @brief Paints a filled circle into pixels, clipped to them.
-static void SketchDab(u32 *pixels, i32 width, i32 height, f32 cx, f32 cy, i32 size, u32 color)
+static void SketchDab(u32 *pixels, i32 width, i32 height, f32 centerX, f32 centerY, i32 size, u32 color)
 {
     f32 radius = (f32)size / 2.0f;
-    i32 left = (i32)floorf(cx - radius);
-    i32 top = (i32)floorf(cy - radius);
-    i32 right = (i32)ceilf(cx + radius);
-    i32 bottom = (i32)ceilf(cy + radius);
+    i32 left = (i32)floorf(centerX - radius);
+    i32 top = (i32)floorf(centerY - radius);
+    i32 right = (i32)ceilf(centerX + radius);
+    i32 bottom = (i32)ceilf(centerY + radius);
 
     for (i32 y = top < 0 ? 0 : top; y <= bottom && y < height; y++)
     {
         for (i32 x = left < 0 ? 0 : left; x <= right && x < width; x++)
         {
-            f32 dx = (f32)x + 0.5f - cx;
-            f32 dy = (f32)y + 0.5f - cy;
+            f32 offsetX = (f32)x + 0.5f - centerX;
+            f32 offsetY = (f32)y + 0.5f - centerY;
 
-            if (dx * dx + dy * dy <= radius * radius)
+            if (offsetX * offsetX + offsetY * offsetY <= radius * radius)
             {
                 pixels[(usz)y * (usz)width + (usz)x] = color;
             }
@@ -194,26 +194,26 @@ static void SketchPaint(u32 *pixels, i32 width, i32 height, const SketchStroke *
         pixels[i] = SKETCH_BACKGROUND;
     }
 
-    for (usz s = 0; s < count; s++)
+    for (usz i = 0; i < count; i++)
     {
-        const SketchStroke *stroke = &strokes[s];
+        const SketchStroke *stroke = &strokes[i];
         f32 step = stroke->size > 2 ? (f32)stroke->size / 2.0f : 1.0f;
 
-        for (usz p = 0; p + 1 < stroke->count; p += 2)
+        for (usz j = 0; j + 1 < stroke->count; j += 2)
         {
-            f32 x = stroke->points[p];
-            f32 y = stroke->points[p + 1];
+            f32 x = stroke->points[j];
+            f32 y = stroke->points[j + 1];
             SketchDab(pixels, width, height, x, y, stroke->size, stroke->color);
 
-            if (p + 3 < stroke->count)
+            if (j + 3 < stroke->count)
             {
-                f32 dx = stroke->points[p + 2] - x;
-                f32 dy = stroke->points[p + 3] - y;
-                i32 steps = (i32)(sqrtf(dx * dx + dy * dy) / step);
+                f32 deltaX = stroke->points[j + 2] - x;
+                f32 deltaY = stroke->points[j + 3] - y;
+                i32 steps = (i32)(sqrtf(deltaX * deltaX + deltaY * deltaY) / step);
 
                 for (i32 k = 1; k < steps; k++)
                 {
-                    SketchDab(pixels, width, height, x + dx * (f32)k / (f32)steps, y + dy * (f32)k / (f32)steps, stroke->size, stroke->color);
+                    SketchDab(pixels, width, height, x + deltaX * (f32)k / (f32)steps, y + deltaY * (f32)k / (f32)steps, stroke->size, stroke->color);
                 }
             }
         }
@@ -244,9 +244,9 @@ static char *SketchStrokesToText(const SketchStroke *strokes, usz count)
     {
         used += (usz)snprintf(text + used, length - used, "%d %u", strokes[i].size, strokes[i].color);
 
-        for (usz p = 0; p < strokes[i].count; p++)
+        for (usz j = 0; j < strokes[i].count; j++)
         {
-            used += (usz)snprintf(text + used, length - used, " %.1f", (double)strokes[i].points[p]);
+            used += (usz)snprintf(text + used, length - used, " %.1f", (double)strokes[i].points[j]);
         }
 
         used += (usz)snprintf(text + used, length - used, "\n");
@@ -377,15 +377,15 @@ static void SketchCanvasRemind(void *data)
 
 static SHUResult SketchCanvasCreate(ECSPanel panel, const ECSValue *savedState, u32 version, void **retState)
 {
-    SketchCanvas *canvas = calloc(1, sizeof(SketchCanvas));
+    SketchCanvas *state = calloc(1, sizeof(SketchCanvas));
 
-    if (canvas == nullptr || !SketchGrow((void **)&SKETCH.canvases, &SKETCH.canvasCapacity, SKETCH.canvasCount + 1, sizeof(SketchCanvas *)))
+    if (state == nullptr || !SketchGrow((void **)&SKETCH.canvases, &SKETCH.canvasCapacity, SKETCH.canvasCount + 1, sizeof(SketchCanvas *)))
     {
-        free(canvas);
+        free(state);
         return SHUResult_ErrAllocation;
     }
 
-    canvas->panel = panel;
+    state->panel = panel;
 
     // strokes = { { size = 6, color = 0xFFECEFF4, points = { x, y, ... } }, ... }; older versions are not read
     const ECSValue *strokes = version == SKETCH_STATE_VERSION ? ECSValue_GetTableField(savedState, "strokes") : nullptr;
@@ -395,16 +395,16 @@ static SHUResult SketchCanvasCreate(ECSPanel panel, const ECSValue *savedState, 
         const ECSValue *saved = ECSValue_GetListItem(strokes, i);
         const ECSValue *points = ECSValue_GetTableField(saved, "points");
         i64 size = ECSValue_GetInteger(ECSValue_GetTableField(saved, "size"), 6);
-        SketchStroke *stroke = SketchAddStroke(&canvas->strokes, &canvas->strokeCount, &canvas->strokeCapacity, (i32)size, (u32)ECSValue_GetInteger(ECSValue_GetTableField(saved, "color"), SKETCH_COLORS[0]));
+        SketchStroke *stroke = SketchAddStroke(&state->strokes, &state->strokeCount, &state->strokeCapacity, (i32)size, (u32)ECSValue_GetInteger(ECSValue_GetTableField(saved, "color"), SKETCH_COLORS[0]));
 
-        for (usz p = 0; stroke != nullptr && p + 1 < ECSValue_GetListCount(points); p += 2)
+        for (usz j = 0; stroke != nullptr && j + 1 < ECSValue_GetListCount(points); j += 2)
         {
-            SketchStrokeAddPoint(stroke, (f32)ECSValue_GetNumber(ECSValue_GetListItem(points, p), 0.0), (f32)ECSValue_GetNumber(ECSValue_GetListItem(points, p + 1), 0.0));
+            SketchStrokeAddPoint(stroke, (f32)ECSValue_GetNumber(ECSValue_GetListItem(points, j), 0.0), (f32)ECSValue_GetNumber(ECSValue_GetListItem(points, j + 1), 0.0));
         }
     }
 
-    SKETCH.canvases[SKETCH.canvasCount++] = canvas;
-    SketchCanvasTitle(canvas);
+    SKETCH.canvases[SKETCH.canvasCount++] = state;
+    SketchCanvasTitle(state);
 
     // a canvas takes strokes dragged from a canvas, text in their format, and files of it
     const char *accepted[] = {SKETCH_CLIPBOARD_TYPE, "text", "file-list"};
@@ -416,22 +416,22 @@ static SHUResult SketchCanvasCreate(ECSPanel panel, const ECSValue *savedState, 
 
     f64 seconds = ECSValue_GetNumber(ECSSetting_Get(SKETCH_NAME("reminderSeconds")), 30.0);
 
-    if (ECSTimer_Start(SKETCH.plugin, &canvas->reminder, seconds > 1.0 ? seconds : 1.0, true, SketchCanvasRemind, canvas))
+    if (ECSTimer_Start(SKETCH.plugin, &state->reminder, seconds > 1.0 ? seconds : 1.0, true, SketchCanvasRemind, state))
     {
         ECS_LogWarn(SKETCH.plugin, "Cannot start a canvas's reminder.");
     }
 
-    *retState = canvas;
+    *retState = state;
     return SHUResult_Ok;
 }
 
-static void SketchCanvasDestroy(void *state)
+static void SketchCanvasDestroy(void *data)
 {
-    SketchCanvas *canvas = state;
+    SketchCanvas *state = data;
 
     for (usz i = 0; i < SKETCH.canvasCount; i++)
     {
-        if (SKETCH.canvases[i] == canvas)
+        if (SKETCH.canvases[i] == state)
         {
             SKETCH.canvases[i] = SKETCH.canvases[--SKETCH.canvasCount];
             break;
@@ -439,18 +439,18 @@ static void SketchCanvasDestroy(void *state)
     }
 
     // the plugin owns the canvas's timer, so the canvas stops it
-    ECSTimer_Stop(&canvas->reminder);
-    SketchReleaseBrush(canvas->brush);
-    SketchFreeStrokes(canvas->strokes, canvas->strokeCount);
-    free(canvas);
+    ECSTimer_Stop(&state->reminder);
+    SketchReleaseBrush(state->brush);
+    SketchFreeStrokes(state->strokes, state->strokeCount);
+    free(state);
 }
 
-static void SketchCanvasDraw(void *state, ECSSurface *surface, f64 seconds)
+static void SketchCanvasDraw(void *data, ECSSurface *surface, f64 seconds)
 {
     (void)seconds;
-    SketchCanvas *canvas = state;
-    canvas->width = surface->width;
-    canvas->height = surface->height;
+    SketchCanvas *state = data;
+    state->width = surface->width;
+    state->height = surface->height;
 
     // the surface's rows may be padded, so each row is copied on its own
     u32 *pixels = calloc((usz)surface->width * (usz)surface->height, sizeof(u32));
@@ -460,7 +460,7 @@ static void SketchCanvasDraw(void *state, ECSSurface *surface, f64 seconds)
         return;
     }
 
-    SketchPaint(pixels, surface->width, surface->height, canvas->strokes, canvas->strokeCount);
+    SketchPaint(pixels, surface->width, surface->height, state->strokes, state->strokeCount);
 
     for (i32 y = 0; y < surface->height; y++)
     {
@@ -574,88 +574,97 @@ static void SketchCanvasDrop(SketchCanvas *canvas, ECSDropData data)
     }
 }
 
-static void SketchCanvasEvent(void *state, const ECSPanelEvent *event)
+/// @brief Starts a stroke where the left button presses the canvas; with Shift, the press drags the canvas's strokes, in the text format of copy.
+static void SketchCanvasPress(SketchCanvas *canvas, const ECSPanelEvent *event)
 {
-    SketchCanvas *canvas = state;
+    if (event->pointer.button != 1)
+    {
+        return;
+    }
+
+    if (event->modifiers & ECSModifier_Shift)
+    {
+        SketchDragStrokes(canvas);
+        return;
+    }
+
+    i32 size = canvas->brush != nullptr ? canvas->brush->size : SketchSettingSize();
+    u32 color = canvas->brush != nullptr ? canvas->brush->color : SketchSettingColor();
+    SketchStroke *stroke = SketchAddStroke(&canvas->strokes, &canvas->strokeCount, &canvas->strokeCapacity, size, color);
+    canvas->drawing = stroke != nullptr && SketchStrokeAddPoint(stroke, event->pointer.x, event->pointer.y);
+    ECSPanel_Redraw(canvas->panel);
+}
+
+/// @brief Makes the brush size setting a step bigger or smaller, within the sizes a brush may have.
+static void SketchStepBrushSize(i32 step)
+{
+    ECSValue *size = nullptr;
+
+    if (ECSValue_Create(&size))
+    {
+        return;
+    }
+
+    i32 next = SketchSettingSize() + step;
+    next = next < SKETCH_MIN_SIZE ? SKETCH_MIN_SIZE : next;
+    next = next > SKETCH_MAX_SIZE ? SKETCH_MAX_SIZE : next;
+    ECSValue_SetInteger(size, next);
+
+    if (ECSSetting_Set(SKETCH_NAME("brushSize"), size))
+    {
+        ECS_LogWarn(SKETCH.plugin, "Cannot change the brush size.");
+    }
+
+    ECSValue_Destroy(&size);
+}
+
+static void SketchCanvasEvent(void *data, const ECSPanelEvent *event)
+{
+    SketchCanvas *state = data;
 
     switch (event->type)
     {
     case ECSPanelEventType_PointerDown:
-    {
-        if (event->pointer.button != 1)
-        {
-            break;
-        }
-
-        // Shift and a press drag the canvas's strokes, in the text format of copy
-        if (event->modifiers & ECSModifier_Shift)
-        {
-            SketchDragStrokes(canvas);
-            break;
-        }
-
-        i32 size = canvas->brush != nullptr ? canvas->brush->size : SketchSettingSize();
-        u32 color = canvas->brush != nullptr ? canvas->brush->color : SketchSettingColor();
-        SketchStroke *stroke = SketchAddStroke(&canvas->strokes, &canvas->strokeCount, &canvas->strokeCapacity, size, color);
-        canvas->drawing = stroke != nullptr && SketchStrokeAddPoint(stroke, event->pointer.x, event->pointer.y);
-        ECSPanel_Redraw(canvas->panel);
+        SketchCanvasPress(state, event);
         break;
-    }
 
     case ECSPanelEventType_PointerMove:
-        if (canvas->drawing && SketchStrokeAddPoint(&canvas->strokes[canvas->strokeCount - 1], event->pointer.x, event->pointer.y))
+        if (state->drawing && SketchStrokeAddPoint(&state->strokes[state->strokeCount - 1], event->pointer.x, event->pointer.y))
         {
-            ECSPanel_Redraw(canvas->panel);
+            ECSPanel_Redraw(state->panel);
         }
         break;
 
     case ECSPanelEventType_PointerUp:
-        if (canvas->drawing)
+        if (state->drawing)
         {
-            canvas->drawing = false;
-            SketchCanvasChanged(canvas);
-            SketchEmitStroke(canvas);
+            state->drawing = false;
+            SketchCanvasChanged(state);
+            SketchEmitStroke(state);
         }
         break;
 
     case ECSPanelEventType_Wheel:
-    {
         // the wheel changes the setting, so every canvas and the settings window see the new size
-        ECSValue *size = nullptr;
-
-        if (ECSValue_Create(&size) == SHUResult_Ok)
-        {
-            i32 next = SketchSettingSize() + (event->wheel.scrollY > 0.0f ? 1 : -1);
-            ECSValue_SetInteger(size, next < SKETCH_MIN_SIZE ? SKETCH_MIN_SIZE : next > SKETCH_MAX_SIZE ? SKETCH_MAX_SIZE
-                                                                                                        : next);
-
-            if (ECSSetting_Set(SKETCH_NAME("brushSize"), size))
-            {
-                ECS_LogWarn(SKETCH.plugin, "Cannot change the brush size.");
-            }
-
-            ECSValue_Destroy(&size);
-        }
-
+        SketchStepBrushSize(event->wheel.scrollY > 0.0f ? 1 : -1);
         break;
-    }
 
     case ECSPanelEventType_Focused:
     case ECSPanelEventType_Unfocused:
-        ECS_LogDebug(SKETCH.plugin, "%s is %s.", ECSPanel_GetTitle(canvas->panel), event->type == ECSPanelEventType_Focused ? "focused" : "unfocused");
+        ECS_LogDebug(SKETCH.plugin, "%s is %s.", ECSPanel_GetTitle(state->panel), event->type == ECSPanelEventType_Focused ? "focused" : "unfocused");
         break;
 
     case ECSPanelEventType_Shown:
     case ECSPanelEventType_Resized:
-        ECS_LogDebug(SKETCH.plugin, "%s is %s at %.0fx%.0f.", ECSPanel_GetTitle(canvas->panel), event->type == ECSPanelEventType_Shown ? "shown" : "resized", (double)event->size.width, (double)event->size.height);
+        ECS_LogDebug(SKETCH.plugin, "%s is %s at %.0fx%.0f.", ECSPanel_GetTitle(state->panel), event->type == ECSPanelEventType_Shown ? "shown" : "resized", (double)event->size.width, (double)event->size.height);
         break;
 
     case ECSPanelEventType_Hidden:
-        ECS_LogDebug(SKETCH.plugin, "%s is hidden.", ECSPanel_GetTitle(canvas->panel));
+        ECS_LogDebug(SKETCH.plugin, "%s is hidden.", ECSPanel_GetTitle(state->panel));
         break;
 
     case ECSPanelEventType_Drop:
-        SketchCanvasDrop(canvas, event->drop.data);
+        SketchCanvasDrop(state, event->drop.data);
         break;
 
     default:
@@ -663,16 +672,16 @@ static void SketchCanvasEvent(void *state, const ECSPanelEvent *event)
     }
 }
 
-static SHUResult SketchCanvasSaveState(void *state, ECSValue *retSavedState)
+static SHUResult SketchCanvasSaveState(void *data, ECSValue *retSavedState)
 {
-    SketchCanvas *canvas = state;
+    SketchCanvas *state = data;
     ECSValue *strokes = nullptr;
     SHU_ReturnResult(ECSValue_SetTableField(retSavedState, "strokes", &strokes));
     ECSValue_SetTable(strokes);
 
-    for (usz i = 0; i < canvas->strokeCount; i++)
+    for (usz i = 0; i < state->strokeCount; i++)
     {
-        const SketchStroke *stroke = &canvas->strokes[i];
+        const SketchStroke *stroke = &state->strokes[i];
         ECSValue *saved = nullptr;
         ECSValue *field = nullptr;
         ECSValue *points = nullptr;
@@ -685,10 +694,10 @@ static SHUResult SketchCanvasSaveState(void *state, ECSValue *retSavedState)
         SHU_ReturnResult(ECSValue_SetTableField(saved, "points", &points));
         ECSValue_SetTable(points);
 
-        for (usz p = 0; p < stroke->count; p++)
+        for (usz j = 0; j < stroke->count; j++)
         {
             SHU_ReturnResult(ECSValue_AddListItem(points, &field));
-            ECSValue_SetNumber(field, stroke->points[p]);
+            ECSValue_SetNumber(field, stroke->points[j]);
         }
     }
 
@@ -696,13 +705,13 @@ static SHUResult SketchCanvasSaveState(void *state, ECSValue *retSavedState)
 }
 
 /// @brief Saves a canvas's unsaved work. Its strokes are already in its saved state, so saving only counts it.
-static SHUResult SketchCanvasSave(void *state)
+static SHUResult SketchCanvasSave(void *data)
 {
-    SketchCanvas *canvas = state;
-    canvas->unsaved = false;
+    SketchCanvas *state = data;
+    state->unsaved = false;
     SKETCH.saves++;
-    ECSPanel_SetUnsaved(canvas->panel, false);
-    ECS_LogInfo(SKETCH.plugin, "%s is saved.", ECSPanel_GetTitle(canvas->panel));
+    ECSPanel_SetUnsaved(state->panel, false);
+    ECS_LogInfo(SKETCH.plugin, "%s is saved.", ECSPanel_GetTitle(state->panel));
     return SHUResult_Ok;
 }
 
@@ -715,16 +724,16 @@ static SHUResult SketchClockCreate(ECSPanel panel, const ECSValue *savedState, u
     (void)savedState;
     (void)version;
 
-    SketchClock *clock = calloc(1, sizeof(SketchClock));
+    SketchClock *state = calloc(1, sizeof(SketchClock));
 
-    if (clock == nullptr)
+    if (state == nullptr)
     {
         return SHUResult_ErrAllocation;
     }
 
-    clock->panel = panel;
-    clock->shownSeconds = -1;
-    *retState = clock;
+    state->panel = panel;
+    state->shownSeconds = -1;
+    *retState = state;
     return SHUResult_Ok;
 }
 
@@ -734,16 +743,16 @@ static void SketchClockDestroy(void *state)
 }
 
 /// @brief Draws a dark face with twelve marks and a hand that turns once a minute; a continuous panel, so it is drawn every frame.
-static void SketchClockDraw(void *state, ECSSurface *surface, f64 seconds)
+static void SketchClockDraw(void *data, ECSSurface *surface, f64 seconds)
 {
-    SketchClock *clock = state;
-    clock->time += seconds;
+    SketchClock *state = data;
+    state->time += seconds;
 
     ECSSurface_Fill(surface, 0, 0, surface->width, surface->height, SKETCH_BACKGROUND);
 
-    f32 cx = (f32)surface->width / 2.0f;
-    f32 cy = (f32)surface->height / 2.0f;
-    f32 radius = (cx < cy ? cx : cy) * 0.8f;
+    f32 centerX = (f32)surface->width / 2.0f;
+    f32 centerY = (f32)surface->height / 2.0f;
+    f32 radius = (centerX < centerY ? centerX : centerY) * 0.8f;
     u32 *pixels = surface->pixels.data;
     i32 stride = surface->pitch / 4;
 
@@ -751,46 +760,46 @@ static void SketchClockDraw(void *state, ECSSurface *surface, f64 seconds)
     for (i32 mark = 0; mark < 12; mark++)
     {
         f32 angle = (f32)mark * 3.14159265f / 6.0f;
-        f32 x = cx + sinf(angle) * radius;
-        f32 y = cy - cosf(angle) * radius;
+        f32 x = centerX + sinf(angle) * radius;
+        f32 y = centerY - cosf(angle) * radius;
 
-        for (i32 dy = -2; dy <= 2; dy++)
+        for (i32 offsetY = -2; offsetY <= 2; offsetY++)
         {
-            for (i32 dx = -2; dx <= 2; dx++)
+            for (i32 offsetX = -2; offsetX <= 2; offsetX++)
             {
-                i32 px = (i32)x + dx;
-                i32 py = (i32)y + dy;
+                i32 pixelX = (i32)x + offsetX;
+                i32 pixelY = (i32)y + offsetY;
 
-                if (px >= 0 && py >= 0 && px < surface->width && py < surface->height)
+                if (pixelX >= 0 && pixelY >= 0 && pixelX < surface->width && pixelY < surface->height)
                 {
-                    pixels[py * stride + px] = SKETCH_COLORS[0];
+                    pixels[pixelY * stride + pixelX] = SKETCH_COLORS[0];
                 }
             }
         }
     }
 
-    f32 angle = (f32)(fmod(clock->time, 60.0) / 60.0 * 2.0 * 3.14159265);
+    f32 angle = (f32)(fmod(state->time, 60.0) / 60.0 * 2.0 * 3.14159265);
 
-    for (f32 t = 0.0f; t < radius; t += 1.0f)
+    for (f32 distance = 0.0f; distance < radius; distance += 1.0f)
     {
-        i32 px = (i32)(cx + sinf(angle) * t);
-        i32 py = (i32)(cy - cosf(angle) * t);
+        i32 pixelX = (i32)(centerX + sinf(angle) * distance);
+        i32 pixelY = (i32)(centerY - cosf(angle) * distance);
 
-        if (px >= 0 && py >= 0 && px < surface->width && py < surface->height)
+        if (pixelX >= 0 && pixelY >= 0 && pixelX < surface->width && pixelY < surface->height)
         {
-            pixels[py * stride + px] = SKETCH_CLOCK_HAND;
+            pixels[pixelY * stride + pixelX] = SKETCH_CLOCK_HAND;
         }
     }
 
     // the title changes once a second, not every frame
-    i64 whole = (i64)clock->time;
+    i64 whole = (i64)state->time;
 
-    if (whole != clock->shownSeconds)
+    if (whole != state->shownSeconds)
     {
         char title[32];
         snprintf(title, sizeof(title), "C clock %lld:%02lld", (long long)(whole / 60), (long long)(whole % 60));
-        ECSPanel_SetTitle(clock->panel, title);
-        clock->shownSeconds = whole;
+        ECSPanel_SetTitle(state->panel, title);
+        state->shownSeconds = whole;
     }
 }
 
@@ -903,9 +912,9 @@ static void SketchExportChosen(void *data, const char *const *files, usz count)
         const SketchStroke *source = &canvas->strokes[i];
         SketchStroke *stroke = SketchAddStroke(&job->strokes, &job->strokeCount, &capacity, source->size, source->color);
 
-        for (usz p = 0; stroke != nullptr && p + 1 < source->count; p += 2)
+        for (usz j = 0; stroke != nullptr && j + 1 < source->count; j += 2)
         {
-            SketchStrokeAddPoint(stroke, source->points[p], source->points[p + 1]);
+            SketchStrokeAddPoint(stroke, source->points[j], source->points[j + 1]);
         }
     }
 

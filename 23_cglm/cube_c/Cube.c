@@ -33,13 +33,13 @@ static void CubeCorner(usz i, vec3 retCorner)
 /// @brief The matrix that takes a corner to the view: the cube turns around the vertical axis and leans, then the camera and the perspective see it.
 static void CubeMatrix(f32 turn, mat4 retMatrix)
 {
-    vec3 up = {0.0f, 1.0f, 0.0f}, across = {1.0f, 0.0f, 0.0f};
+    vec3 upAxis = {0.0f, 1.0f, 0.0f}, acrossAxis = {1.0f, 0.0f, 0.0f};
     mat4 lean, model, camera, projection;
 
-    glm_rotate_make(model, turn, up);
-    glm_rotate_make(lean, 0.4f, across);
+    glm_rotate_make(model, turn, upAxis);
+    glm_rotate_make(lean, 0.4f, acrossAxis);
     glm_mat4_mul(model, lean, model);
-    glm_lookat((vec3){0.0f, 2.0f, 5.0f}, (vec3){0.0f, 0.0f, 0.0f}, up, camera);
+    glm_lookat((vec3){0.0f, 2.0f, 5.0f}, (vec3){0.0f, 0.0f, 0.0f}, upAxis, camera);
     glm_perspective(glm_rad(45.0f), 1.0f, 0.1f, 50.0f, projection);
 
     glm_mat4_mul(camera, model, retMatrix);
@@ -59,15 +59,15 @@ static SHUResult CubeCreate(ECSPanel panel, const ECSValue *savedState, u32 vers
     (void)savedState;
     (void)version;
 
-    Cube *cube = calloc(1, sizeof(Cube));
+    Cube *state = calloc(1, sizeof(Cube));
 
-    if (cube == nullptr)
+    if (state == nullptr)
     {
         return SHUResult_ErrAllocation;
     }
 
-    *cube = (Cube){.panel = panel, .turn = 0.6f, .scale = 1.0f};
-    *retState = cube;
+    *state = (Cube){.panel = panel, .turn = 0.6f, .scale = 1.0f};
+    *retState = state;
     return SHUResult_Ok;
 }
 
@@ -76,11 +76,11 @@ static void CubeDestroy(void *state)
     free(state);
 }
 
-static void CubeDraw(void *state, ECSSurface *surface, f64 seconds)
+static void CubeDraw(void *data, ECSSurface *surface, f64 seconds)
 {
     (void)seconds;
-    Cube *cube = state;
-    cube->scale = surface->scale;
+    Cube *state = data;
+    state->scale = surface->scale;
 
     f32 width = (f32)surface->width / surface->scale, height = (f32)surface->height / surface->scale;
     ECSColor background = 0, accent = 0;
@@ -93,7 +93,7 @@ static void CubeDraw(void *state, ECSSurface *surface, f64 seconds)
     f32 left = (width - side) / 2.0f, top = (height - side) / 2.0f;
     mat4 matrix;
     f32 points[16];
-    CubeMatrix(cube->turn, matrix);
+    CubeMatrix(state->turn, matrix);
 
     for (usz i = 0; i < 8; i++)
     {
@@ -107,25 +107,25 @@ static void CubeDraw(void *state, ECSSurface *surface, f64 seconds)
 }
 
 // a drag across turns the cube
-static void CubeEvent(void *state, const ECSPanelEvent *event)
+static void CubeEvent(void *data, const ECSPanelEvent *event)
 {
-    Cube *cube = state;
-    f32 x = event->pointer.x / cube->scale;
+    Cube *state = data;
+    f32 x = event->pointer.x / state->scale;
 
     if (event->type == ECSPanelEventType_PointerDown && event->pointer.button == 1)
     {
-        cube->dragging = true;
-        cube->dragX = x;
+        state->dragging = true;
+        state->dragX = x;
     }
     else if (event->type == ECSPanelEventType_PointerUp)
     {
-        cube->dragging = false;
+        state->dragging = false;
     }
-    else if (event->type == ECSPanelEventType_PointerMove && cube->dragging)
+    else if (event->type == ECSPanelEventType_PointerMove && state->dragging)
     {
-        cube->turn += (x - cube->dragX) * 0.01f;
-        cube->dragX = x;
-        ECSPanel_Redraw(cube->panel);
+        state->turn += (x - state->dragX) * 0.01f;
+        state->dragX = x;
+        ECSPanel_Redraw(state->panel);
     }
 }
 
@@ -139,16 +139,16 @@ static SHUResult SetNumber(ECSValue *table, const char *name, f64 number)
 }
 
 // the turn, and where the last corner is in the view, as the Lua plugin saves them, so the test compares the two
-static SHUResult CubeSaveState(void *state, ECSValue *retSavedState)
+static SHUResult CubeSaveState(void *data, ECSValue *retSavedState)
 {
-    Cube *cube = state;
+    Cube *state = data;
     mat4 matrix;
     vec3 corner;
-    CubeMatrix(cube->turn, matrix);
+    CubeMatrix(state->turn, matrix);
     CubeProject(matrix, 7, corner);
 
     ECSValue_SetTable(retSavedState);
-    SHU_ReturnResult(SetNumber(retSavedState, "turn", cube->turn));
+    SHU_ReturnResult(SetNumber(retSavedState, "turn", state->turn));
 
     ECSValue *saved = nullptr;
     SHU_ReturnResult(ECSValue_SetTableField(retSavedState, "corner", &saved));

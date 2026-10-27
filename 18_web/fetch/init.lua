@@ -140,7 +140,7 @@ ecs.panel.registerType({
     return { panel = panel, line = "" }
   end,
 
-  draw = function(fetch, surface)
+  draw = function(state, surface)
     surface:fill(0, 0, surface.width, surface.height, "background")
     local _, height = draw.font("ui"):measure("Ag", SIZE)
     local lines = math.max(1, math.floor(surface.height / surface.scale / height) - 2)
@@ -151,32 +151,32 @@ ecs.panel.registerType({
       draw.text(surface, draw.font("ui"), log[i], 12, 12 + (i - first) * height, SIZE, "text")
     end
 
-    draw.text(surface, draw.font("ui"), "URL: " .. fetch.line, 12, 12 + lines * height, SIZE, "accent")
+    draw.text(surface, draw.font("ui"), "URL: " .. state.line, 12, 12 + lines * height, SIZE, "accent")
   end,
 
-  event = function(fetch, event)
+  event = function(state, event)
     if event.type == "text" then
-      fetch.line = fetch.line .. event.text
+      state.line = state.line .. event.text
     elseif event.type == "keyDown" and event.key == "Backspace" then
-      fetch.line = fetch.line:sub(1, -2)
-    elseif event.type == "keyDown" and event.key == "Return" and socket and not fetch.line:find("^%a+://") then
+      state.line = state.line:sub(1, -2)
+    elseif event.type == "keyDown" and event.key == "Return" and socket and not state.line:find("^%a+://") then
       -- a line that is not a URL is a message to the WebSocket connection; web sends it in the background, once the connection is open
-      socket.handle:send(fetch.line, true)
-      fetch.line = ""
-    elseif event.type == "keyDown" and event.key == "Return" and fetch.line:find("^wss?://") then
+      socket.handle:send(state.line, true)
+      state.line = ""
+    elseif event.type == "keyDown" and event.key == "Return" and state.line:find("^wss?://") then
       -- web.socket starts a connection and gives its handle at once; its state and its messages are asked for with its methods, as with net
       if socket then
         socket.handle:close()
       end
 
-      local handle = web.socket(fetch.line)
-      socket = handle and { handle = handle, url = fetch.line, open = false }
-      add(handle and "Connecting to " .. fetch.line or "Cannot connect to " .. fetch.line)
-      fetch.line = ""
-    elseif event.type == "keyDown" and event.key == "Return" and fetch.line ~= "" then
+      local handle = web.socket(state.line)
+      socket = handle and { handle = handle, url = state.line, open = false }
+      add(handle and "Connecting to " .. state.line or "Cannot connect to " .. state.line)
+      state.line = ""
+    elseif event.type == "keyDown" and event.key == "Return" and state.line ~= "" then
       -- web.get starts a request and gives its handle at once; web.request takes a method, headers and a body too
       -- web keeps the function, and calls it on the main thread once the request is done, even if the handle is dropped
-      local url = fetch.line
+      local url = state.line
 
       local request = web.get(url, function(done)
         -- status is the HTTP status, or -1 if the request failed
@@ -195,16 +195,16 @@ ecs.panel.registerType({
         add("Cannot request " .. url)
       end
 
-      fetch.line = ""
+      state.line = ""
     else
       return
     end
 
-    fetch.panel:redraw()
+    state.panel:redraw()
   end,
 
-  destroy = function(fetch)
-    panels[fetch.panel] = nil
+  destroy = function(state)
+    panels[state.panel] = nil
   end,
 })
 

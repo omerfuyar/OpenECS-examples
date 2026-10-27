@@ -39,8 +39,8 @@ ecs.panel.registerType({
     return { seconds = 0 }
   end,
 
-  draw = function(lights, surface, seconds)
-    lights.seconds = lights.seconds + seconds
+  draw = function(state, surface, seconds)
+    state.seconds = state.seconds + seconds
 
     -- gpu draws into the surface as draw does into pixels; what it draws reaches the GPU when draw returns
     local width, height = surface.width / surface.scale, surface.height / surface.scale
@@ -60,11 +60,11 @@ ecs.panel.registerType({
     -- a line under the tiles, and the light, which goes along the bottom and back every four seconds; the colour multiplies its pixels, so its alpha pulses
     gpu.line(surface, left, top + side + 8, left + side, top + side + 8, 2, "accent")
     local size = math.floor(side / 8) + 1
-    local phase = lights.seconds / 4 % 1
+    local phase = state.seconds / 4 % 1
     local across = phase < 0.5 and phase * 2 or 2 - phase * 2
 
     if light then
-      local alpha = math.floor(191 + 64 * math.sin(lights.seconds * 4))
+      local alpha = math.floor(191 + 64 * math.sin(state.seconds * 4))
       gpu.imageTransformed(surface, light, across * (width - size * 2), height - size * 3, size * 2, size * 2, 0, ("#FFFFFF%02X"):format(alpha))
     end
 
