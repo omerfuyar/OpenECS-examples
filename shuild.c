@@ -1,6 +1,6 @@
 // The build of OpenECS's examples. It runs inside a checkout of OpenECS, in its examples/ folder: OpenECS's shuild.c compiles this file with shu and shuild
 // from OpenECS's dependencies/ into shuild.ignore here, and runs it with the build type and OpenECS's build folder (README.md).
-// Each numbered folder is copied whole into bin/examples/, its sources and tests too, and the C files of each of its plugin folders are built into the copy.
+// Each example's folder, named c or s and its number, such as c1_hello, is copied whole into bin/examples/, its sources and tests too, and the C files of each of its plugin folders are built into the copy.
 #define SHU_IMPLEMENTATION
 #define SHUC_ENABLE_INCREMENTAL
 #include "shuild/shuild.h"
@@ -35,8 +35,9 @@ static struct
 
 static bool ReadArguments(int argc, char **argv);
 static void Configure(void);
-static void ForEachFolder(const char *path, bool numbered, void (*function)(const char *path, const char *name));
+static void ForEachFolder(const char *path, bool examplesOnly, void (*function)(const char *path, const char *name));
 static void BuildExample(const char *path, const char *name);
+static void RemoveOldExample(const char *path, const char *name);
 
 #pragma endregion Declarations
 
@@ -50,6 +51,9 @@ int main(int argc, char **argv)
 
     Configure();
     ForEachFolder("./", true, BuildExample);
+
+    // a copy of an example that is gone, or was renamed, would still run its tests
+    ForEachFolder(SHU_UtilFormat("%sbin/examples/", CONFIG.output), false, RemoveOldExample);
     return 0;
 }
 
@@ -176,7 +180,7 @@ static void SetBuildFlags(void)
 typedef struct FolderVisit
 {
     const char *path;
-    bool numbered;
+    bool examplesOnly;
     void (*function)(const char *path, const char *name);
 } FolderVisit;
 
@@ -187,16 +191,19 @@ static void VisitFolder(const char *entry, SHUFileType type, void *data)
     // the entry is the folder's path, with a separator at its end; the function gets its name alone
     char *name = SHU_UtilFormat("%.*s", (int)(strlen(entry) - strlen(visit->path) - 1), entry + strlen(visit->path));
 
-    if (type == SHUFileType_Directory && (!visit->numbered || isdigit((unsigned char)name[0])))
+    // an example's name is c, for the plugin interface, or s, for the standard plugins, then its number, such as c1_hello or s1_terminal
+    bool example = (name[0] == 'c' || name[0] == 's') && isdigit((unsigned char)name[1]);
+
+    if (type == SHUFileType_Directory && (!visit->examplesOnly || example))
     {
         visit->function(visit->path, name);
     }
 }
 
-/// @brief Calls a function for each folder in a folder, sorted by name; names starting with a dot are left out, and, with numbered, names that do not start with a digit.
-static void ForEachFolder(const char *path, bool numbered, void (*function)(const char *path, const char *name))
+/// @brief Calls a function for each folder in a folder, sorted by name; names starting with a dot are left out, and, with examplesOnly, the folders that are no example.
+static void ForEachFolder(const char *path, bool examplesOnly, void (*function)(const char *path, const char *name))
 {
-    FolderVisit visit = {path, numbered, function};
+    FolderVisit visit = {path, examplesOnly, function};
     SHU_UtilListDirectory(path, false, VisitFolder, &visit);
 }
 
@@ -246,4 +253,13 @@ static void BuildExample(const char *path, const char *name)
     char *copy = SHU_UtilFormat("%sbin/examples/%s/", CONFIG.output, name);
     SHU_UtilCopyFile(root, copy);
     ForEachFolder(root, false, BuildPlugin);
+}
+
+/// @brief Deletes a folder of bin/examples/ whose example is no longer here.
+static void RemoveOldExample(const char *path, const char *name)
+{
+    if (SHU_UtilFileExists(name) != SHUFileType_Directory)
+    {
+        SHU_UtilDeleteFile(SHU_UtilFormat("%s%s/", path, name));
+    }
 }
