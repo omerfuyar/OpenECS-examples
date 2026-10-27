@@ -155,19 +155,19 @@ static void SetBuildFlags(void)
             SHU_CompilerAddFlags("-fsanitize=address,undefined", "-fno-omit-frame-pointer");
         }
 
-        SHU_CompilerAddDefinitions("DEBUG", NULL, "SDL_ASSERT_LEVEL", "2");
+        SHU_CompilerAddDefinitions("DEBUG", NULL);
         break;
     case BuildType_Release:
         SHU_CompilerAddFlags(SHUM_FLAGS_OPTIMIZATION_HIGH);
-        SHU_CompilerAddDefinitions("NDEBUG", NULL, "SDL_ASSERT_LEVEL", "0");
+        SHU_CompilerAddDefinitions("NDEBUG", NULL);
         break;
     case BuildType_RelWithDebInfo:
         SHU_CompilerAddFlags(SHUM_FLAGS_WARNING_LOW, SHUM_FLAGS_DEBUG, SHUM_FLAGS_OPTIMIZATION_MID);
-        SHU_CompilerAddDefinitions("NDEBUG", NULL, "SDL_ASSERT_LEVEL", "0");
+        SHU_CompilerAddDefinitions("NDEBUG", NULL);
         break;
     case BuildType_MinSizeRel:
         SHU_CompilerAddFlags(SHUM_FLAGS_OPTIMIZATION_SIZE);
-        SHU_CompilerAddDefinitions("NDEBUG", NULL, "SDL_ASSERT_LEVEL", "0");
+        SHU_CompilerAddDefinitions("NDEBUG", NULL);
         break;
     }
 }
@@ -218,23 +218,22 @@ static void BuildPlugin(const char *path, const char *name)
         return;
     }
 
-    // the plugin sees only OpenECS's plugin interface and SDL, from the build's include/ folder, and the standard plugins' headers, such as ui.h,
-    // from its definitions/ folder, both named from the plugin's folder (OpenECS DESIGN 17.6)
+    // the plugin sees only the build's include/ folder, as any plugin's author does: OpenECS's plugin interface, and the standard plugins' headers,
+    // such as ui.h, named from the plugin's folder (OpenECS DESIGN 17.6)
     char *include = SHU_UtilFormat("../../%sinclude/", CONFIG.output);
-    char *definitions = SHU_UtilFormat("../../%sdefinitions/", CONFIG.output);
     char *output = SHU_UtilFormat("%sbin/examples/%s", CONFIG.output, strncmp(root, "./", 2) ? root : root + 2);
 
     SHU_MODULE(name, root, SHUModuleType_LibraryDynamic, output)
     {
         SetBuildFlags();
         SHU_ModuleAddSourceFiles("./");
-        SHU_ModuleAddIncludeDirectories(include, definitions);
+        SHU_ModuleAddIncludeDirectories(include);
 
-        // a DLL calls OpenECS and SDL through their import libraries, in OpenECS's lib/ (OpenECS DESIGN 17.2); elsewhere the calls are resolved when it is loaded
+        // a DLL calls OpenECS through its import library, in OpenECS's lib/ (OpenECS DESIGN 17.2); elsewhere the calls are resolved when it is loaded
         if (CONFIG.windows)
         {
             SHU_ModuleAddLibraryDirectories(SHU_UtilFormat("%slib/", CONFIG.output));
-            SHU_ModuleLinkLibraries("OpenECS", "SDL3_ttf", "SDL3");
+            SHU_ModuleLinkLibraries("OpenECS");
         }
     }
 }

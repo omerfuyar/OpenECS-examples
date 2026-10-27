@@ -1,5 +1,5 @@
 -- A panel that draws with the GPU, in Lua: the gpu standard plugin draws shapes, lines, textures and text into a GPU surface, as draw does into pixels.
--- It draws the same picture as lights_c, which uses SDL's GPU API in C: four tiles on a background, and a light that goes along the bottom, pulsing.
+-- It draws the same picture as lights_c, which calls the same functions in C: four tiles on a background, and a light that goes along the bottom, pulsing.
 -- It also draws a title, in one of draw's fonts.
 
 local ecs = require("ecs")
