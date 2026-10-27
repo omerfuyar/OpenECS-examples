@@ -1182,7 +1182,7 @@ static SHUSlice SketchPixels(ECSPanel panel)
 }
 
 /// @brief Makes a brush, which a canvas can use instead of the settings' brush.
-static SketchBrush *SketchNewBrush(i32 size, const char *color)
+static void *SketchNewBrush(i32 size, const char *color)
 {
     SketchBrush *brush = calloc(1, sizeof(SketchBrush));
 
@@ -1210,8 +1210,10 @@ static void SketchBrushDestroy(void *object)
     SketchReleaseBrush(object);
 }
 
-static void SketchUseBrush(SketchBrush *brush, ECSPanel panel)
+static void SketchUseBrush(void *brushHandle, ECSPanel panel)
 {
+    SketchBrush *brush = brushHandle;
+
     SketchCanvas *canvas = SketchFindCanvas(panel);
 
     if (canvas != nullptr && brush != nullptr)
