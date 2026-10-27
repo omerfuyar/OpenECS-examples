@@ -92,7 +92,7 @@ static bool RowBefore(const Controls *controls, const FruitRow *row, const Fruit
 {
     int order = strcmp(controls->sort, "name") == 0    ? strcmp(row->name, other->name)
                 : strcmp(controls->sort, "price") == 0 ? (row->price > other->price) - (row->price < other->price)
-                                                        : (row->stock > other->stock) - (row->stock < other->stock);
+                                                       : (row->stock > other->stock) - (row->stock < other->stock);
     return controls->ascending ? order < 0 : order > 0;
 }
 
