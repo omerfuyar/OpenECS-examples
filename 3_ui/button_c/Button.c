@@ -9,7 +9,7 @@
 #include <stdlib.h>
 
 /// @brief ui's functions, and what the macros describe into.
-static Ui UI;
+static Ui UI_PLUGIN;
 
 #define COUNT(array) (sizeof(array) / sizeof((array)[0]))
 
@@ -83,7 +83,7 @@ static SHUResult ControlsCreate(ECSPanel panel, const ECSValue *savedState, u32 
 static void ControlsDestroy(void *state)
 {
     Controls *controls = state;
-    UI.functions.forget(controls->panel);
+    UI_PLUGIN.functions.forget(controls->panel);
     free(controls);
 }
 
@@ -101,15 +101,15 @@ static void SortRows(const Controls *controls, FruitRow *retRows)
 {
     for (usz i = 0; i < COUNT(FRUIT_ROWS); i++)
     {
-        usz at = i;
+        usz position = i;
 
-        while (at > 0 && RowBefore(controls, &FRUIT_ROWS[i], &retRows[at - 1]))
+        while (position > 0 && RowBefore(controls, &FRUIT_ROWS[i], &retRows[position - 1]))
         {
-            retRows[at] = retRows[at - 1];
-            at--;
+            retRows[position] = retRows[position - 1];
+            position--;
         }
 
-        retRows[at] = FRUIT_ROWS[i];
+        retRows[position] = FRUIT_ROWS[i];
     }
 }
 
@@ -200,7 +200,7 @@ static void ControlsDraw(void *state, ECSSurface *surface, f64 seconds)
     char clicked[64];
     snprintf(clicked, sizeof(clicked), "Clicked %d times", controls->clicks);
 
-    UI_SHOW(&UI, controls->panel, surface)
+    UI_SHOW(&UI_PLUGIN, controls->panel, surface)
     {
         UI_COLUMN(.padding = 24, .gap = 12)
         {
@@ -260,7 +260,7 @@ static void ControlsDraw(void *state, ECSSurface *surface, f64 seconds)
 static void ControlsEvent(void *state, const ECSPanelEvent *event)
 {
     Controls *controls = state;
-    Ui_Event(&UI, controls->panel, event);
+    Ui_Event(&UI_PLUGIN, controls->panel, event);
 }
 
 /// @brief Sets a field of a table to a number.
@@ -304,7 +304,7 @@ static SHUResult SaveRects(const Controls *controls, ECSValue *retRects)
 
     for (usz i = 0; i < COUNT(IDS); i++)
     {
-        const ECSValue *rect = UI.functions.rect(controls->panel, IDS[i]);
+        const ECSValue *rect = UI_PLUGIN.functions.rect(controls->panel, IDS[i]);
         ECSValue *saved = nullptr;
 
         if (ECSValue_GetType(rect) != ECSValueType_Table)
@@ -336,7 +336,7 @@ static SHUResult ControlsSaveState(void *state, ECSValue *retSavedState)
     SHU_ReturnResult(SetString(retSavedState, "fruit", FRUITS[controls->fruit]));
     SHU_ReturnResult(SetNumber(retSavedState, "count", controls->count));
     SHU_ReturnResult(SetString(retSavedState, "tab", TABS[controls->tab]));
-    SHU_ReturnResult(SetString(retSavedState, "tip", ECSValue_GetString(UI.functions.tooltip(controls->panel), nullptr)));
+    SHU_ReturnResult(SetString(retSavedState, "tip", ECSValue_GetString(UI_PLUGIN.functions.tooltip(controls->panel), nullptr)));
     SHU_ReturnResult(SetNumber(retSavedState, "selected", controls->selected));
     SHU_ReturnResult(SetString(retSavedState, "name", controls->name));
     SHU_ReturnResult(SetString(retSavedState, "node", controls->node));
@@ -377,7 +377,7 @@ static SHUResult ControlsSaveState(void *state, ECSValue *retSavedState)
 SHUResult ECSPlugin_Init(ECSPlugin plugin)
 {
     // Ui_Init looks up ui's functions, which the manifest's dependency on ui makes sure exist
-    SHU_ReturnResult(Ui_Init(&UI, plugin));
+    SHU_ReturnResult(Ui_Init(&UI_PLUGIN, plugin));
 
     const ECSPanelTypeDesc controls = {
         .name = "panel",

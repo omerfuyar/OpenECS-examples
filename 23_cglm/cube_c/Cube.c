@@ -33,13 +33,13 @@ static void CubeCorner(usz i, vec3 retCorner)
 /// @brief The matrix that takes a corner to the view: the cube turns around the vertical axis and leans, then the camera and the perspective see it.
 static void CubeMatrix(f32 turn, mat4 retMatrix)
 {
-    vec3 up = {0.0f, 1.0f, 0.0f}, across = {1.0f, 0.0f, 0.0f};
+    vec3 upAxis = {0.0f, 1.0f, 0.0f}, acrossAxis = {1.0f, 0.0f, 0.0f};
     mat4 lean, model, camera, projection;
 
-    glm_rotate_make(model, turn, up);
-    glm_rotate_make(lean, 0.4f, across);
+    glm_rotate_make(model, turn, upAxis);
+    glm_rotate_make(lean, 0.4f, acrossAxis);
     glm_mat4_mul(model, lean, model);
-    glm_lookat((vec3){0.0f, 2.0f, 5.0f}, (vec3){0.0f, 0.0f, 0.0f}, up, camera);
+    glm_lookat((vec3){0.0f, 2.0f, 5.0f}, (vec3){0.0f, 0.0f, 0.0f}, upAxis, camera);
     glm_perspective(glm_rad(45.0f), 1.0f, 0.1f, 50.0f, projection);
 
     glm_mat4_mul(camera, model, retMatrix);

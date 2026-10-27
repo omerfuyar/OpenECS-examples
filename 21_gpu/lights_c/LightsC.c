@@ -94,11 +94,11 @@ static void LightsDestroy(void *state)
 }
 
 /// @brief Copies one tile, or a part of the tiles, into a rectangle of the panel's texture, scaled with the nearest pixel.
-static void LightsBlit(SDL_GPUCommandBuffer *commands, const Lights *lights, ECSSurface *surface, SDL_FRect from, SDL_FRect to)
+static void LightsBlit(SDL_GPUCommandBuffer *commands, const Lights *lights, ECSSurface *surface, SDL_FRect source, SDL_FRect destination)
 {
     const SDL_GPUBlitInfo blit = {
-        .source = {.texture = lights->tiles, .x = (Uint32)from.x, .y = (Uint32)from.y, .w = (Uint32)from.w, .h = (Uint32)from.h},
-        .destination = {.texture = surface->texture, .x = (Uint32)to.x, .y = (Uint32)to.y, .w = (Uint32)to.w, .h = (Uint32)to.h},
+        .source = {.texture = lights->tiles, .x = (Uint32)source.x, .y = (Uint32)source.y, .w = (Uint32)source.w, .h = (Uint32)source.h},
+        .destination = {.texture = surface->texture, .x = (Uint32)destination.x, .y = (Uint32)destination.y, .w = (Uint32)destination.w, .h = (Uint32)destination.h},
         .load_op = SDL_GPU_LOADOP_LOAD, // what the texture holds stays around the rectangle
         .filter = SDL_GPU_FILTER_NEAREST,
     };
