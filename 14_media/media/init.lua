@@ -57,44 +57,44 @@ ecs.panel.registerType({
     return media
   end,
 
-  destroy = function(media)
-    media.timer:stop()
+  destroy = function(state)
+    state.timer:stop()
   end,
 
-  draw = function(media, surface)
+  draw = function(state, surface)
     surface:fill(0, 0, surface.width, surface.height, "#202020")
 
     -- the picture is as large as fits the panel, centred, in layout units
     local width, height = surface.width / surface.scale, surface.height / surface.scale
     local scale = math.min(width / naturalWidth, height / naturalHeight) * 0.8
     local w, h = naturalWidth * scale, naturalHeight * scale
-    media.rect = { (width - w) / 2, (height - h) / 2, w, h }
-    media.scale = surface.scale
+    state.rect = { (width - w) / 2, (height - h) / 2, w, h }
+    state.scale = surface.scale
 
     -- an SVG file is read again at each new size, in pixels, so it is drawn sharp
-    if media.readAt ~= scale * surface.scale then
-      media.readAt = scale * surface.scale
-      media.picture = image.load(PICTURE, media.readAt)
+    if state.readAt ~= scale * surface.scale then
+      state.readAt = scale * surface.scale
+      state.picture = image.load(PICTURE, state.readAt)
     end
 
     -- draw also draws shapes: a frame with rounded corners, whose edges are smooth, behind the picture
-    local x, y = media.rect[1] - 8, media.rect[2] - 8
+    local x, y = state.rect[1] - 8, state.rect[2] - 8
     draw.rounded(surface, x, y, w + 16, h + 16, 16, "#3A3F4B")
 
     -- R turns the picture and F fades it; draw.image is the quicker way to draw it as it is
-    if media.angle == 0 and not media.faded then
-      draw.image(surface, media.picture, media.rect[1], media.rect[2], w, h)
+    if state.angle == 0 and not state.faded then
+      draw.image(surface, state.picture, state.rect[1], state.rect[2], w, h)
     else
-      draw.imageTransformed(surface, media.picture, media.rect[1], media.rect[2], w, h, media.angle, media.faded and "#FFFFFF60" or "#FFFFFF")
+      draw.imageTransformed(surface, state.picture, state.rect[1], state.rect[2], w, h, state.angle, state.faded and "#FFFFFF60" or "#FFFFFF")
     end
 
-    draw.image(surface, media.frames[media.frame].image, 8, 8, 32, 32)
+    draw.image(surface, state.frames[state.frame].image, 8, 8, 32, 32)
 
     -- two points on either side of the note's left stem, which a half turn swaps
-    media.probes = {}
+    state.probes = {}
 
     for i, across in ipairs({ 0.42, 0.58 }) do
-      media.probes[i] = surface:getPixel(math.floor((media.rect[1] + across * w) * surface.scale), math.floor((media.rect[2] + 0.5 * h) * surface.scale))
+      state.probes[i] = surface:getPixel(math.floor((state.rect[1] + across * w) * surface.scale), math.floor((state.rect[2] + 0.5 * h) * surface.scale))
     end
 
     -- a smooth edge has pixels that the frame covers only in part, so their colour is between the frame's and the background's
@@ -106,74 +106,74 @@ ecs.panel.registerType({
     end
 
     seen["#202020FF"], seen["#3A3F4BFF"] = nil, nil
-    media.smooth = next(seen) ~= nil
+    state.smooth = next(seen) ~= nil
   end,
 
-  event = function(media, event)
+  event = function(state, event)
     -- pointer positions are in surface pixels, and the picture's rectangle in layout units
-    local x, y, w, h = table.unpack(media.rect)
-    local px, py = (event.x or 0) / media.scale, (event.y or 0) / media.scale
+    local x, y, w, h = table.unpack(state.rect)
+    local px, py = (event.x or 0) / state.scale, (event.y or 0) / state.scale
 
     -- a click on the picture plays the sound; each play is a voice, so clicks can overlap
     -- B plays a tone to the left: finish says that no more samples come, so its voice ends once they have played
     if event.type == "keyDown" and event.key == "B" then
       local stream = tone(0.3, 440)
-      media.toneQueued = stream:queued()
+      state.toneQueued = stream:queued()
       stream:finish()
-      media.tone = stream:play(1, false)
-      mixer.pan(media.tone, -0.8)
+      state.tone = stream:play(1, false)
+      mixer.pan(state.tone, -0.8)
     end
 
     -- E plays a tone with an echo: what it played a fifth of a second ago comes back, softer each time, so it rings on after the tone ends
     if event.type == "keyDown" and event.key == "E" then
       local stream = tone(0.3, 660)
       stream:finish()
-      media.echoed = stream:play(1, false)
-      mixer.echo(media.echoed, 0.2, 0.3, 0.6)
+      state.echoed = stream:play(1, false)
+      mixer.echo(state.echoed, 0.2, 0.3, 0.6)
     end
 
     -- S writes the picture as drawn to a PNG file in this plugin's folder, and reads it back, which gives the same pixels
     if event.type == "keyDown" and (event.key == "R" or event.key == "F") then
-      media.angle = event.key == "R" and (media.angle + 90) % 360 or media.angle
-      media.faded = media.faded ~= (event.key == "F")
-      media.panel:redraw()
+      state.angle = event.key == "R" and (state.angle + 90) % 360 or state.angle
+      state.faded = state.faded ~= (event.key == "F")
+      state.panel:redraw()
     end
 
-    if event.type == "keyDown" and event.key == "S" and media.picture ~= nil then
+    if event.type == "keyDown" and event.key == "S" and state.picture ~= nil then
       local path = ecs.plugin.folder .. "ignore.picture.png"
-      local saved = image.save(media.picture, path) and image.load(path, 1)
-      media.saved = saved and saved:pixels() == media.picture:pixels() or false
+      local saved = image.save(state.picture, path) and image.load(path, 1)
+      state.saved = saved and saved:pixels() == state.picture:pixels() or false
       os.remove(path)
     end
 
     -- M muffles the tune, as if it played behind a wall: a low-pass filter cuts its sounds above 600 hertz; a second M takes the filter away
-    if event.type == "keyDown" and event.key == "M" and media.tune ~= nil then
-      media.muffled = not media.muffled
-      mixer.filter(media.tune, media.muffled and 600 or 0, 0)
+    if event.type == "keyDown" and event.key == "M" and state.tune ~= nil then
+      state.muffled = not state.muffled
+      mixer.filter(state.tune, state.muffled and 600 or 0, 0)
     end
 
     -- V adds a reverb to everything that plays, as in a room, or takes it away; reverb gives false when there is no output
     if event.type == "keyDown" and event.key == "V" then
-      local on = not media.reverb
-      media.reverb = mixer.reverb(on and 0.3 or 0, 0.6) and on
+      local on = not state.reverb
+      state.reverb = mixer.reverb(on and 0.3 or 0, 0.6) and on
     end
 
     -- T streams a tune: audio reads a long file a piece at a time while it plays, instead of whole
     if event.type == "keyDown" and event.key == "T" then
       local stream = audio.stream(ecs.plugin.folder .. "tune.wav")
-      media.tuneQueued = stream:queued()
-      media.tune = stream:play(0.8, false)
+      state.tuneQueued = stream:queued()
+      state.tune = stream:play(0.8, false)
     end
 
     if event.type == "pointerDown" and px >= x and px <= x + w and py >= y and py <= y + h then
       if sound:play(0.8, false) > 0 then
-        media.plays = media.plays + 1
-        media.panel.title = ("Media (%d)"):format(media.plays)
+        state.plays = state.plays + 1
+        state.panel.title = ("Media (%d)"):format(state.plays)
       end
     end
   end,
 
-  saveState = function(media)
-    return { plays = media.plays, smooth = media.smooth, toneQueued = media.toneQueued, tonePlaying = media.tone ~= nil and mixer.playing(media.tone), saved = media.saved, probes = media.probes, frames = #media.frames, frameSeconds = media.frames[1].seconds, frame = media.frame, tuneQueued = media.tuneQueued, tunePlaying = media.tune ~= nil and mixer.playing(media.tune), reverb = media.reverb == true, muffled = media.muffled == true, echoPlaying = media.echoed ~= nil and mixer.playing(media.echoed) }
+  saveState = function(state)
+    return { plays = state.plays, smooth = state.smooth, toneQueued = state.toneQueued, tonePlaying = state.tone ~= nil and mixer.playing(state.tone), saved = state.saved, probes = state.probes, frames = #state.frames, frameSeconds = state.frames[1].seconds, frame = state.frame, tuneQueued = state.tuneQueued, tunePlaying = state.tune ~= nil and mixer.playing(state.tune), reverb = state.reverb == true, muffled = state.muffled == true, echoPlaying = state.echoed ~= nil and mixer.playing(state.echoed) }
   end,
 })

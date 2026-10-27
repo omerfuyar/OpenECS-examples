@@ -69,61 +69,61 @@ ecs.panel.registerType({
     return terminal
   end,
 
-  draw = function(terminal, surface)
+  draw = function(state, surface)
     -- the grid takes as many cells as fit the panel; resizing wraps its lines again at the new width
-    local columns, rows = textgrid.fit(surface.width / surface.scale, surface.height / surface.scale, terminal.size)
-    terminal.grid:resize(math.max(columns, 1), math.max(rows, 1))
+    local columns, rows = textgrid.fit(surface.width / surface.scale, surface.height / surface.scale, state.size)
+    state.grid:resize(math.max(columns, 1), math.max(rows, 1))
 
     -- the command line is written over the row of the cursor each time, so it never scrolls the grid
-    local _, row = terminal.grid:cursor()
-    terminal.grid:put(0, row, (PROMPT .. terminal.line):sub(-columns) .. string.rep(" ", columns))
-    terminal.grid:setCursor(math.min(#PROMPT + #terminal.line, columns - 1), row)
+    local _, row = state.grid:cursor()
+    state.grid:put(0, row, (PROMPT .. terminal.line):sub(-columns) .. string.rep(" ", columns))
+    state.grid:setCursor(math.min(#PROMPT + #state.line, columns - 1), row)
 
     surface:fill(0, 0, surface.width, surface.height, BACKGROUND)
-    textgrid.draw(surface, terminal.grid, 0, 0, terminal.size, true)
+    textgrid.draw(surface, state.grid, 0, 0, state.size, true)
   end,
 
-  event = function(terminal, event)
+  event = function(state, event)
     if event.type == "text" then
-      terminal.line = terminal.line .. event.text
+      state.line = state.line .. event.text
     elseif event.type == "keyDown" and event.key == "Backspace" then
-      terminal.line = terminal.line:sub(1, (utf8.offset(terminal.line, -1) or 1) - 1)
+      state.line = state.line:sub(1, (utf8.offset(state.line, -1) or 1) - 1)
     elseif event.type == "keyDown" and event.key == "Return" then
-      local _, row = terminal.grid:cursor()
-      terminal.grid:setCursor(0, row)
-      run(terminal, terminal.line)
-      terminal.line = ""
+      local _, row = state.grid:cursor()
+      state.grid:setCursor(0, row)
+      run(state, state.line)
+      state.line = ""
     else
       return
     end
 
-    terminal.panel:redraw()
+    state.panel:redraw()
   end,
 
   -- the last output and its first cells are saved, so the test can read them; a wide character's right half gives an empty text
-  saveState = function(terminal)
-    local _, row = terminal.grid:cursor()
+  saveState = function(state)
+    local _, row = state.grid:cursor()
     local cells, styles = {}, {}
 
     for column = 0, 5 do
-      cells[column + 1], styles[column + 1] = terminal.grid:get(column, row - 1)
+      cells[column + 1], styles[column + 1] = state.grid:get(column, row - 1)
     end
 
     -- and the text of every row, one after another, for the test to find lines that wrap
-    local columns, rows = terminal.grid:size()
+    local columns, rows = state.grid:size()
     local screen = {}
 
     for row = 0, rows - 1 do
       for column = 0, columns - 1 do
-        screen[#screen + 1] = terminal.grid:get(column, row)
+        screen[#screen + 1] = state.grid:get(column, row)
       end
     end
 
-    return { output = terminal.output, cells = cells, styles = styles, size = terminal.size, columns = columns, screen = table.concat(screen) }
+    return { output = state.output, cells = cells, styles = styles, size = state.size, columns = columns, screen = table.concat(screen) }
   end,
 
-  destroy = function(terminal)
-    terminals[terminal.panel] = nil
+  destroy = function(state)
+    terminals[state.panel] = nil
   end,
 })
 

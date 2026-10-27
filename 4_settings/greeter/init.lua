@@ -49,8 +49,8 @@ ecs.panel.registerType({
     return greeting
   end,
 
-  destroy = function(greeting)
-    greetings[greeting.panel] = nil
+  destroy = function(state)
+    greetings[state.panel] = nil
   end,
 
   -- the settings that changed are part of the panel's state, so the test can see them

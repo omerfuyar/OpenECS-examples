@@ -116,11 +116,11 @@ ecs.panel.registerType({
     return { turn = 0.6, tilt = 0.3, distance = 5.5, drawn = 0, dragging = nil, labelParts = 0 }
   end,
 
-  draw = function(view, surface, seconds)
-    view.drawn = view.drawn + 1
+  draw = function(state, surface, seconds)
+    state.drawn = state.drawn + 1
 
-    if not view.dragging then
-      view.turn = view.turn + seconds * 0.7
+    if not state.dragging then
+      state.turn = state.turn + seconds * 0.7
     end
 
     local width, height = surface.width / surface.scale, surface.height / surface.scale
@@ -129,8 +129,8 @@ ecs.panel.registerType({
 
     -- the ring leans on its side, so it tumbles as it turns, then the drag's turn and tilt move it; the camera is in front of it, at its distance
     if pipeline and vertexBuffer and indexBuffer then
-      local modelMatrix = cglm.mat4Mul(cglm.rotateMake(view.tilt, X), cglm.mat4Mul(cglm.rotateMake(view.turn, Y), cglm.rotateMake(math.rad(60), Z)))
-      local camera = cglm.translateMake(cglm.vec3(0, 0, -view.distance))
+      local modelMatrix = cglm.mat4Mul(cglm.rotateMake(state.tilt, X), cglm.mat4Mul(cglm.rotateMake(state.turn, Y), cglm.rotateMake(math.rad(60), Z)))
+      local camera = cglm.translateMake(cglm.vec3(0, 0, -state.distance))
       -- a perspective that sees down -z from the camera, with depth from 0, near, to 1, far, as SDL's GPU API takes it
       local viewProjection = cglm.mat4Mul(cglm.perspective(math.rad(45), width / height, 0.1, 50), camera)
 
@@ -138,7 +138,7 @@ ecs.panel.registerType({
         vertices = vertexBuffer,
         indices = indexBuffer,
         vertexUniforms = modelMatrix .. viewProjection,
-        fragmentUniforms = cglm.vec4(BASE[1], BASE[2], BASE[3], 1) .. cglm.vec4(0.45, -0.65, -0.6, 0) .. cglm.vec4(0, 0, view.distance, 1),
+        fragmentUniforms = cglm.vec4(BASE[1], BASE[2], BASE[3], 1) .. cglm.vec4(0.45, -0.65, -0.6, 0) .. cglm.vec4(0, 0, state.distance, 1),
       })
 
       -- the label starts a little to the right of its point, with its line's middle at the point's height
@@ -157,7 +157,7 @@ ecs.panel.registerType({
           })
         end
 
-        view.labelParts = #glyphs.parts
+        state.labelParts = #glyphs.parts
       end
     end
 
@@ -166,23 +166,23 @@ ecs.panel.registerType({
   end,
 
   -- a drag turns and tilts the model; the wheel moves it nearer or farther
-  event = function(view, event)
+  event = function(state, event)
     if event.type == "pointerDown" and event.button == 1 then
-      view.dragging = { x = event.x, y = event.y }
+      state.dragging = { x = event.x, y = event.y }
     elseif event.type == "pointerUp" then
-      view.dragging = nil
-    elseif event.type == "pointerMove" and view.dragging then
-      view.turn = view.turn + (event.x - view.dragging.x) * 0.01
-      view.tilt = math.max(-1.5, math.min(1.5, view.tilt + (event.y - view.dragging.y) * 0.01))
-      view.dragging = { x = event.x, y = event.y }
+      state.dragging = nil
+    elseif event.type == "pointerMove" and state.dragging then
+      state.turn = state.turn + (event.x - state.dragging.x) * 0.01
+      state.tilt = math.max(-1.5, math.min(1.5, state.tilt + (event.y - state.dragging.y) * 0.01))
+      state.dragging = { x = event.x, y = event.y }
     elseif event.type == "wheel" then
-      view.distance = math.max(2, math.min(12, view.distance - event.scrollY * 0.5))
+      state.distance = math.max(2, math.min(12, state.distance - event.scrollY * 0.5))
     end
   end,
 
   -- what the test checks: the model's size, how many frames it drew, where the camera is, and what gpu.compile gave
-  saveState = function(view)
-    return { vertices = VERTICES, triangles = TRIANGLES, drawn = view.drawn, turn = view.turn, distance = view.distance, pipeline = pipeline ~= nil, labelParts = view.labelParts,
+  saveState = function(state)
+    return { vertices = VERTICES, triangles = TRIANGLES, drawn = state.drawn, turn = state.turn, distance = state.distance, pipeline = pipeline ~= nil, labelParts = state.labelParts,
       compiled = COMPILED, compileError = COMPILE_ERROR }
   end,
 })

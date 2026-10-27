@@ -74,23 +74,23 @@ static SHUResult LightsCreate(ECSPanel panel, const ECSValue *savedState, u32 ve
 
     // without a GPU renderer there is no device, and the panel shows the error
     SDL_GPUDevice *device = LIGHTS.device;
-    Lights *lights = device == nullptr ? nullptr : SDL_calloc(1, sizeof(Lights));
+    Lights *state = device == nullptr ? nullptr : SDL_calloc(1, sizeof(Lights));
 
-    if (lights == nullptr || (lights->tiles = LightsMakeTiles(device)) == nullptr)
+    if (state == nullptr || (state->tiles = LightsMakeTiles(device)) == nullptr)
     {
-        SDL_free(lights);
+        SDL_free(state);
         return device == nullptr ? SHUResult_ErrNotFound : SHUResult_ErrInternal;
     }
 
-    *retState = lights;
+    *retState = state;
     return SHUResult_Ok;
 }
 
-static void LightsDestroy(void *state)
+static void LightsDestroy(void *data)
 {
-    Lights *lights = state;
-    SDL_ReleaseGPUTexture(LIGHTS.device, lights->tiles);
-    SDL_free(lights);
+    Lights *state = data;
+    SDL_ReleaseGPUTexture(LIGHTS.device, state->tiles);
+    SDL_free(state);
 }
 
 /// @brief Copies one tile, or a part of the tiles, into a rectangle of the panel's texture, scaled with the nearest pixel.
@@ -107,10 +107,10 @@ static void LightsBlit(SDL_GPUCommandBuffer *commands, const Lights *lights, ECS
 
 // the surface's texture is the panel's, on the device that ECSGpu_GetDevice gives; the panel draws with a command buffer of its own and submits it,
 // and the core shows the texture after
-static void LightsDraw(void *state, ECSSurface *surface, f64 seconds)
+static void LightsDraw(void *data, ECSSurface *surface, f64 seconds)
 {
-    Lights *lights = state;
-    lights->seconds += seconds;
+    Lights *state = data;
+    state->seconds += seconds;
     SDL_GPUCommandBuffer *commands = SDL_AcquireGPUCommandBuffer(LIGHTS.device);
 
     if (commands == nullptr)
@@ -131,14 +131,14 @@ static void LightsDraw(void *state, ECSSurface *surface, f64 seconds)
     // the four tiles fill a square in the middle, half as tall as the panel
     f32 side = SDL_floorf((f32)SDL_min(surface->width, surface->height) / 2.0f);
     SDL_FRect square = {SDL_floorf(((f32)surface->width - side) / 2.0f), SDL_floorf(((f32)surface->height - side) / 2.0f), side, side};
-    LightsBlit(commands, lights, surface, (SDL_FRect){0, 0, 2, 2}, square);
+    LightsBlit(commands, state, surface, (SDL_FRect){0, 0, 2, 2}, square);
 
     // the light, the yellow tile, goes along the bottom and back every four seconds
     f32 size = SDL_floorf(side / 8.0f) + 1.0f;
-    f64 phase = SDL_fmod(lights->seconds / 4.0, 1.0);
+    f64 phase = SDL_fmod(state->seconds / 4.0, 1.0);
     f32 across = (f32)(phase < 0.5 ? phase * 2.0 : 2.0 - phase * 2.0);
     SDL_FRect light = {SDL_floorf(across * ((f32)surface->width - size)), (f32)surface->height - size * 2.0f, size, size};
-    LightsBlit(commands, lights, surface, (SDL_FRect){0, 1, 1, 1}, light);
+    LightsBlit(commands, state, surface, (SDL_FRect){0, 1, 1, 1}, light);
 
     SDL_SubmitGPUCommandBuffer(commands);
 }

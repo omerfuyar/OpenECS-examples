@@ -68,25 +68,25 @@ ecs.panel.registerType({
     return browser
   end,
 
-  draw = function(browser, surface)
+  draw = function(state, surface)
     local rows = {
       -- the folder above, unless this is the top folder
-      browser.folder ~= "/" and ui.button("..", {
+      state.folder ~= "/" and ui.button("..", {
         onClick = function()
-          open(browser, browser.folder:gsub("[^/]+/$", ""))
+          open(state, state.folder:gsub("[^/]+/$", ""))
         end,
       }) or ui.space({ height = 0 }),
     }
 
-    for _, entry in ipairs(browser.entries) do
+    for _, entry in ipairs(state.entries) do
       rows[#rows + 1] = ui.row({
         padding = 4,
         hoverBackground = "accent",
         onClick = function()
           if entry.type == "folder" then
-            open(browser, browser.folder .. entry.name .. "/")
+            open(state, state.folder .. entry.name .. "/")
           else
-            browser.text = preview(browser.folder .. entry.name)
+            state.text = preview(state.folder .. entry.name)
           end
         end,
       }, {
@@ -95,31 +95,31 @@ ecs.panel.registerType({
       })
     end
 
-    ui.show(browser.panel, surface, ui.row({ padding = 12, gap = 12 }, {
+    ui.show(state.panel, surface, ui.row({ padding = 12, gap = 12 }, {
       ui.scroll({ id = "entries", grow = 1 }, rows),
-      ui.column({ grow = 1 }, { ui.text(browser.text) }),
+      ui.column({ grow = 1 }, { ui.text(state.text) }),
     }))
   end,
 
-  event = function(browser, event)
-    ui.event(browser.panel, event)
+  event = function(state, event)
+    ui.event(state.panel, event)
   end,
 
-  destroy = function(browser)
-    if browser.watch ~= nil then
-      browser.watch:stop()
+  destroy = function(state)
+    if state.watch ~= nil then
+      state.watch:stop()
     end
 
-    ui.forget(browser.panel)
+    ui.forget(state.panel)
   end,
 
-  saveState = function(browser)
+  saveState = function(state)
     local names = {}
 
-    for _, entry in ipairs(browser.entries) do
+    for _, entry in ipairs(state.entries) do
       names[#names + 1] = entry.label
     end
 
-    return { folder = browser.folder, names = names }
+    return { folder = state.folder, names = names }
   end,
 })

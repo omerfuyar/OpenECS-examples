@@ -44,15 +44,15 @@ ecs.panel.registerType({
     return { panel = panel, turn = 0.6, dragging = nil, drawn = 0 }
   end,
 
-  draw = function(view, surface)
-    view.drawn = view.drawn + 1
+  draw = function(state, surface)
+    state.drawn = state.drawn + 1
     local width, height = surface.width / surface.scale, surface.height / surface.scale
     draw.fill(surface, 0, 0, width, height, "#101418")
 
     -- the square view in the middle of the panel, whose y goes down
     local side = math.min(width, height)
     local left, top = (width - side) / 2, (height - side) / 2
-    local matrix = matrixAt(view.turn)
+    local matrix = matrixAt(state.turn)
     local points = {}
 
     for i, corner in ipairs(CORNERS) do
@@ -64,21 +64,21 @@ ecs.panel.registerType({
   end,
 
   -- a drag across turns the cube
-  event = function(view, event)
+  event = function(state, event)
     if event.type == "pointerDown" and event.button == 1 then
-      view.dragging = event.x
+      state.dragging = event.x
     elseif event.type == "pointerUp" then
-      view.dragging = nil
-    elseif event.type == "pointerMove" and view.dragging then
-      view.turn = view.turn + (event.x - view.dragging) * 0.01
-      view.dragging = event.x
-      view.panel:redraw()
+      state.dragging = nil
+    elseif event.type == "pointerMove" and state.dragging then
+      state.turn = state.turn + (event.x - state.dragging) * 0.01
+      state.dragging = event.x
+      state.panel:redraw()
     end
   end,
 
   -- what the test checks: the turn, where the last corner is in the view, and results that cglm must give
-  saveState = function(view)
-    local x, y = project(matrixAt(view.turn), CORNERS[8])
+  saveState = function(state)
+    local x, y = project(matrixAt(state.turn), CORNERS[8])
     local axis = cglm.vec3Normalize(cglm.vec3(1, 2, 3))
     local point = cglm.vec3(4, -1, 2)
 
@@ -93,12 +93,12 @@ ecs.panel.registerType({
       return largest
     end
 
-    local matrix = matrixAt(view.turn)
+    local matrix = matrixAt(state.turn)
     local half = cglm.quatSlerp(cglm.quatv(0, UP), cglm.quatv(1, UP), 0.5)
 
     return {
-      turn = view.turn,
-      drawn = view.drawn,
+      turn = state.turn,
+      drawn = state.drawn,
       corner = { x = x, y = y },
       checks = {
         -- a matrix times its inverse changes nothing

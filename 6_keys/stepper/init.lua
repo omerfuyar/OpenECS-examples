@@ -26,19 +26,19 @@ ecs.panel.registerType({
     return stepper
   end,
 
-  destroy = function(stepper)
-    steppers[stepper.panel] = nil
+  destroy = function(state)
+    steppers[state.panel] = nil
   end,
 
-  draw = function(stepper, surface)
+  draw = function(state, surface)
     surface:fill(0, 0, surface.width, surface.height, "background")
-    draw.text(surface, draw.font("ui"), tostring(stepper.value), 24, 24, 48, "text")
+    draw.text(surface, draw.font("ui"), tostring(state.value), 24, 24, 48, "text")
   end,
 
   -- keys that no binding takes come to the focused panel
-  event = function(stepper, event)
+  event = function(state, event)
     if event.type == "keyDown" and event.key == "Space" then
-      step(stepper.panel, 10)
+      step(state.panel, 10)
     end
   end,
 })

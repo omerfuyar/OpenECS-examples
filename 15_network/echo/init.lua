@@ -114,7 +114,7 @@ ecs.panel.registerType({
     return { panel = panel, line = "" }
   end,
 
-  draw = function(echo, surface)
+  draw = function(state, surface)
     surface:fill(0, 0, surface.width, surface.height, "background")
     local _, height = draw.font("ui"):measure("Ag", SIZE)
     local lines = math.max(1, math.floor(surface.height / surface.scale / height) - 2)
@@ -127,31 +127,31 @@ ecs.panel.registerType({
     draw.text(surface, draw.font("ui"), "> " .. echo.line, 12, 12 + lines * height, SIZE, "accent")
   end,
 
-  event = function(echo, event)
+  event = function(state, event)
     if event.type == "text" then
-      echo.line = echo.line .. event.text
-    elseif event.type == "keyDown" and event.key == "Return" and echo.line ~= "" then
-      local datagram = echo.line:match("^/udp (.+)")
+      state.line = state.line .. event.text
+    elseif event.type == "keyDown" and event.key == "Return" and state.line ~= "" then
+      local datagram = state.line:match("^/udp (.+)")
 
       -- sendTo queues a datagram, which may be lost on the way; send queues data and gives false while the client is not connected yet
       if datagram then
         add(udpClient and udpClient:sendTo("127.0.0.1", PORT, datagram) and "> udp " .. datagram or "Cannot send by UDP")
-      elseif client:status() == 1 and client:send(echo.line) then
+      elseif client:status() == 1 and client:send(state.line) then
         add("> " .. echo.line)
       else
         add("Not connected yet")
       end
 
-      echo.line = ""
+      state.line = ""
     else
       return
     end
 
-    echo.panel:redraw()
+    state.panel:redraw()
   end,
 
-  destroy = function(echo)
-    panels[echo.panel] = nil
+  destroy = function(state)
+    panels[state.panel] = nil
   end,
 })
 

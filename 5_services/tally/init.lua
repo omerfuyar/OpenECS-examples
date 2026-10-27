@@ -37,8 +37,8 @@ ecs.panel.registerType({
     return { panel = panel }
   end,
 
-  destroy = function(tally)
-    panels[tally.panel] = nil
+  destroy = function(state)
+    panels[state.panel] = nil
   end,
 
   draw = function(_, surface)
@@ -46,7 +46,7 @@ ecs.panel.registerType({
     draw.text(surface, draw.font("ui"), ("%d clicks in all"):format(counter.get("clicks")), 24, 24, 24, "text")
   end,
 
-  event = function(tally, event)
+  event = function(state, event)
     if event.type == "pointerDown" then
       counter.add("clicks", 1)
     end

@@ -72,19 +72,19 @@ ecs.panel.registerType({
     return { panel = panel, color = saved and saved.color or "#4C566A", scale = 1 }
   end,
 
-  draw = function(picker, surface)
-    picker.scale = surface.scale
-    surface:fill(0, 0, surface.width, surface.height, picker.color)
+  draw = function(state, surface)
+    state.scale = surface.scale
+    surface:fill(0, 0, surface.width, surface.height, state.color)
     draw.text(surface, draw.font("ui"), "Right-click to choose a colour", 24, 24, 18, "text")
   end,
 
-  event = function(picker, event)
+  event = function(state, event)
     if event.type == "pointerDown" and event.button == 3 then
-      openMenu(picker, event.x, event.y)
+      openMenu(state, event.x, event.y)
     end
   end,
 
-  saveState = function(picker)
-    return { color = picker.color }
+  saveState = function(state)
+    return { color = state.color }
   end,
 })

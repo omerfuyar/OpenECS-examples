@@ -16,8 +16,8 @@ ecs.panel.registerType({
     return { panel = panel, scale = 1 }
   end,
 
-  draw = function(palette, surface)
-    palette.scale = surface.scale
+  draw = function(state, surface)
+    state.scale = surface.scale
     surface:fill(0, 0, surface.width, surface.height, "background")
 
     for i, color in ipairs(COLORS) do
@@ -25,16 +25,16 @@ ecs.panel.registerType({
     end
   end,
 
-  event = function(palette, event)
-    if event.type ~= "pointerDown" or event.y / palette.scale >= SWATCH then
+  event = function(state, event)
+    if event.type ~= "pointerDown" or event.y / state.scale >= SWATCH then
       return
     end
 
-    local color = COLORS[math.floor(event.x / palette.scale / SWATCH) + 1]
+    local color = COLORS[math.floor(event.x / state.scale / SWATCH) + 1]
 
     if color then
       -- call it while the button that was pressed on this panel is held; the type names what kind of value it carries
-      palette.panel:startDrag("swatches.color", color)
+      state.panel:startDrag("swatches.color", color)
     end
   end,
 })
@@ -51,34 +51,34 @@ ecs.panel.registerType({
     return { panel = panel, color = saved and saved.color or "#4C566A", files = {} }
   end,
 
-  draw = function(sample, surface)
-    surface:fill(0, 0, surface.width, surface.height, sample.color)
+  draw = function(state, surface)
+    surface:fill(0, 0, surface.width, surface.height, state.color)
 
-    for i, name in ipairs(sample.files) do
+    for i, name in ipairs(state.files) do
       draw.text(surface, draw.font("ui"), name, 16, 16 + (i - 1) * 24, 16, "text")
     end
   end,
 
-  event = function(sample, event)
+  event = function(state, event)
     if event.type ~= "drop" then
       return
     end
 
     if event.dataType == "swatches.color" then
-      sample.color = event.value
+      state.color = event.value
     else
       -- a "file-list" is a list of paths
-      sample.files = {}
+      state.files = {}
 
       for _, path in ipairs(event.value) do
-        table.insert(sample.files, path:match("[^/]*$"))
+        table.insert(state.files, path:match("[^/]*$"))
       end
     end
 
-    sample.panel:redraw()
+    state.panel:redraw()
   end,
 
-  saveState = function(sample)
-    return { color = sample.color, files = sample.files }
+  saveState = function(state)
+    return { color = state.color, files = state.files }
   end,
 })
