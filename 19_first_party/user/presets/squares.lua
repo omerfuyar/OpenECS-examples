@@ -1,4 +1,4 @@
--- A preset in the user's presets folder, ~/.config/openecs/presets/: the launcher lists it by its file's name.
+-- A preset in the user's presets folder, ~/.config/OpenECS/presets/: the launcher lists it by its file's name.
 -- The test of the launcher names this folder in place of the user's.
 ---@type ecs.Preset
 return {

@@ -26,7 +26,7 @@ ecs.panel.registerType({
     ecs.log.info(("The greeting draws itself, %d by %d pixels."):format(surface.width, surface.height))
 
     -- a colour is a text: "#RRGGBB", "#RRGGBBAA" with alpha, or a colour of the theme, such as "accent"
-    -- todo give a way to find predefined colors, like "accent" etc. !!!
+    -- editors complete the theme's colours, as the type ecs.Color in include/ecs.lua lists them
     surface:fill(0, 0, surface.width, surface.height, "#5E81AC")
   end,
 

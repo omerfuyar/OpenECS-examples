@@ -1,4 +1,4 @@
--- A saved session in the user's folder of sessions, ~/.local/share/openecs/sessions/, as OpenECS writes one: the preset's fields, with the panels as they were.
+-- A saved session in the user's folder of sessions, ~/.local/share/OpenECS/sessions/, as OpenECS writes one: the preset's fields, with the panels as they were.
 -- The test of the launcher names this folder in place of the user's.
 ---@type ecs.Session
 return {
