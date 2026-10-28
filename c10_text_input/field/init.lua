@@ -1,0 +1,51 @@
+-- A one-line text field. Text comes in text events, which also carry what input methods compose, such as accented letters.
+-- Keys that change the text, such as Backspace, come as keyDown events.
+
+local ecs = require("ecs")
+
+local draw = require("draw") -- the functions of a plugin the manifest depends on
+
+local MARGIN, SIZE = 16, 20 -- in layout units
+
+-- tells the core where the cursor is, in surface pixels, so an input method's window shows beside it
+local function placeCursor(field)
+  local width, height = draw.font("ui"):measure(field.text, SIZE)
+  field.panel:setTextInput(true, (MARGIN + width) * field.scale, MARGIN * field.scale, 2 * field.scale, height * field.scale)
+end
+
+ecs.panel.registerType({
+  name = "panel",
+  title = "Field",
+  stateVersion = 1,
+
+  create = function(panel, saved)
+    local field = { panel = panel, text = saved and saved.text or "", scale = 1 }
+    placeCursor(field) -- the panel gets text events only while it has the focus and accepts text
+    return field
+  end,
+
+  draw = function(state, surface)
+    state.scale = surface.scale
+    surface:fill(0, 0, surface.width, surface.height, "background")
+    local width = draw.text(surface, draw.font("ui"), state.text, MARGIN, MARGIN, SIZE, "text")
+    local _, height = draw.font("ui"):measure(state.text, SIZE)
+    draw.fill(surface, MARGIN + width, MARGIN, 2, height, "accent") -- the cursor
+  end,
+
+  event = function(state, event)
+    if event.type == "text" then
+      state.text = state.text .. event.text
+    elseif event.type == "keyDown" and event.key == "Backspace" and #state.text > 0 then
+      state.text = state.text:sub(1, utf8.offset(state.text, -1) - 1) -- drops the last character, which may be several bytes
+    else
+      return
+    end
+
+    placeCursor(state)
+    state.panel:redraw()
+  end,
+
+  saveState = function(state)
+    return { text = state.text }
+  end,
+})

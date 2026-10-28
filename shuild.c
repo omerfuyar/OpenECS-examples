@@ -1,6 +1,6 @@
 // The build of OpenECS's examples. It runs inside a checkout of OpenECS, in its examples/ folder: OpenECS's shuild.c compiles this file with shu and shuild
 // from OpenECS's dependencies/ into shuild.ignore here, and runs it with the build type and OpenECS's build folder (README.md).
-// Each numbered folder is copied whole into bin/examples/, its sources and tests too, and the C files of each of its plugin folders are built into the copy.
+// Each example's folder, named c or s and its number, such as c1_hello, is copied whole into bin/examples/, its sources and tests too, and the C files of each of its plugin folders are built into the copy.
 #define SHU_IMPLEMENTATION
 #define SHUC_ENABLE_INCREMENTAL
 #include "shuild/shuild.h"
@@ -33,38 +33,31 @@ static struct
 
 #pragma region Declarations
 
-static void SetupConfiguration(int argc, char **argv);
-static void ForEachFolder(const char *path, bool numbered, void (*function)(const char *path, const char *name));
+static bool ReadArguments(int argc, char **argv);
+static void Configure(void);
+static void ForEachFolder(const char *path, bool examplesOnly, void (*function)(const char *path, const char *name));
 static void BuildExample(const char *path, const char *name);
+static void RemoveOldExample(const char *path, const char *name);
 
 #pragma endregion Declarations
 
-/// @brief The compiler that the flags name, or gcc.
-static const char *CompilerArgument(int argc, char **argv)
-{
-    for (int i = 1; i + 1 < argc; i++)
-    {
-        if (!strcmp(argv[i], "-c") || !strcmp(argv[i], "--compiler"))
-        {
-            return argv[i + 1];
-        }
-    }
-
-    return CONFIG.compiler;
-}
-
 int main(int argc, char **argv)
 {
-    CONFIG.compiler = CompilerArgument(argc, argv);
-    SHU_CompilerTryConfigure(CONFIG.compiler);
-    CONFIG.windows = SHU_CompilerGetTarget() == SHUM_PLATFORM_WINDOWS;
-    SetupConfiguration(argc, argv);
+    // the help stops the build here
+    if (!ReadArguments(argc, argv))
+    {
+        return 0;
+    }
 
+    Configure();
     ForEachFolder("./", true, BuildExample);
+
+    // a copy of an example that is gone, or was renamed, would still run its tests
+    ForEachFolder(SHU_UtilFormat("%sbin/examples/", CONFIG.output), false, RemoveOldExample);
     return 0;
 }
 
-static void PrintUsageAndExit(int status)
+static void PrintUsage(void)
 {
     printf("Usage: ./shuild.ignore -o FOLDER [FLAG...]\n\n"
            "OpenECS's shuild.c runs this build with its --examples flag; see OpenECS's README.md.\n\n"
@@ -73,17 +66,17 @@ static void PrintUsageAndExit(int status)
            "  -b, --build TYPE     Build type: debug (the default), release, relwithdebinfo or minsizerel\n"
            "  -c, --compiler CC    OpenECS's compiler: gcc (the default), clang, or one for Windows, such as x86_64-w64-mingw32-clang\n"
            "  -h, --help           Show this help\n");
-    exit(status);
 }
 
-/// @brief Stops the build with what is wrong, the argument, and the usage.
+/// @brief Stops the build with the usage, what is wrong and the argument.
 static void Refuse(const char *what, const char *argument)
 {
-    SHU_UtilFail(0, "%s: " SHUM_LOG_VALUE("%s"), what, argument);
-    PrintUsageAndExit(1);
+    PrintUsage();
+    SHU_UtilFail("%s: " SHUM_LOG_VALUE("%s"), what, argument);
 }
 
-static void SetupConfiguration(int argc, char **argv)
+/// @brief Reads every flag into CONFIG. Returns false when the flags ask for the help, which it prints.
+static bool ReadArguments(int argc, char **argv)
 {
     for (int i = 1; i < argc; i++)
     {
@@ -112,12 +105,12 @@ static void SetupConfiguration(int argc, char **argv)
         }
         else if (!strcmp(flag, "-c") || !strcmp(flag, "--compiler"))
         {
-            // main configured the compiler already
-            i++;
+            CONFIG.compiler = i + 1 < argc ? argv[++i] : CONFIG.compiler;
         }
         else if (!strcmp(flag, "-h") || !strcmp(flag, "--help"))
         {
-            PrintUsageAndExit(0);
+            PrintUsage();
+            return false;
         }
         else
         {
@@ -130,9 +123,18 @@ static void SetupConfiguration(int argc, char **argv)
         Refuse("The output folder is missing, or does not end with /", CONFIG.output == NULL ? "" : CONFIG.output);
     }
 
+    return true;
+}
+
+/// @brief Configures the compiler and shuild's cache.
+static void Configure(void)
+{
+    SHU_CompilerConfigureTry(CONFIG.compiler);
+    CONFIG.windows = SHU_CompilerGetTarget() == SHUPlatform_Windows;
+
     // a build for another system has a cache of its own, as OpenECS's build has a folder of its own
-    u8 target = SHU_CompilerGetTarget();
-    char *cache = SHU_UtilFormat(".shu/%s%s%s/", BUILD_TYPE_STRINGS[CONFIG.type], SHUM_PLATFORM_IS_HOST(target) ? "" : "-", SHUM_PLATFORM_IS_HOST(target) ? "" : SHUM_PLATFORM_GET_STRING(target));
+    SHUPlatform target = SHU_CompilerGetTarget();
+    char *cache = SHU_UtilFormat(".shu/%s%s%s/", BUILD_TYPE_STRINGS[CONFIG.type], SHUM_PLATFORM_IS_HOST(target) ? "" : "-", SHUM_PLATFORM_IS_HOST(target) ? "" : SHUPlatform_GetString(target));
     SHU_CacheConfigure(cache);
 }
 
@@ -140,36 +142,36 @@ static void SetupConfiguration(int argc, char **argv)
 static void SetBuildFlags(void)
 {
     SHU_CompilerClearFlags();
-    SHU_CompilerAddFlags(SHUM_FLAGS_STANDARD_C23 " -fvisibility=hidden");
+    SHU_CompilerAddFlags(SHUM_FLAGS_STANDARD_C23, "-fvisibility=hidden");
 
     switch (CONFIG.type)
     {
     case BuildType_Debug:
-        SHU_CompilerAddFlags(SHUM_FLAGS_WARNING_MID SHUM_FLAGS_DEBUG SHUM_FLAGS_OPTIMIZATION_DEBUG);
+        SHU_CompilerAddFlags(SHUM_FLAGS_WARNING_MID, SHUM_FLAGS_DEBUG, SHUM_FLAGS_OPTIMIZATION_DEBUG);
 
-        if (SHU_CompilerGetIdentifier() == SHUM_COMPILER_GCC)
+        if (SHU_CompilerGetFamily() == SHUCompiler_GCC)
         {
-            SHU_CompilerAddFlags(" -fanalyzer");
+            SHU_CompilerAddFlags("-fanalyzer");
         }
 
         if (!CONFIG.windows)
         {
-            SHU_CompilerAddFlags(" -fsanitize=address,undefined -fno-omit-frame-pointer");
+            SHU_CompilerAddFlags("-fsanitize=address,undefined", "-fno-omit-frame-pointer");
         }
 
-        SHU_CompilerAddDefinitions("DEBUG", NULL, "SDL_ASSERT_LEVEL", "2");
+        SHU_CompilerAddDefinitions("DEBUG", NULL);
         break;
     case BuildType_Release:
         SHU_CompilerAddFlags(SHUM_FLAGS_OPTIMIZATION_HIGH);
-        SHU_CompilerAddDefinitions("NDEBUG", NULL, "SDL_ASSERT_LEVEL", "0");
+        SHU_CompilerAddDefinitions("NDEBUG", NULL);
         break;
     case BuildType_RelWithDebInfo:
-        SHU_CompilerAddFlags(SHUM_FLAGS_WARNING_LOW SHUM_FLAGS_DEBUG SHUM_FLAGS_OPTIMIZATION_MID);
-        SHU_CompilerAddDefinitions("NDEBUG", NULL, "SDL_ASSERT_LEVEL", "0");
+        SHU_CompilerAddFlags(SHUM_FLAGS_WARNING_LOW, SHUM_FLAGS_DEBUG, SHUM_FLAGS_OPTIMIZATION_MID);
+        SHU_CompilerAddDefinitions("NDEBUG", NULL);
         break;
     case BuildType_MinSizeRel:
         SHU_CompilerAddFlags(SHUM_FLAGS_OPTIMIZATION_SIZE);
-        SHU_CompilerAddDefinitions("NDEBUG", NULL, "SDL_ASSERT_LEVEL", "0");
+        SHU_CompilerAddDefinitions("NDEBUG", NULL);
         break;
     }
 }
@@ -178,7 +180,7 @@ static void SetBuildFlags(void)
 typedef struct FolderVisit
 {
     const char *path;
-    bool numbered;
+    bool examplesOnly;
     void (*function)(const char *path, const char *name);
 } FolderVisit;
 
@@ -189,16 +191,19 @@ static void VisitFolder(const char *entry, SHUFileType type, void *data)
     // the entry is the folder's path, with a separator at its end; the function gets its name alone
     char *name = SHU_UtilFormat("%.*s", (int)(strlen(entry) - strlen(visit->path) - 1), entry + strlen(visit->path));
 
-    if (type == SHUFileType_Directory && (!visit->numbered || isdigit((unsigned char)name[0])))
+    // an example's name is c, for the plugin interface, or s, for the standard plugins, then its number, such as c1_hello or s1_terminal
+    bool example = (name[0] == 'c' || name[0] == 's') && isdigit((unsigned char)name[1]);
+
+    if (type == SHUFileType_Directory && (!visit->examplesOnly || example))
     {
         visit->function(visit->path, name);
     }
 }
 
-/// @brief Calls a function for each folder in a folder, sorted by name; names starting with a dot are left out, and, with numbered, names that do not start with a digit.
-static void ForEachFolder(const char *path, bool numbered, void (*function)(const char *path, const char *name))
+/// @brief Calls a function for each folder in a folder, sorted by name; names starting with a dot are left out, and, with examplesOnly, the folders that are no example.
+static void ForEachFolder(const char *path, bool examplesOnly, void (*function)(const char *path, const char *name))
 {
-    FolderVisit visit = {path, numbered, function};
+    FolderVisit visit = {path, examplesOnly, function};
     SHU_UtilListDirectory(path, false, VisitFolder, &visit);
 }
 
@@ -220,28 +225,24 @@ static void BuildPlugin(const char *path, const char *name)
         return;
     }
 
-    // the plugin sees only OpenECS's plugin interface and SDL, from the build's include/ folder, and the standard plugins' headers, such as ui.h,
-    // from its definitions/ folder, both named from the plugin's folder (OpenECS DESIGN 17.6)
+    // the plugin sees only the build's include/ folder, as any plugin's author does: OpenECS's plugin interface, and the standard plugins' headers,
+    // such as ui.h, named from the plugin's folder (OpenECS DESIGN 17.6)
     char *include = SHU_UtilFormat("../../%sinclude/", CONFIG.output);
-    char *definitions = SHU_UtilFormat("../../%sdefinitions/", CONFIG.output);
     char *output = SHU_UtilFormat("%sbin/examples/%s", CONFIG.output, strncmp(root, "./", 2) ? root : root + 2);
 
-    SHU_ModuleBegin(name, root);
-    SetBuildFlags();
-    SHU_ModuleAddSourceFile("./");
-    SHU_ModuleAddIncludeDirectory(include);
-    SHU_ModuleAddIncludeDirectory(definitions);
-
-    // a DLL calls OpenECS and SDL through their import libraries, in OpenECS's lib/ (OpenECS DESIGN 17.2); elsewhere the calls are resolved when it is loaded
-    if (CONFIG.windows)
+    SHU_MODULE(name, root, SHUModuleType_LibraryDynamic, output)
     {
-        SHU_ModuleAddLibraryDirectory(SHU_UtilFormat("%slib/", CONFIG.output));
-        SHU_ModuleLinkLibrary("OpenECS");
-        SHU_ModuleLinkLibrary("SDL3_ttf");
-        SHU_ModuleLinkLibrary("SDL3");
-    }
+        SetBuildFlags();
+        SHU_ModuleAddSourceFiles("./");
+        SHU_ModuleAddIncludeDirectories(include);
 
-    SHU_ModuleCompile(output, SHUModuleType_LibraryDynamic);
+        // a DLL calls OpenECS through its import library, in OpenECS's lib/ (OpenECS DESIGN 17.2); elsewhere the calls are resolved when it is loaded
+        if (CONFIG.windows)
+        {
+            SHU_ModuleAddLibraryDirectories(SHU_UtilFormat("%slib/", CONFIG.output));
+            SHU_ModuleLinkLibraries("OpenECS");
+        }
+    }
 }
 
 /// @brief Copies an example's folder whole into bin/examples/, and builds its plugin folders into the copy.
@@ -252,4 +253,13 @@ static void BuildExample(const char *path, const char *name)
     char *copy = SHU_UtilFormat("%sbin/examples/%s/", CONFIG.output, name);
     SHU_UtilCopyFile(root, copy);
     ForEachFolder(root, false, BuildPlugin);
+}
+
+/// @brief Deletes a folder of bin/examples/ whose example is no longer here.
+static void RemoveOldExample(const char *path, const char *name)
+{
+    if (SHU_UtilFileExists(name) != SHUFileType_Directory)
+    {
+        SHU_UtilDeleteFile(SHU_UtilFormat("%s%s/", path, name));
+    }
 }
