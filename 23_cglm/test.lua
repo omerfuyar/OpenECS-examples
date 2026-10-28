@@ -1,4 +1,4 @@
--- the cube in Lua and the cube in C make the same matrices, one with the cglm plugin's functions and one with cglm's own;
+-- the cube in Lua and the cube in C make the same matrices with the cglm plugin's functions, one from Lua and one from C;
 -- the plugin's results are what the math gives, and a drag turns each cube by as much; the core's Shift+1 after the prefix moves a cube to workspace 1
 return {
   preset = "preset.lua",

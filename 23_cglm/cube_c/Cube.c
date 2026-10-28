@@ -1,13 +1,14 @@
-// The cube of the cube plugin, in C. cglm's header, which the build writes from cglm's functions (OpenECS DESIGN 10.10), ends with cglm's own
-// header, so C calls cglm's inline functions, such as glm_mat4_mul, and calls nothing to make its matrices; the same functions answer Lua's calls
-// to the cglm plugin. draw's header gives draw's functions, which draw the edges.
+// The cube of the cube plugin, in C. cglm.h and draw.h, which OpenECS --definitions writes (OpenECS DESIGN 10.10), give the functions of the cglm and
+// draw plugins: C makes its matrices with the same cglm functions as Lua, with vectors and matrices as buffers of floats, and draw draws the edges.
 
-#include "cglm.h" // the cglm plugin's functions, and cglm itself
+#include "cglm.h" // the cglm plugin's functions
 #include "draw.h" // draw's functions; it includes OpenECS.h
 
 #include <stdlib.h>
+#include <string.h>
 
-/// @brief draw's functions, which DrawFunctions_Get looks up.
+/// @brief The functions of cglm and draw, which CglmFunctions_Get and DrawFunctions_Get look up.
+static CglmFunctions CGLM;
 static DrawFunctions DRAW;
 
 /// @brief The edges of the cube, as pairs of corners from 0, the same as the Lua plugin's.
@@ -22,36 +23,49 @@ typedef struct Cube
     f32 dragX; // where the drag was at its last event, in layout units
 } Cube;
 
-/// @brief A corner of the cube, from 0: each bit of its number picks -1 or 1 on one axis.
-static void CubeCorner(usz i, vec3 retCorner)
+/// @brief Floats as the buffer that cglm's functions take: a vector of 3 or 4, or a matrix of 16, column by column.
+static SHUSlice CubeBuffer(const f32 *floats, usz count)
 {
-    retCorner[0] = (i & 1) ? 1.0f : -1.0f;
-    retCorner[1] = (i & 2) ? 1.0f : -1.0f;
-    retCorner[2] = (i & 4) ? 1.0f : -1.0f;
+    return cs((void *)floats, count * sizeof(f32));
+}
+
+/// @brief Copies a result of cglm's functions, which lasts until the next call, into floats of its own; an empty result, after a wrong buffer, gives zeros.
+static void CubeKeep(SHUSlice result, f32 *retFloats, usz count)
+{
+    memset(retFloats, 0, count * sizeof(f32));
+
+    if (result.data != nullptr && result.size == count * sizeof(f32))
+    {
+        memcpy(retFloats, result.data, result.size);
+    }
 }
 
 /// @brief The matrix that takes a corner to the view: the cube turns around the vertical axis and leans, then the camera and the perspective see it.
-static void CubeMatrix(f32 turn, mat4 retMatrix)
+static void CubeMatrix(f32 turn, f32 *retMatrix)
 {
-    vec3 upAxis = {0.0f, 1.0f, 0.0f}, acrossAxis = {1.0f, 0.0f, 0.0f};
-    mat4 lean, model, camera, projection;
+    const f32 upAxis[3] = {0.0f, 1.0f, 0.0f}, acrossAxis[3] = {1.0f, 0.0f, 0.0f};
+    const f32 eye[3] = {0.0f, 2.0f, 5.0f}, center[3] = {0.0f, 0.0f, 0.0f};
+    f32 lean[16], model[16], camera[16], projection[16];
 
-    glm_rotate_make(model, turn, upAxis);
-    glm_rotate_make(lean, 0.4f, acrossAxis);
-    glm_mat4_mul(model, lean, model);
-    glm_lookat((vec3){0.0f, 2.0f, 5.0f}, (vec3){0.0f, 0.0f, 0.0f}, upAxis, camera);
-    glm_perspective(glm_rad(45.0f), 1.0f, 0.1f, 50.0f, projection);
+    CubeKeep(CGLM.rotateMake(turn, CubeBuffer(upAxis, 3)), model, 16);
+    CubeKeep(CGLM.rotateMake(0.4f, CubeBuffer(acrossAxis, 3)), lean, 16);
+    CubeKeep(CGLM.mat4Mul(CubeBuffer(model, 16), CubeBuffer(lean, 16)), model, 16);
+    CubeKeep(CGLM.lookat(CubeBuffer(eye, 3), CubeBuffer(center, 3), CubeBuffer(upAxis, 3)), camera, 16);
 
-    glm_mat4_mul(camera, model, retMatrix);
-    glm_mat4_mul(projection, retMatrix, retMatrix);
+    // 45 degrees, in radians
+    CubeKeep(CGLM.perspective(0.7853982f, 1.0f, 0.1f, 50.0f), projection, 16);
+
+    CubeKeep(CGLM.mat4Mul(CubeBuffer(camera, 16), CubeBuffer(model, 16)), retMatrix, 16);
+    CubeKeep(CGLM.mat4Mul(CubeBuffer(projection, 16), CubeBuffer(retMatrix, 16)), retMatrix, 16);
 }
 
-/// @brief A corner in a view from 0 to 1 each way, from its bottom left, as glm_project gives it.
-static void CubeProject(mat4 matrix, usz i, vec3 retPoint)
+/// @brief A corner of the cube, from 0, in a view from 0 to 1 each way, from its bottom left, as cglm's project gives it. Each bit of the corner's
+/// number picks -1 or 1 on one axis.
+static void CubeProject(const f32 *matrix, usz i, f32 *retPoint)
 {
-    vec3 corner;
-    CubeCorner(i, corner);
-    glm_project(corner, matrix, (vec4){0.0f, 0.0f, 1.0f, 1.0f}, retPoint);
+    const f32 corner[3] = {(i & 1) ? 1.0f : -1.0f, (i & 2) ? 1.0f : -1.0f, (i & 4) ? 1.0f : -1.0f};
+    const f32 viewport[4] = {0.0f, 0.0f, 1.0f, 1.0f};
+    CubeKeep(CGLM.project(CubeBuffer(corner, 3), CubeBuffer(matrix, 16), CubeBuffer(viewport, 4)), retPoint, 3);
 }
 
 static SHUResult CubeCreate(ECSPanel panel, const ECSValue *savedState, u32 version, void **retState)
@@ -91,13 +105,13 @@ static void CubeDraw(void *data, ECSSurface *surface, f64 seconds)
     // the square view in the middle of the panel, whose y goes down
     f32 side = width < height ? width : height;
     f32 left = (width - side) / 2.0f, top = (height - side) / 2.0f;
-    mat4 matrix;
+    f32 matrix[16];
     f32 points[16];
     CubeMatrix(state->turn, matrix);
 
     for (usz i = 0; i < 8; i++)
     {
-        vec3 point;
+        f32 point[3];
         CubeProject(matrix, i, point);
         points[i * 2] = left + point[0] * side;
         points[i * 2 + 1] = top + (1.0f - point[1]) * side;
@@ -142,8 +156,8 @@ static SHUResult SetNumber(ECSValue *table, const char *name, f64 number)
 static SHUResult CubeSaveState(void *data, ECSValue *retSavedState)
 {
     Cube *state = data;
-    mat4 matrix;
-    vec3 corner;
+    f32 matrix[16];
+    f32 corner[3];
     CubeMatrix(state->turn, matrix);
     CubeProject(matrix, 7, corner);
 
@@ -160,7 +174,8 @@ static SHUResult CubeSaveState(void *data, ECSValue *retSavedState)
 
 SHUResult ECSPlugin_Init(ECSPlugin plugin)
 {
-    // the manifest's dependency on draw makes sure its functions exist
+    // the manifest's dependencies on cglm and draw make sure their functions exist
+    SHU_ReturnResult(CglmFunctions_Get(plugin, &CGLM));
     SHU_ReturnResult(DrawFunctions_Get(plugin, &DRAW));
 
     const ECSPanelTypeDesc cube = {

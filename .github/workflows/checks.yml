@@ -59,8 +59,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            build/Debug/lib
-            build/Debug/include
+            .shu/Debug/dependencies
           key: debug-linux-${{ steps.dependencies.outputs.key }}
 
       - name: Build with the examples
@@ -113,12 +112,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            build/Debug/lib
-            build/Debug/include
-            build/Debug/bin/*.dll
-            build/Release/lib
-            build/Release/include
-            build/Release/bin/*.dll
+            .shu/Debug/dependencies
+            .shu/Release/dependencies
           key: windows-${{ steps.dependencies.outputs.key }}
 
       - name: Build Debug with LLVM-MinGW
