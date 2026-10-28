@@ -2,7 +2,7 @@
 return {
   name = "button",
   version = "0.1.0",
-  api = 1,
+  api = 2,
   description = "A button that counts clicks, and the other controls of the ui plugin",
   depends = { ui = "0.1" }, -- ui loads first, so its functions exist when init.lua runs
   type = "lua",

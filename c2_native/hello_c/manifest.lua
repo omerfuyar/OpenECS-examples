@@ -3,7 +3,7 @@
 return {
   name = "hello_c",
   version = "0.1.0",
-  api = 1,
+  api = 2,
   description = "The smallest native plugin: one panel of one colour",
   type = "native", -- its code is libhello_c.so in this folder, which the build makes from the folder's C files
 }
