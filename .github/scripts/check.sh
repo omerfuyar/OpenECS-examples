@@ -13,7 +13,7 @@ if [ $# -eq 0 ]; then
     set -- $({
         git diff --name-only "$base"
         git ls-files --others --exclude-standard
-    } | grep -E '(^[0-9]+_.*\.[ch]$|^.*\.lua$)' | sort -u)
+    } | grep -E '(^[cs][0-9]+_.*\.[ch]$|^.*\.lua$)' | sort -u)
 fi
 
 files=

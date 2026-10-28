@@ -6,16 +6,16 @@ This repository is part of OpenECS. OpenECS's [AGENTS.md](https://github.com/ome
 
 ## Where things are
 
-| Path                   | What it holds                                                                                                                                                              |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [README.md](README.md) | Short introduction, and how to run, build and test the examples.                                                                                                           |
-| `1_hello/` and on      | The examples, in the order a reader learns.                                                                                                                                |
-| `shuild.c`             | The build of the examples, which OpenECS's build compiles and runs.                                                                                                        |
-| `.github/`             | Checks, rulesets and the agents' check script.                                                                                                                             |
-| `.clang-format`        | How clang-format formats the C code, as OpenECS's does.                                                                                                                    |
-| `.clang-tidy`          | What clang-tidy checks in the C code: OpenECS-std's names for a plugin's functions, how complex functions are, and common bugs.                                                                       |
-| `.claude/`             | Claude Code's settings and notes: it formats each C file it edits; `notes.md` says why the tools are set up as they are. OpenECS's `.claude/skills/` holds the procedures. |
-| `LICENSE.md`           | The license, zlib.                                                                                                                                                         |
+| Path                               | What it holds                                                                                                                                                              |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [README.md](README.md)             | Short introduction, and how to run, build and test the examples.                                                                                                           |
+| `c1_hello/`, `s1_terminal/` and on | The examples, in the order a reader learns: `c` for the plugin interface, then `s` for the standard plugins.                                                               |
+| `shuild.c`                         | The build of the examples, which OpenECS's build compiles and runs.                                                                                                        |
+| `.github/`                         | Checks, rulesets and the agents' check script.                                                                                                                             |
+| `.clang-format`                    | How clang-format formats the C code, as OpenECS's does.                                                                                                                    |
+| `.clang-tidy`                      | What clang-tidy checks in the C code: OpenECS-std's names for a plugin's functions, how complex functions are, and common bugs.                                            |
+| `.claude/`                         | Claude Code's settings and notes: it formats each C file it edits; `notes.md` says why the tools are set up as they are. OpenECS's `.claude/skills/` holds the procedures. |
+| `LICENSE.md`                       | The license, zlib.                                                                                                                                                         |
 
 OpenECS's DESIGN.md, section 17.6, says what an example is and how its comments are written. Before you propose or change anything, read it, then the Contents of OpenECS's OVERVIEW.md and DESIGN.md and every section the task touches.
 

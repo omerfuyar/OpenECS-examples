@@ -5,4 +5,4 @@ set -u
 cd "$(dirname "$0")/../.." || exit 2
 
 # shellcheck disable=SC2046
-"${CLANG_FORMAT:-clang-format}" --dry-run --Werror $(git ls-files '[0-9]*_*/*.c' '[0-9]*_*/*.h')
+"${CLANG_FORMAT:-clang-format}" --dry-run --Werror $(git ls-files '[cs][0-9]*_*/*.c' '[cs][0-9]*_*/*.h')
