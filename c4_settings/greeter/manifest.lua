@@ -2,7 +2,7 @@
 return {
   name = "greeter",
   version = "0.1.0",
-  api = 1,
+  api = 2,
   description = "A greeting whose words, colour and size are settings",
   depends = { draw = "0.1" },
   type = "lua",
