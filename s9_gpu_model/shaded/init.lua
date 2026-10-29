@@ -87,8 +87,8 @@ end
 -- the material's colour, the way the light goes, from the top left and from in front, and the camera's place, as the fragment shader's uniforms
 local BASE = info.materials[primitive.material].color
 
--- cglm's matrices are 16 floats column by column, as the shaders read them, and its vectors are floats too; both are strings,
--- so the uniforms are the matrices and vectors joined together
+-- cglm's matrices are 16 floats column by column, as the shaders read them, and its vectors are floats too; bytes gives their floats as a string,
+-- so the uniforms are the bytes of the matrices and vectors joined together
 local X, Y, Z = cglm.vec3(1, 0, 0), cglm.vec3(0, 1, 0), cglm.vec3(0, 0, 1)
 
 -- the shadow under the model: a fan of triangles, dark in the middle and clear at its edge, which gpu's mesh blends
@@ -129,16 +129,17 @@ ecs.panel.registerType({
 
     -- the ring leans on its side, so it tumbles as it turns, then the drag's turn and tilt move it; the camera is in front of it, at its distance
     if pipeline and vertexBuffer and indexBuffer then
-      local modelMatrix = cglm.mat4Mul(cglm.rotateMake(state.tilt, X), cglm.mat4Mul(cglm.rotateMake(state.turn, Y), cglm.rotateMake(math.rad(60), Z)))
+      local modelMatrix = cglm.rotateMake(state.tilt, X) * cglm.rotateMake(state.turn, Y) * cglm.rotateMake(math.rad(60), Z)
       local camera = cglm.translateMake(cglm.vec3(0, 0, -state.distance))
       -- a perspective that sees down -z from the camera, with depth from 0, near, to 1, far, as SDL's GPU API takes it
-      local viewProjection = cglm.mat4Mul(cglm.perspective(math.rad(45), width / height, 0.1, 50), camera)
+      local viewProjection = cglm.perspective(math.rad(45), width / height, 0.1, 50) * camera
+      local matrices = modelMatrix:bytes() .. viewProjection:bytes()
 
       gpu.draw(surface, pipeline, {
         vertices = vertexBuffer,
         indices = indexBuffer,
-        vertexUniforms = modelMatrix .. viewProjection,
-        fragmentUniforms = cglm.vec4(BASE[1], BASE[2], BASE[3], 1) .. cglm.vec4(0.45, -0.65, -0.6, 0) .. cglm.vec4(0, 0, state.distance, 1),
+        vertexUniforms = matrices,
+        fragmentUniforms = cglm.vec4(BASE[1], BASE[2], BASE[3], 1):bytes() .. cglm.vec4(0.45, -0.65, -0.6, 0):bytes() .. cglm.vec4(0, 0, state.distance, 1):bytes(),
       })
 
       -- the label starts a little to the right of its point, with its line's middle at the point's height
@@ -152,8 +153,8 @@ ecs.panel.registerType({
             indices = part.indices,
             count = part.count,
             atlas = part.atlas,
-            vertexUniforms = modelMatrix .. viewProjection .. LABEL_POINT .. screen,
-            fragmentUniforms = cglm.vec4(1, 1, 1, 1),
+            vertexUniforms = matrices .. LABEL_POINT:bytes() .. screen:bytes(),
+            fragmentUniforms = cglm.vec4(1, 1, 1, 1):bytes(),
           })
         end
 
