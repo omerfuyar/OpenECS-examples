@@ -1,11 +1,11 @@
 // The cube of the cube plugin, in C. cglm.h and draw.h, which OpenECS --definitions writes (OpenECS DESIGN 10.10), give the functions of the cglm and
-// draw plugins: C makes its matrices with the same cglm functions as Lua, with vectors and matrices as buffers of floats, and draw draws the edges.
+// draw plugins: C makes its matrices with the same cglm functions as Lua, and draw draws the edges. cglm.h declares cglm's struct types, CglmVec3 and
+// CglmMat4 and the others, so C passes them by pointer: a function takes a pointer to each struct it reads, and one to the struct it fills.
 
 #include "cglm.h" // the cglm plugin's functions
 #include "draw.h" // draw's functions; it includes OpenECS.h
 
 #include <stdlib.h>
-#include <string.h>
 
 /// @brief The functions of cglm and draw, which CglmFunctions_Get and DrawFunctions_Get look up.
 static CglmFunctions CGLM;
@@ -23,49 +23,32 @@ typedef struct Cube
     f32 dragX; // where the drag was at its last event, in layout units
 } Cube;
 
-/// @brief Floats as the buffer that cglm's functions take: a vector of 3 or 4, or a matrix of 16, column by column.
-static SHUSlice CubeBuffer(const f32 *floats, usz count)
-{
-    return cs((void *)floats, count * sizeof(f32));
-}
-
-/// @brief Copies a result of cglm's functions, which lasts until the next call, into floats of its own; an empty result, after a wrong buffer, gives zeros.
-static void CubeKeep(SHUSlice result, f32 *retFloats, usz count)
-{
-    memset(retFloats, 0, count * sizeof(f32));
-
-    if (result.data != nullptr && result.size == count * sizeof(f32))
-    {
-        memcpy(retFloats, result.data, result.size);
-    }
-}
-
 /// @brief The matrix that takes a corner to the view: the cube turns around the vertical axis and leans, then the camera and the perspective see it.
-static void CubeMatrix(f32 turn, f32 *retMatrix)
+static void CubeMatrix(f32 turn, CglmMat4 *retMatrix)
 {
-    const f32 upAxis[3] = {0.0f, 1.0f, 0.0f}, acrossAxis[3] = {1.0f, 0.0f, 0.0f};
-    const f32 eye[3] = {0.0f, 2.0f, 5.0f}, center[3] = {0.0f, 0.0f, 0.0f};
-    f32 lean[16], model[16], camera[16], projection[16];
+    const CglmVec3 upAxis = {0.0f, 1.0f, 0.0f}, acrossAxis = {1.0f, 0.0f, 0.0f};
+    const CglmVec3 eye = {0.0f, 2.0f, 5.0f}, center = {0.0f, 0.0f, 0.0f};
+    CglmMat4 turned, lean, model, camera, projection, view;
 
-    CubeKeep(CGLM.rotateMake(turn, CubeBuffer(upAxis, 3)), model, 16);
-    CubeKeep(CGLM.rotateMake(0.4f, CubeBuffer(acrossAxis, 3)), lean, 16);
-    CubeKeep(CGLM.mat4Mul(CubeBuffer(model, 16), CubeBuffer(lean, 16)), model, 16);
-    CubeKeep(CGLM.lookat(CubeBuffer(eye, 3), CubeBuffer(center, 3), CubeBuffer(upAxis, 3)), camera, 16);
+    CGLM.rotateMake(turn, &upAxis, &turned);
+    CGLM.rotateMake(0.4f, &acrossAxis, &lean);
+    CGLM.mat4Mul(&turned, &lean, &model);
+    CGLM.lookat(&eye, &center, &upAxis, &camera);
 
     // 45 degrees, in radians
-    CubeKeep(CGLM.perspective(0.7853982f, 1.0f, 0.1f, 50.0f), projection, 16);
+    CGLM.perspective(0.7853982f, 1.0f, 0.1f, 50.0f, &projection);
 
-    CubeKeep(CGLM.mat4Mul(CubeBuffer(camera, 16), CubeBuffer(model, 16)), retMatrix, 16);
-    CubeKeep(CGLM.mat4Mul(CubeBuffer(projection, 16), CubeBuffer(retMatrix, 16)), retMatrix, 16);
+    CGLM.mat4Mul(&camera, &model, &view);
+    CGLM.mat4Mul(&projection, &view, retMatrix);
 }
 
 /// @brief A corner of the cube, from 0, in a view from 0 to 1 each way, from its bottom left, as cglm's project gives it. Each bit of the corner's
 /// number picks -1 or 1 on one axis.
-static void CubeProject(const f32 *matrix, usz i, f32 *retPoint)
+static void CubeProject(const CglmMat4 *matrix, usz i, CglmVec3 *retPoint)
 {
-    const f32 corner[3] = {(i & 1) ? 1.0f : -1.0f, (i & 2) ? 1.0f : -1.0f, (i & 4) ? 1.0f : -1.0f};
-    const f32 viewport[4] = {0.0f, 0.0f, 1.0f, 1.0f};
-    CubeKeep(CGLM.project(CubeBuffer(corner, 3), CubeBuffer(matrix, 16), CubeBuffer(viewport, 4)), retPoint, 3);
+    const CglmVec3 corner = {(i & 1) ? 1.0f : -1.0f, (i & 2) ? 1.0f : -1.0f, (i & 4) ? 1.0f : -1.0f};
+    const CglmVec4 viewport = {0.0f, 0.0f, 1.0f, 1.0f};
+    CGLM.project(&corner, matrix, &viewport, retPoint);
 }
 
 static SHUResult CubeCreate(ECSPanel panel, const ECSValue *savedState, u32 version, void **retState)
@@ -105,16 +88,16 @@ static void CubeDraw(void *data, ECSSurface *surface, f64 seconds)
     // the square view in the middle of the panel, whose y goes down
     f32 side = width < height ? width : height;
     f32 left = (width - side) / 2.0f, top = (height - side) / 2.0f;
-    f32 matrix[16];
+    CglmMat4 matrix;
     f32 points[16];
-    CubeMatrix(state->turn, matrix);
+    CubeMatrix(state->turn, &matrix);
 
     for (usz i = 0; i < 8; i++)
     {
-        f32 point[3];
-        CubeProject(matrix, i, point);
-        points[i * 2] = left + point[0] * side;
-        points[i * 2 + 1] = top + (1.0f - point[1]) * side;
+        CglmVec3 point;
+        CubeProject(&matrix, i, &point);
+        points[i * 2] = left + point.x * side;
+        points[i * 2 + 1] = top + (1.0f - point.y) * side;
     }
 
     DRAW.lines(surface, cs(points, sizeof(points)), cs((void *)EDGES, sizeof(EDGES)), 2.0f, accent);
@@ -156,10 +139,10 @@ static SHUResult SetNumber(ECSValue *table, const char *name, f64 number)
 static SHUResult CubeSaveState(void *data, ECSValue *retSavedState)
 {
     Cube *state = data;
-    f32 matrix[16];
-    f32 corner[3];
-    CubeMatrix(state->turn, matrix);
-    CubeProject(matrix, 7, corner);
+    CglmMat4 matrix;
+    CglmVec3 corner;
+    CubeMatrix(state->turn, &matrix);
+    CubeProject(&matrix, 7, &corner);
 
     ECSValue_SetTable(retSavedState);
     SHU_ReturnResult(SetNumber(retSavedState, "turn", state->turn));
@@ -167,8 +150,8 @@ static SHUResult CubeSaveState(void *data, ECSValue *retSavedState)
     ECSValue *saved = nullptr;
     SHU_ReturnResult(ECSValue_SetTableField(retSavedState, "corner", &saved));
     ECSValue_SetTable(saved);
-    SHU_ReturnResult(SetNumber(saved, "x", corner[0]));
-    SHU_ReturnResult(SetNumber(saved, "y", corner[1]));
+    SHU_ReturnResult(SetNumber(saved, "x", corner.x));
+    SHU_ReturnResult(SetNumber(saved, "y", corner.y));
     return SHUResult_Ok;
 }
 
