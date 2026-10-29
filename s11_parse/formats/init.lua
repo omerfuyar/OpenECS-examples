@@ -17,23 +17,24 @@ local samples = {
   Csv = { { "tool", "key" }, { "brush", "B" }, { "eraser, soft", "E" } },
 }
 
--- the functions of a format are parse.readJson and parse.writeJson, and so on; CSV's take a separator, and an empty one is a comma
+-- each format is a namespace of parse, with its read and write: parse.json.read and parse.json.write, and so on;
+-- json.write takes whether to indent, and csv's functions take a separator, where an empty one is a comma
 local function write(format, data)
   if format == "Json" then
-    return parse.writeJson(data, true)
+    return parse.json.write(data, true)
   elseif format == "Csv" then
-    return parse.writeCsv(data, "")
+    return parse.csv.write(data, "")
   end
 
-  return parse["write" .. format](data)
+  return parse[format:lower()].write(data)
 end
 
 local function read(format, text)
   if format == "Csv" then
-    return parse.readCsv(text, "")
+    return parse.csv.read(text, "")
   end
 
-  return parse["read" .. format](text)
+  return parse[format:lower()].read(text)
 end
 
 local function convert(state)
@@ -55,16 +56,17 @@ ecs.panel.registerType({
     convert(state)
 
     -- a text that cannot be read gives nothing and why, with where it is
-    local _, problem = parse.readJson('{ "name": "Paint", }}')
+    local _, problem = parse.json.read('{ "name": "Paint", }}')
     state.problem = problem
     return state
   end,
 
   draw = function(state, surface)
-    ui.show(state.panel, surface, ui.column({ padding = 12, gap = 8 }, {
-      ui.text(state.text),
+    -- a text keeps its own lines; wrap also breaks them at spaces to fit the column, and a scroll shows what does not fit
+    ui.show(state.panel, surface, ui.scroll({ id = "text", padding = 12, gap = 8 }, {
+      ui.text(state.text, { wrap = true }),
       ui.text(state.same and "It reads back the same." or "It does not read back the same."),
-      ui.text("A broken JSON text: " .. state.problem),
+      ui.text("A broken JSON text: " .. state.problem, { wrap = true }),
     }))
   end,
 
