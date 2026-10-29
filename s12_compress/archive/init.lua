@@ -21,11 +21,12 @@ local function pack(state)
   state.same = {}
 
   for _, format in ipairs(FORMATS) do
+    -- each format is a namespace of compress, with its pack and unpack: compress.gzip.pack, and so on
     -- the level is 1 to 9 for zlib's formats and up to 22 for zstd; 0 is the format's default; a call that fails gives nothing and why, which assert raises
-    local packed = assert(compress.pack(format, text, 0))
+    local packed = assert(compress[format].pack(text, 0))
 
-    -- unpack tells gzip, zlib and zstd by their first bytes when the format is empty; deflate has no header, so it is named
-    local unpacked = compress.unpack(format == "deflate" and "deflate" or "", packed)
+    -- compress.unpack tells gzip, zlib and zstd by their first bytes; deflate has no header, so its own unpack is called
+    local unpacked = format == "deflate" and compress.deflate.unpack(packed) or compress.unpack(packed)
     state.same[format] = unpacked == text
     table.insert(state.lines, ("%s: %d bytes"):format(format, #packed))
   end
@@ -41,12 +42,12 @@ local function archive(state)
   end
 
   -- a function that fails gives false or nothing, and why
-  local written, problem = compress.zipWrite(path, files, 9)
-  state.entries = written and compress.zipList(path) or {}
+  local written, problem = compress.zip.write(path, files, 9)
+  state.entries = written and compress.zip.list(path) or {}
   state.problem = problem
 
   -- a file comes back unpacked, checked against the checksum the archive keeps
-  state.readBack = compress.zipRead(path, "archive/manifest.lua") == readFile(ecs.plugin.folder .. "manifest.lua")
+  state.readBack = compress.zip.read(path, "archive/manifest.lua") == readFile(ecs.plugin.folder .. "manifest.lua")
 
   for _, entry in ipairs(state.entries) do
     table.insert(state.lines, ("%s in the archive: %d bytes, packed to %d"):format(entry.name, entry.size, entry.packedSize))

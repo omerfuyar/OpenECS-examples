@@ -17,8 +17,18 @@ local BACKGROUND = 0xFF2E3440
 local CLOCK_HAND = 0xFF88C0D0
 
 -- a colour number as the text the surface takes, such as "#ECEFF4FF"
+-- each colour's text is made once and kept, as a draw sets many pixels of few colours, and each call from Lua to the core has a cost
+local hexTexts = {}
+
 local function hex(color)
-  return ("#%06X%02X"):format(color & 0xFFFFFF, (color >> 24) & 0xFF)
+  local text = hexTexts[color]
+
+  if text == nil then
+    text = ("#%06X%02X"):format(color & 0xFFFFFF, (color >> 24) & 0xFF)
+    hexTexts[color] = text
+  end
+
+  return text
 end
 
 -- the clipboard type of strokes; both sketch plugins use it, so strokes copied in one paste into the other
