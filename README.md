@@ -8,6 +8,8 @@ Examples for writing [OpenECS](https://github.com/omerfuyar/OpenECS) plugins, on
 - `s8_gpu` shows GPU panels, which draw into a texture on the GPU that shows in any window the panel moves to: a plugin in Lua and one in C draw the same picture with the gpu standard plugin.
 - `s9_gpu_model` draws a glTF model on the GPU with shaders of its own: gltf reads its vertices, normals and triangles, which go to the GPU once as buffers, and gpu draws them each frame with a pipeline, cglm's matrices and a depth texture. Its shaders are GLSL, which gpu compiles. Drag to turn it.
 - `s10_cglm` shows the cglm plugin, which gives cglm's vectors, matrices and quaternions to Lua: a cube's edges, turned and seen in perspective, drawn with draw. Its second workspace has the same cube in C, with the same functions. Drag to turn it.
+- `s11_parse` writes a table in each of parse's formats, JSON, TOML, INI, .env and CSV, reads each text back, and shows that it reads back the same.
+- `s12_compress` packs its own file with gzip, zlib, deflate and zstd and unpacks it, then writes a zip archive of its files, lists it and reads a file back.
 
 Each example holds a preset, `preset.lua`, its plugins and its tests. The examples are the tests of OpenECS and its standard plugins too: each test checks what its example shows. OpenECS ships the examples in `examples/`, next to the program. Run one with `--fresh`, so it starts from its preset even if you keep sessions (`ecs.keepSession`):
 
