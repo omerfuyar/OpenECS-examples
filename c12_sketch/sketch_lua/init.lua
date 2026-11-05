@@ -49,7 +49,8 @@ end
 
 -- strokes ---------------------------------------------------------------
 
--- paints strokes by calling plot(x, y, color) for each pixel: dabs at every point, and between points every half brush
+-- paints strokes by calling plot(x, y, count, color) for each run of pixels in a row: dabs at every point, and between points every half brush
+-- a run is one call, so the draw makes one call to the core for each row of a dab, not one for each pixel
 local function paint(width, height, strokes, plot)
   for _, stroke in ipairs(strokes) do
     local radius = stroke.size / 2
@@ -58,12 +59,21 @@ local function paint(width, height, strokes, plot)
 
     local function dab(cx, cy)
       for y = math.max(0, math.floor(cy - radius)), math.min(height - 1, math.ceil(cy + radius)) do
+        local dy = y + 0.5 - cy
+        local first, last
+
+        -- a row of a circle is one run: from the first pixel inside it to the last
         for x = math.max(0, math.floor(cx - radius)), math.min(width - 1, math.ceil(cx + radius)) do
-          local dx, dy = x + 0.5 - cx, y + 0.5 - cy
+          local dx = x + 0.5 - cx
 
           if dx * dx + dy * dy <= radius * radius then
-            plot(x, y, stroke.color)
+            first = first or x
+            last = x
           end
+        end
+
+        if first then
+          plot(first, y, last - first + 1, stroke.color)
         end
       end
     end
@@ -275,8 +285,8 @@ ecs.panel.registerType({
     state.width, state.height = surface.width, surface.height
     surface:fill(0, 0, surface.width, surface.height, hex(BACKGROUND))
 
-    paint(surface.width, surface.height, state.strokes, function(x, y, color)
-      surface:setPixel(x, y, hex(color))
+    paint(surface.width, surface.height, state.strokes, function(x, y, count, color)
+      surface:fill(x, y, count, 1, hex(color))
     end)
   end,
 
@@ -361,11 +371,7 @@ ecs.panel.registerType({
       local angle = mark * math.pi / 6
       local x, y = math.floor(cx + math.sin(angle) * radius), math.floor(cy - math.cos(angle) * radius)
 
-      for dy = -2, 2 do
-        for dx = -2, 2 do
-          surface:setPixel(x + dx, y + dy, hex(COLORS.white))
-        end
-      end
+      surface:fill(x - 2, y - 2, 5, 5, hex(COLORS.white))
     end
 
     local angle = (state.time % 60) / 60 * 2 * math.pi
@@ -395,8 +401,10 @@ local function canvasPpm(canvas)
     pixels[i] = BACKGROUND
   end
 
-  paint(width, height, canvas.strokes, function(x, y, color)
-    pixels[y * width + x + 1] = color
+  paint(width, height, canvas.strokes, function(x, y, count, color)
+    for i = y * width + x + 1, y * width + x + count do
+      pixels[i] = color
+    end
   end)
 
   local rows = { ("P6\n%d %d\n255\n"):format(width, height) }
