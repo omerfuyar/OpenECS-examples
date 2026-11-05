@@ -230,7 +230,7 @@ static void BuildPlugin(const char *path, const char *name)
     char *include = SHU_UtilFormat("../../%sinclude/", CONFIG.output);
     char *output = SHU_UtilFormat("%sbin/examples/%s", CONFIG.output, strncmp(root, "./", 2) ? root : root + 2);
 
-    SHU_MODULE(name, root, SHUModuleType_LibraryDynamic, output)
+    SHU_Module(name, root, SHUModuleType_LibraryDynamic, output)
     {
         SetBuildFlags();
         SHU_ModuleAddSourceFiles("./");
