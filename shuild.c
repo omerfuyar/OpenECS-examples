@@ -3,6 +3,7 @@
 // Each example's folder, named c or s and its number, such as c1_hello, is copied whole into bin/examples/, its sources and tests too, and the C files of each of its plugin folders are built into the copy.
 #define SHU_IMPLEMENTATION
 #define SHUC_ENABLE_INCREMENTAL
+#define SHUC_COMPILE_DATABASE // compile_commands.json, which clangd and check.sh's clang-tidy read
 #include "shuild/shuild.h"
 
 #include <ctype.h>
