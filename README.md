@@ -12,6 +12,7 @@ Examples for writing [OpenECS](https://github.com/omerfuyar/OpenECS) plugins, on
 - `s12_compress` packs its own file with gzip, zlib, deflate and zstd and unpacks it, then writes a zip archive of its files, lists it and reads a file back.
 - `s13_process` runs sort with an input and waits for its output, then starts the shell beside the tool and takes its output and errors from a timer.
 - `s14_gamepad` shows every gamepad that is plugged in, with its buttons and left stick, from gamepad's events. Space on the panel plugs in a virtual gamepad that the keyboard drives: A, B, X and Y press its buttons and the arrows move its stick.
+- `s15_hash` hashes a text with each of hash's algorithms, and its own file whole and in parts, which give the same hash.
 
 Each example holds a preset, `preset.lua`, its plugins and its tests. The examples are the tests of OpenECS and its standard plugins too: each test checks what its example shows. OpenECS ships the examples in `examples/`, next to the program. Run one with `--fresh`, so it starts from its preset even if you keep sessions (`ecs.keepSession`):
 
