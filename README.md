@@ -14,6 +14,7 @@ Examples for writing [OpenECS](https://github.com/omerfuyar/OpenECS) plugins, on
 - `s14_gamepad` shows every gamepad that is plugged in, with its buttons and left stick, from gamepad's events. Space on the panel plugs in a virtual gamepad that the keyboard drives: A, B, X and Y press its buttons and the arrows move its stick.
 - `s15_hash` hashes a text with each of hash's algorithms, and its own file whole and in parts, which give the same hash.
 - `s16_sqlite` keeps a table of fruits in a database in memory: it creates the table, adds and updates rows with parameters, and shows a query of them. Return adds a row.
+- `s17_notify` sends desktop notifications with buttons, and shows a tray icon with a menu; the panel lists what the user clicks. Return sends one.
 
 Each example holds a preset, `preset.lua`, its plugins and its tests. The examples are the tests of OpenECS and its standard plugins too: each test checks what its example shows. OpenECS ships the examples in `examples/`, next to the program. Run one with `--fresh`, so it starts from its preset even if you keep sessions (`ecs.keepSession`):
 
