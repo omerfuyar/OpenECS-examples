@@ -10,6 +10,7 @@ Examples for writing [OpenECS](https://github.com/omerfuyar/OpenECS) plugins, on
 - `s10_cglm` shows the cglm plugin, which gives cglm's vectors, matrices and quaternions to Lua: a cube's edges, turned and seen in perspective, drawn with draw. Its second workspace has the same cube in C, with the same functions. Drag to turn it.
 - `s11_parse` writes a table in each of parse's formats, JSON, TOML, INI, .env and CSV, reads each text back, and shows that it reads back the same.
 - `s12_compress` packs its own file with gzip, zlib, deflate and zstd and unpacks it, then writes a zip archive of its files, lists it and reads a file back.
+- `s13_process` runs sort with an input and waits for its output, then starts the shell beside the tool and takes its output and errors from a timer.
 
 Each example holds a preset, `preset.lua`, its plugins and its tests. The examples are the tests of OpenECS and its standard plugins too: each test checks what its example shows. OpenECS ships the examples in `examples/`, next to the program. Run one with `--fresh`, so it starts from its preset even if you keep sessions (`ecs.keepSession`):
 
