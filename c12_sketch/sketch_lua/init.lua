@@ -51,8 +51,10 @@ end
 
 -- paints strokes by calling plot(x, y, count, color) for each run of pixels in a row: dabs at every point, and between points every half brush
 -- a run is one call, so the draw makes one call to the core for each row of a dab, not one for each pixel
-local function paint(width, height, strokes, plot)
-  for _, stroke in ipairs(strokes) do
+-- it starts at the point at index first of the stroke at index from, so a draw can paint only what is new; the first of each stroke if missing
+local function paint(width, height, strokes, plot, from, first)
+  for s = from or 1, #strokes do
+    local stroke = strokes[s]
     local radius = stroke.size / 2
     local step = stroke.size > 2 and stroke.size / 2 or 1
     local points = stroke.points
@@ -78,7 +80,7 @@ local function paint(width, height, strokes, plot)
       end
     end
 
-    for p = 1, #points - 1, 2 do
+    for p = s == from and first or 1, #points - 1, 2 do
       local x, y = points[p], points[p + 1]
       dab(x, y)
 
@@ -283,11 +285,34 @@ ecs.panel.registerType({
 
   draw = function(state, surface)
     state.width, state.height = surface.width, surface.height
-    surface:fill(0, 0, surface.width, surface.height, hex(BACKGROUND))
+    local strokes, painted = state.strokes, state.painted
 
-    paint(surface.width, surface.height, state.strokes, function(x, y, count, color)
-      surface:fill(x, y, count, 1, hex(color))
-    end)
+    -- the surface keeps the last picture, so while the strokes only grew, the draw paints from the last point it painted, and tells the core that part
+    if surface.kept and painted and painted.strokes == strokes and painted.count <= #strokes then
+      local stroke = strokes[painted.count]
+      local left, top, right, bottom = surface.width, surface.height, -1, -1
+
+      paint(surface.width, surface.height, strokes, function(x, y, count, color)
+        surface:fill(x, y, count, 1, hex(color))
+        left, top, right, bottom = math.min(left, x), math.min(top, y), math.max(right, x + count), math.max(bottom, y + 1)
+      end, math.max(painted.count, 1), stroke and math.max(painted.points - 1, 1) or 1)
+
+      if right < 0 then
+        surface:changed(0, 0, 0, 0) -- nothing new
+      else
+        surface:changed(left, top, right - left, bottom - top)
+      end
+    else
+      surface:fill(0, 0, surface.width, surface.height, hex(BACKGROUND))
+
+      paint(surface.width, surface.height, strokes, function(x, y, count, color)
+        surface:fill(x, y, count, 1, hex(color))
+      end)
+    end
+
+    -- the strokes and points painted; clearing the canvas gives it a new table of strokes, which paints it all again
+    local last = strokes[#strokes]
+    state.painted = { strokes = strokes, count = #strokes, points = last and #last.points or 0 }
   end,
 
   event = function(state, event)
