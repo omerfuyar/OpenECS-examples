@@ -74,5 +74,26 @@ return {
     test.key("Return")
     test.match(test.session().disabled, {}, "no plugin is disabled")
     test.match(panelOf(test, "badges.badge"), { title = "Badge", fault = nil }, "the badge after")
+
+    -- each standard plugin registers the same things again when it is enabled again; the plugin list needs ui, draw and image, so they stay
+    for _, name in ipairs({ "audio", "cglm", "compress", "fs", "gamepad", "gltf", "gpu", "hash", "launcher", "mixer", "net", "notify", "panels", "parse", "process", "settings", "sqlite", "textgrid", "web" }) do
+      choose(test, name)
+      test.key("Return")
+      test.match(test.session().disabled[1], name, name .. " is disabled")
+
+      -- the plugins that need it were disabled with it, such as audio with mixer; each is enabled again
+      for _ = 1, 5 do
+        local disabled = test.session().disabled[1]
+
+        if not disabled then
+          break
+        end
+
+        choose(test, disabled)
+        test.key("Return")
+      end
+
+      test.match(test.session().disabled, {}, name .. " is enabled again")
+    end
   end,
 }
