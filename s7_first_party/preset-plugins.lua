@@ -1,4 +1,5 @@
--- The preset of test-plugins.lua: the shapes and badges plugins, and the plugin list, which enables and disables them.
+-- The preset of test-plugins.lua: the shapes and badges plugins, the plugin list, which enables and disables them,
+-- and the standard plugins, which register every kind of thing a plugin can: handle types, struct types, methods, settings, events and timers.
 ---@type ecs.Preset
 return {
   format = 3,
@@ -6,7 +7,30 @@ return {
   version = "0.1.0",
   app = { id = "openecs.example.plugins", name = "Plugins" },
   hint = "Alt+W, then ; lists the plugins; Return enables or disables the chosen one",
-  depends = { shapes = "0.1", badges = "0.1", plugins = "0.1" },
+  depends = {
+    shapes = "0.1",
+    badges = "0.1",
+    plugins = "0.1",
+    audio = "0.1",
+    cglm = "0.1",
+    compress = "0.1",
+    fs = "0.1",
+    gamepad = "0.1",
+    gltf = "0.1",
+    gpu = "0.1",
+    hash = "0.1",
+    launcher = "0.1",
+    mixer = "0.1",
+    net = "0.1",
+    notify = "0.1",
+    panels = "0.1",
+    parse = "0.1",
+    process = "0.1",
+    settings = "0.1",
+    sqlite = "0.1",
+    textgrid = "0.1",
+    web = "0.1",
+  },
   pluginsDir = ".",
   workspaces = {
     { name = "Main", windows = { { panels = { { type = "shapes.square" }, { type = "badges.badge" } } } } },
