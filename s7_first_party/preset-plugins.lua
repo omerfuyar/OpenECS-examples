@@ -30,6 +30,8 @@ return {
     sqlite = "0.1",
     textgrid = "0.1",
     web = "0.1",
+    regex = "0.1",
+    markdown = "0.1",
   },
   pluginsDir = ".",
   workspaces = {
