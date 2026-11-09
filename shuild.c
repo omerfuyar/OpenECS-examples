@@ -3,6 +3,7 @@
 // Each example's folder, named c or s and its number, such as c1_hello, is copied whole into bin/examples/, its sources and tests too, and the C files of each of its plugin folders are built into the copy.
 #define SHU_IMPLEMENTATION
 #define SHUC_ENABLE_INCREMENTAL
+#define SHUC_COMPILE_DATABASE // compile_commands.json, which clangd and check.sh's clang-tidy read
 #include "shuild/shuild.h"
 
 #include <ctype.h>
@@ -230,7 +231,7 @@ static void BuildPlugin(const char *path, const char *name)
     char *include = SHU_UtilFormat("../../%sinclude/", CONFIG.output);
     char *output = SHU_UtilFormat("%sbin/examples/%s", CONFIG.output, strncmp(root, "./", 2) ? root : root + 2);
 
-    SHU_MODULE(name, root, SHUModuleType_LibraryDynamic, output)
+    SHU_Module(name, root, SHUModuleType_LibraryDynamic, output)
     {
         SetBuildFlags();
         SHU_ModuleAddSourceFiles("./");

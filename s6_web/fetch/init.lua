@@ -176,6 +176,7 @@ ecs.panel.registerType({
     elseif event.type == "keyDown" and event.key == "Return" and state.line ~= "" then
       -- web.get starts a request and gives its handle at once; web.request takes a method, headers and a body too
       -- web keeps the function, and calls it on the main thread once the request is done, even if the handle is dropped
+      -- web asks for a compressed answer and uses HTTP/2 when an HTTPS server offers it; the body comes unpacked
       local url = state.line
 
       local request = web.get(url, function(done)

@@ -19,13 +19,12 @@ return {
 
     -- each check is a difference that must be about 0, or a known result
     for name, difference in pairs(lua.checks) do
-      if name ~= "length" and name ~= "singular" then
+      if name ~= "length" then
         assert(difference < 1e-4, ("cglm's %s is off by %s"):format(name, difference))
       end
     end
 
     near(lua.checks.length, 5, "the length of (3, 4, 0)")
-    test.match(lua.checks.singular, 0, "a matrix without an inverse gives an empty buffer")
 
     -- C's cube, at the same turn, puts the corner at the same place
     local c = state(2)

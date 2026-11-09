@@ -1,6 +1,7 @@
 -- A cube's edges, turned and seen in perspective: the cglm standard plugin makes the matrices, with cglm's functions, and the draw plugin draws the lines.
--- cglm's vectors and matrices are buffers of floats, Lua strings, so a matrix goes into a shader's uniforms as it is, as s9_gpu_model's do.
+-- cglm's vectors, quaternions and matrices are structs (c14_structs): a vector is a table of x, y and z, and a matrix a list of 16 numbers, column by column.
 -- Its functions are named as cglm's, without glm_: glm_mat4_mul is cglm.mat4Mul, so cglm's documentation tells what each does.
+-- The functions about a struct are its methods too, and some are operators: m1 * m2 is cglm.mat4Mul(m1, m2), and q:mat4() is cglm.quatMat4(q).
 
 local ecs = require("ecs")
 local cglm = require("cglm")
@@ -22,18 +23,18 @@ local CAMERA = cglm.lookat(cglm.vec3(0, 2, 5), cglm.vec3(0, 0, 0), UP)
 local PROJECTION = cglm.perspective(math.rad(45), 1, 0.1, 50)
 
 -- the matrix that takes a corner to the view: it turns the cube around the vertical axis and leans it, then the camera and the perspective see it.
--- mat4Mul(m1, m2) does m2, then m1, so the matrices read from the last one done
+-- m1 * m2 does m2, then m1, so the matrices read from the last one done
 local function matrixAt(turn)
-  local model = cglm.mat4Mul(cglm.rotateMake(turn, UP), cglm.rotateMake(0.4, cglm.vec3(1, 0, 0)))
-  return cglm.mat4Mul(PROJECTION, cglm.mat4Mul(CAMERA, model))
+  local model = cglm.rotateMake(turn, UP) * cglm.rotateMake(0.4, cglm.vec3(1, 0, 0))
+  return PROJECTION * CAMERA * model
 end
 
 -- a corner in a view from 0 to 1 each way, from its bottom left, as cglm's project gives it
 local UNIT = cglm.vec4(0, 0, 1, 1)
 
 local function project(matrix, corner)
-  local x, y = cglm.components(cglm.project(corner, matrix, UNIT))
-  return x, y
+  local point = cglm.project(corner, matrix, UNIT)
+  return point.x, point.y
 end
 
 ecs.panel.registerType({
@@ -79,46 +80,48 @@ ecs.panel.registerType({
   -- what the test checks: the turn, where the last corner is in the view, and results that cglm must give
   saveState = function(state)
     local x, y = project(matrixAt(state.turn), CORNERS[8])
-    local axis = cglm.vec3Normalize(cglm.vec3(1, 2, 3))
+    local axis = cglm.vec3(1, 2, 3):normalize()
     local point = cglm.vec3(4, -1, 2)
 
-    -- the largest difference between the floats of two buffers of as many floats
+    -- the largest difference between the fields of two structs of a type, or from 0 without a second
     local function difference(a, b)
       local largest = 0
 
-      for i = 1, #a, 4 do
-        largest = math.max(largest, math.abs(string.unpack("<f", a, i) - string.unpack("<f", b, i)))
+      for key, value in pairs(a) do
+        largest = math.max(largest, math.abs(value - (b and b[key] or 0)))
       end
 
       return largest
     end
 
     local matrix = matrixAt(state.turn)
-    local half = cglm.quatSlerp(cglm.quatv(0, UP), cglm.quatv(1, UP), 0.5)
+    local half = cglm.quatv(0, UP):slerp(cglm.quatv(1, UP), 0.5)
+    local double = cglm.scaleMake(cglm.vec3(2, 2, 2))
 
     return {
       turn = state.turn,
       drawn = state.drawn,
       corner = { x = x, y = y },
       checks = {
-        -- a matrix times its inverse changes nothing
-        inverse = difference(cglm.mat4Mul(matrix, cglm.mat4Inv(matrix)), cglm.mat4Identity()),
+        -- a matrix times its inverse changes nothing, and a matrix without an inverse gives zeros
+        inverse = difference(matrix * matrix:inv(), cglm.mat4Identity()),
+        singular = difference(cglm.scaleMake(cglm.vec3(1, 0, 1)):inv()),
         -- a quaternion turns as the matrix of the same axis and angle does
-        quaternion = difference(cglm.quatMat4(cglm.quatv(0.7, axis)), cglm.rotateMake(0.7, axis)),
-        rotatev = difference(cglm.quatRotatev(cglm.quatv(0.7, axis), point), cglm.mat4Mulv3(cglm.rotateMake(0.7, axis), point, 0)),
+        quaternion = difference(cglm.quatv(0.7, axis):mat4(), cglm.rotateMake(0.7, axis)),
+        rotatev = difference(cglm.quatv(0.7, axis):rotatev(point), cglm.rotateMake(0.7, axis):mulv3(point, 0)),
         -- halfway between no turn and a turn of 1 is a turn of 0.5
         slerp = difference(half, cglm.quatv(0.5, UP)),
         -- the camera sees the cube's centre straight ahead, at its distance
-        camera = difference(cglm.mat4Mulv3(CAMERA, cglm.vec3(0, 0, 0), 1), cglm.vec3(0, 0, -math.sqrt(29))),
+        camera = difference(CAMERA:mulv3(cglm.vec3(0, 0, 0), 1), cglm.vec3(0, 0, -math.sqrt(29))),
         -- a translation moves a point, and translate moves before what its matrix does
-        translation = difference(cglm.mat4Mulv3(cglm.translateMake(cglm.vec3(1, 2, 3)), cglm.vec3(1, 1, 1), 1), cglm.vec3(2, 3, 4)),
-        translate = difference(cglm.translate(cglm.scaleMake(cglm.vec3(2, 2, 2)), cglm.vec3(1, 2, 3)),
-          cglm.mat4Mul(cglm.scaleMake(cglm.vec3(2, 2, 2)), cglm.translateMake(cglm.vec3(1, 2, 3)))),
-        cross = difference(cglm.vec3Cross(cglm.vec3(1, 0, 0), cglm.vec3(0, 1, 0)), cglm.vec3(0, 0, 1)),
+        translation = difference(cglm.translateMake(cglm.vec3(1, 2, 3)):mulv3(cglm.vec3(1, 1, 1), 1), cglm.vec3(2, 3, 4)),
+        translate = difference(double:translate(cglm.vec3(1, 2, 3)), double * cglm.translateMake(cglm.vec3(1, 2, 3))),
+        -- vectors add, subtract and scale with operators
+        sum = difference(cglm.vec3(1, 2, 3) + cglm.vec3(1, 1, 1) * 2 - cglm.vec3(0, 0, 1), cglm.vec3(3, 4, 4)),
+        cross = difference(cglm.vec3(1, 0, 0):cross(cglm.vec3(0, 1, 0)), cglm.vec3(0, 0, 1)),
         -- Perlin noise is 0 at whole points
         noise = math.abs(cglm.perlinVec3(cglm.vec3(1, 2, 3))),
-        length = cglm.vec3Norm(cglm.vec3(3, 4, 0)),
-        singular = #cglm.mat4Inv(cglm.scaleMake(cglm.vec3(1, 0, 1))),
+        length = cglm.vec3(3, 4, 0):norm(),
       },
     }
   end,
