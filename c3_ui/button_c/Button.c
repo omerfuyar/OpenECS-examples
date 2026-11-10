@@ -34,7 +34,7 @@ static const FruitRow FRUIT_ROWS[] = {{"Cherry", 4.5, 12, "4.5", "12"}, {"Apple"
 
 /// @brief The elements the test clicks, by id; their rectangles are saved, so the test finds them.
 static const char *const IDS[] = {"button", "tab", "sound", "volume", "size", "fruit", "count", "item:2", "name", "note", "tree:src",
-                                  "tree:lib", "table:header", "table:1", "table:2", "table:title:name", "table:title:price"};
+                                  "tree:lib", "table:header", "table:1", "table:2", "table:title:name", "table:title:price", "about"};
 
 static const char *const NOTE = "Tab gives the keys to the next control and Shift+Tab to the one before. Return or Space presses the control that has them, "
                                 "Left and Right change a selector or a slider, and Escape takes the keys away. A field takes typing as soon as it has the keys. "
@@ -60,7 +60,8 @@ typedef struct Controls
     bool libOpen;
     const char *sort; // the id of the column the rows are sorted by
     bool ascending;
-    i32 row; // the table's chosen row, from 1, or 0 for none
+    i32 row;       // the table's chosen row, from 1, or 0 for none
+    char link[96]; // the link last clicked in the About tab's text
 } Controls;
 
 static SHUResult ControlsCreate(ECSPanel panel, const ECSValue *savedState, u32 version, void **retState)
@@ -152,7 +153,15 @@ static void DescribeTree(Controls *controls)
 
     UI_COLUMN(.gap = 8)
     {
-        UI_TEXT("The controls of ui, each changing the panel's state.", .color = "textDim");
+        // a text of spans mixes styles; UI_SPANS gives the link of a span that was clicked
+        const UiSpan about[] = {{.text = "The controls of "}, {.text = "ui", .bold = true}, {.text = ", each changing the panel's state: "}, {.text = "ui's design", .link = "https://github.com/omerfuyar/OpenECS-std/blob/dev/DESIGN.md"}};
+        const char *link = UI_SPANS(about, COUNT(about), .id = "about", .color = "textDim");
+
+        if (link != nullptr)
+        {
+            snprintf(controls->link, sizeof(controls->link), "%s", link);
+        }
+
         UI_TREE(&controls->node, nodes, .id = "tree", .height = 110, .grow = UI_FIXED, .border = "tabShown");
     }
 }
@@ -339,6 +348,7 @@ static SHUResult ControlsSaveState(void *data, ECSValue *retSavedState)
     SHU_ReturnResult(SetString(retSavedState, "tip", ECSValue_GetString(UI_PLUGIN.functions.tooltip(state->panel), nullptr)));
     SHU_ReturnResult(SetNumber(retSavedState, "selected", state->selected));
     SHU_ReturnResult(SetString(retSavedState, "name", state->name));
+    SHU_ReturnResult(SetString(retSavedState, "link", state->link[0] != '\0' ? state->link : nullptr));
     SHU_ReturnResult(SetString(retSavedState, "node", state->node));
     SHU_ReturnResult(SetString(retSavedState, "sort", state->sort));
     SHU_ReturnResult(SetBool(retSavedState, "ascending", state->ascending));

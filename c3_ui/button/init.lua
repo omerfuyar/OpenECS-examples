@@ -30,7 +30,7 @@ local NODES = {
 
 -- the elements the test clicks, by id; their rectangles are saved, so the test finds them
 local IDS = { "button", "tab", "sound", "volume", "size", "fruit", "count", "item:2", "name", "note", "tree:src",
-  "tree:lib", "table:header", "table:1", "table:2", "table:title:name", "table:title:price" }
+  "tree:lib", "table:header", "table:1", "table:2", "table:title:name", "table:title:price", "about" }
 
 -- the rows of the Table tab, in the order the panel sorts them
 local function sorted(controls)
@@ -145,7 +145,9 @@ ecs.panel.registerType({
         }, COLUMNS, sorted(state)) or
       -- a tree shows its open nodes' children below them; the panel keeps which nodes are open, and the chosen one
       state.tab == "About" and ui.column({ gap = 8 }, {
-        ui.text("The controls of ui, each changing the panel's state.", { color = "textDim" }),
+        -- a text of spans mixes styles; a click on a span with a link gives the link to onLink
+        ui.text({ "The controls of ", { text = "ui", bold = true }, ", each changing the panel's state: ", { text = "ui's design", link = "https://github.com/omerfuyar/OpenECS-std/blob/dev/DESIGN.md" } },
+          { id = "about", color = "textDim", onLink = set("link") }),
         ui.tree(
           {
             id = "tree",
@@ -236,6 +238,7 @@ ecs.panel.registerType({
       ascending = state.ascending,
       row = state.row,
       first = state.tab == "Table" and sorted(state)[1].name or nil,
+      link = state.link,
       rects = state.rects
     }
   end,
