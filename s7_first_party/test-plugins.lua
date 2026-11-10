@@ -93,5 +93,10 @@ return {
 
       test.match(test.session().disabled, {}, name .. " is enabled")
     end
+
+    -- a plugin that fails when it is enabled is reported and stays disabled, so the session lists it
+    choose(test, "broken")
+    test.key("Return")
+    test.match(test.session().disabled, { "broken" }, "the plugin that failed stays disabled")
   end,
 }
