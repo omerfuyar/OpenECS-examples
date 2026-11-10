@@ -58,9 +58,14 @@ return {
     test.match(find(test, "plugins.list").state.selected, "shapes", "the chosen plugin")
     test.match(panelOf(test, "shapes.square"), { title = "Square, #A3BE8C", fault = nil }, "the square before")
 
-    -- Return disables shapes, and badges, which needs it: their panels wait as placeholders, and the session lists them as disabled
+    -- badges needs shapes, so shapes stays enabled until badges is disabled; then their panels wait as placeholders, and the session lists them
     test.key("Return")
-    test.match(test.session().disabled, { "shapes", "badges" }, "shapes and the plugin that needs it")
+    test.match(test.session().disabled, {}, "shapes stays, as badges needs it")
+    choose(test, "badges")
+    test.key("Return")
+    choose(test, "shapes")
+    test.key("Return")
+    test.match(test.session().disabled, { "shapes", "badges" }, "badges, then shapes")
     assert(panelOf(test, "shapes.square").fault, "the square is a placeholder")
     assert(panelOf(test, "badges.badge").fault, "the badge is a placeholder")
 
@@ -79,21 +84,14 @@ return {
     for _, name in ipairs({ "audio", "cglm", "compress", "fs", "gamepad", "gltf", "gpu", "hash", "launcher", "mixer", "net", "notify", "panels", "parse", "process", "settings", "sqlite", "textgrid", "web", "regex", "markdown", "syntax", "video" }) do
       choose(test, name)
       test.key("Return")
-      test.match(test.session().disabled[1], name, name .. " is disabled")
 
-      -- the plugins that need it were disabled with it, such as audio with mixer; each is enabled again
-      for _ = 1, 5 do
-        local disabled = test.session().disabled[1]
-
-        if not disabled then
-          break
-        end
-
-        choose(test, disabled)
+      -- a plugin that another needs stays enabled, such as mixer, which audio needs; the others are disabled, then enabled again
+      if test.session().disabled[1] then
+        test.match(test.session().disabled, { name }, name .. " is disabled alone")
         test.key("Return")
       end
 
-      test.match(test.session().disabled, {}, name .. " is enabled again")
+      test.match(test.session().disabled, {}, name .. " is enabled")
     end
   end,
 }
