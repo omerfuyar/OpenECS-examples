@@ -27,4 +27,4 @@ ecs.setting.set("sketch_lua.brushColor", "green")
 
 ---
 
-See [OpenECS](https://github.com/omerfuyar/OpenECS) for more.
+See [OpenECS](https://github.com/omerfuyar/OpenECS) and [its standard plugins](https://github.com/omerfuyar/OpenECS-std) for more.
