@@ -67,6 +67,14 @@ return function(test, number, title)
   test.click(at("item:2"))
   test.match(state().selected, 2, "the list")
 
+  -- the click gave the list the keys, so Down chooses the next item; a list is one stop of Tab, which leaves it and comes back to it
+  test.key("Down")
+  test.match(state().selected, 3, "the item below")
+  test.key("Tab")
+  test.key("Shift+Tab")
+  test.key("Up")
+  test.match(state().selected, 2, "the item above, after Tab and Shift+Tab")
+
   -- typing goes in at the cursor, which the arrows move
   test.click(at("name"))
   test.text("abc")
