@@ -1,6 +1,6 @@
 # Sketch help
 
-Sketch is a tool for **quick drawings**. Its canvas keeps every stroke, and the session keeps the canvas.
+[Sketch](https://github.com/omerfuyar/OpenECS-examples) is a tool for **quick drawings**. Its canvas keeps *every* stroke, and the session keeps the canvas; ~~nothing~~ no stroke is lost.
 
 ## Keys
 
@@ -19,7 +19,7 @@ Sketch is a tool for **quick drawings**. Its canvas keeps every stroke, and the 
 - [x] Draw a stroke
 - [ ] Export it
 
-> The brush's colour is a setting, so the settings window changes it.
+> The brush's colour is the setting `sketch_lua.brushColor`, so the settings window changes it.
 
 ```lua
 ecs.setting.set("sketch_lua.brushColor", "green")
