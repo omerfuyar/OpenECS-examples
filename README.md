@@ -17,6 +17,7 @@ Examples for writing [OpenECS](https://github.com/omerfuyar/OpenECS) plugins, on
 - `s17_notify` sends desktop notifications with buttons, and shows a tray icon with a menu; the panel lists what the user clicks. Return sends one.
 - `s18_regex` filters a log's lines with a typed pattern, reads each line into named parts, and finds, replaces and splits text. Exact text matches what is typed as it is.
 - `s19_markdown` shows a Markdown file as a help panel with ui's elements, and lists its headings from its tree.
+- `s20_syntax` shows a C, a Lua and a JSON file with their syntax highlighted; the selector chooses one.
 
 Each example holds a preset, `preset.lua`, its plugins and its tests. The examples are the tests of OpenECS and its standard plugins too: each test checks what its example shows. OpenECS ships the examples in `examples/`, next to the program. Run one with `--fresh`, so it starts from its preset even if you keep sessions (`ecs.keepSession`):
 
