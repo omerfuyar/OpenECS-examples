@@ -117,6 +117,10 @@ return function(test, number, title)
   test.click(at("tab", 0.02))
   test.key("Right")
   test.match(state().tab, "About", "the tab of the tree")
+
+  -- the About tab's text ends with a link, which a click gives to the panel
+  test.click(at("about", 0.95))
+  test.match(state().link, "https://github.com/omerfuyar/OpenECS-std/blob/dev/DESIGN.md", "the clicked link")
   local _, srcY = at("tree:src")
   test.click(panel.x + state().rects["tree:src"].x + 14, srcY)
   test.match(state().open, { src = true }, "the opened node")

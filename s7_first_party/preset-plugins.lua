@@ -32,6 +32,8 @@ return {
     web = "0.1",
     regex = "0.1",
     markdown = "0.1",
+    syntax = "0.1",
+    video = "0.1",
   },
   pluginsDir = ".",
   workspaces = {

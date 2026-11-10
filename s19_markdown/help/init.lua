@@ -37,6 +37,15 @@ ecs.panel.registerType({
   end,
 
   draw = function(state, surface)
+    -- a click on a link, or Tab to it and Return, gave its address since the last draw; the id "" takes it from any text of the description,
+    -- before the description is shown again, which forgets what was not taken
+    local link = ui.take(state.panel, "", "onLink")
+
+    if link then
+      state.link = link.value
+      state.panel.title = "Help: " .. link.value
+    end
+
     -- a scroll shows the column of what the file holds, and scrolls what does not fit
     ui.showDescription(state.panel, surface, { type = "scroll", props = { id = "help", padding = 16 }, children = { DESCRIPTION } })
   end,
@@ -50,13 +59,13 @@ ecs.panel.registerType({
   end,
 
   -- what the test reads: the headings, and the type of each element the file became
-  saveState = function()
+  saveState = function(state)
     local types = {}
 
     for i, child in ipairs(DESCRIPTION.children) do
       types[i] = child.type
     end
 
-    return { headings = headings(markdown.parse(TEXT)), elements = types }
+    return { headings = headings(markdown.parse(TEXT)), elements = types, link = state.link }
   end,
 })
