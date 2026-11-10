@@ -109,7 +109,7 @@ local function drawPad(surface, font, pad, x, y, scale)
   for _, button in ipairs(FACE) do
     local cx, cy = at(290 + button[2] * 24, 95 + button[3] * 24)
     draw.circle(surface, cx, cy, 11 * scale, 0, color(pad:button(button[1])))
-    local width = draw.measure(font, button[4], 13 * scale)
+    local width = draw.measure(font, button[4], 13 * scale, surface.scale)
     draw.text(surface, font, button[4], cx - width / 2, cy - 8 * scale, 13 * scale, "text")
   end
 

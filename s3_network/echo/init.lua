@@ -116,7 +116,7 @@ ecs.panel.registerType({
 
   draw = function(state, surface)
     surface:fill(0, 0, surface.width, surface.height, "background")
-    local _, height = draw.font("ui"):measure("Ag", SIZE)
+    local _, height = draw.font("ui"):measure("Ag", SIZE, surface.scale)
     local lines = math.max(1, math.floor(surface.height / surface.scale / height) - 2)
 
     -- the last lines of the log, then the line being typed
