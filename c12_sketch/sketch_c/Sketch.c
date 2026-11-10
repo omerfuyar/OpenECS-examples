@@ -62,6 +62,9 @@ typedef struct SketchCanvas
     i32 width;          // size of the last surface, for exporting
     i32 height;
     ECSTimer reminder;
+    bool painted;       // the surface's pixels show the strokes up to paintedStrokes and paintedPoints; false after a clear
+    usz paintedStrokes; // the strokes painted
+    usz paintedPoints;  // the numbers of the last stroke's points painted
 } SketchCanvas;
 
 /// @brief A clock panel: a hand that turns once a minute.
@@ -162,48 +165,80 @@ static void SketchFreeStrokes(SketchStroke *strokes, usz count)
     free(strokes);
 }
 
-/// @brief Paints a filled circle into pixels, clipped to them.
-static void SketchDab(u32 *pixels, i32 width, i32 height, f32 centerX, f32 centerY, i32 size, u32 color)
+/// @brief Pixels to paint into, and the rectangle around what was painted.
+typedef struct SketchTarget
+{
+    u32 *pixels;
+    i32 width;
+    i32 height;
+    usz stride; // pixels from one row to the next
+    i32 left;   // the painted rectangle; right < left while nothing is painted
+    i32 top;
+    i32 right;
+    i32 bottom;
+} SketchTarget;
+
+/// @brief Paints a filled circle, clipped to the pixels.
+static void SketchDab(SketchTarget *target, f32 centerX, f32 centerY, i32 size, u32 color)
 {
     f32 radius = (f32)size / 2.0f;
     i32 left = (i32)floorf(centerX - radius);
     i32 top = (i32)floorf(centerY - radius);
     i32 right = (i32)ceilf(centerX + radius);
     i32 bottom = (i32)ceilf(centerY + radius);
+    left = left < 0 ? 0 : left;
+    top = top < 0 ? 0 : top;
+    right = right >= target->width ? target->width - 1 : right;
+    bottom = bottom >= target->height ? target->height - 1 : bottom;
 
-    for (i32 y = top < 0 ? 0 : top; y <= bottom && y < height; y++)
+    for (i32 y = top; y <= bottom; y++)
     {
-        for (i32 x = left < 0 ? 0 : left; x <= right && x < width; x++)
+        for (i32 x = left; x <= right; x++)
         {
             f32 offsetX = (f32)x + 0.5f - centerX;
             f32 offsetY = (f32)y + 0.5f - centerY;
 
             if (offsetX * offsetX + offsetY * offsetY <= radius * radius)
             {
-                pixels[(usz)y * (usz)width + (usz)x] = color;
+                target->pixels[(usz)y * target->stride + (usz)x] = color;
             }
         }
     }
-}
 
-/// @brief Paints strokes over a background into tightly packed pixels: dabs at every point, and between points every half brush.
-static void SketchPaint(u32 *pixels, i32 width, i32 height, const SketchStroke *strokes, usz count)
-{
-    for (usz i = 0; i < (usz)width * (usz)height; i++)
+    if (left > right || top > bottom)
     {
-        pixels[i] = SKETCH_BACKGROUND;
+        return;
     }
 
-    for (usz i = 0; i < count; i++)
+    if (target->right < target->left)
+    {
+        target->left = left;
+        target->top = top;
+        target->right = right;
+        target->bottom = bottom;
+        return;
+    }
+
+    target->left = left < target->left ? left : target->left;
+    target->top = top < target->top ? top : target->top;
+    target->right = right > target->right ? right : target->right;
+    target->bottom = bottom > target->bottom ? bottom : target->bottom;
+}
+
+/// @brief Paints strokes over what the pixels show: dabs at every point, and between points every half brush. It starts at the stroke from,
+/// and in that stroke at the number first of its points, so a draw paints only what is new.
+static void SketchPaintFrom(SketchTarget *target, const SketchStroke *strokes, usz count, usz from, usz first)
+{
+    for (usz i = from; i < count; i++)
     {
         const SketchStroke *stroke = &strokes[i];
         f32 step = stroke->size > 2 ? (f32)stroke->size / 2.0f : 1.0f;
 
-        for (usz j = 0; j + 1 < stroke->count; j += 2)
+        for (usz j = i == from ? first : 0; j + 1 < stroke->count; j += 2)
         {
             f32 x = stroke->points[j];
             f32 y = stroke->points[j + 1];
-            SketchDab(pixels, width, height, x, y, stroke->size, stroke->color);
+            SketchDab(target, x, y, stroke->size, stroke->color);
 
             if (j + 3 < stroke->count)
             {
@@ -213,11 +248,23 @@ static void SketchPaint(u32 *pixels, i32 width, i32 height, const SketchStroke *
 
                 for (i32 k = 1; k < steps; k++)
                 {
-                    SketchDab(pixels, width, height, x + deltaX * (f32)k / (f32)steps, y + deltaY * (f32)k / (f32)steps, stroke->size, stroke->color);
+                    SketchDab(target, x + deltaX * (f32)k / (f32)steps, y + deltaY * (f32)k / (f32)steps, stroke->size, stroke->color);
                 }
             }
         }
     }
+}
+
+/// @brief Paints strokes over a background into tightly packed pixels.
+static void SketchPaint(u32 *pixels, i32 width, i32 height, const SketchStroke *strokes, usz count)
+{
+    for (usz i = 0; i < (usz)width * (usz)height; i++)
+    {
+        pixels[i] = SKETCH_BACKGROUND;
+    }
+
+    SketchTarget target = {pixels, width, height, (usz)width, 0, 0, -1, -1};
+    SketchPaintFrom(&target, strokes, count, 0, 0);
 }
 
 /// @brief Writes strokes as text, one stroke per line: "size color x y x y ...". The clipboard uses it.
@@ -452,22 +499,28 @@ static void SketchCanvasDraw(void *data, ECSSurface *surface, f64 seconds)
     state->width = surface->width;
     state->height = surface->height;
 
-    // the surface's rows may be padded, so each row is copied on its own
-    u32 *pixels = calloc((usz)surface->width * (usz)surface->height, sizeof(u32));
+    // the surface's rows may be padded, so a row is pitch bytes apart
+    SketchTarget target = {(u32 *)surface->pixels.data, surface->width, surface->height, (usz)surface->pitch / sizeof(u32), 0, 0, -1, -1};
 
-    if (pixels == nullptr)
+    // the surface keeps the last picture while its size stays the same, so while the strokes only grew, the draw paints from the last point
+    // it painted, and tells the core the rectangle it changed, which is all the core shows again
+    if (surface->kept && state->painted && state->strokeCount >= state->paintedStrokes)
     {
-        return;
+        usz from = state->paintedStrokes > 0 ? state->paintedStrokes - 1 : 0;
+        usz first = state->paintedStrokes > 0 && state->paintedPoints >= 2 ? state->paintedPoints - 2 : 0;
+        SketchPaintFrom(&target, state->strokes, state->strokeCount, from, first);
+        bool any = target.right >= target.left;
+        ECSSurface_Changed(surface, target.left, target.top, any ? target.right - target.left + 1 : 0, any ? target.bottom - target.top + 1 : 0);
+    }
+    else
+    {
+        ECSSurface_Fill(surface, 0, 0, surface->width, surface->height, SKETCH_BACKGROUND);
+        SketchPaintFrom(&target, state->strokes, state->strokeCount, 0, 0);
     }
 
-    SketchPaint(pixels, surface->width, surface->height, state->strokes, state->strokeCount);
-
-    for (i32 y = 0; y < surface->height; y++)
-    {
-        memcpy((u8 *)surface->pixels.data + (usz)y * (usz)surface->pitch, pixels + (usz)y * (usz)surface->width, (usz)surface->width * sizeof(u32));
-    }
-
-    free(pixels);
+    state->painted = true;
+    state->paintedStrokes = state->strokeCount;
+    state->paintedPoints = state->strokeCount > 0 ? state->strokes[state->strokeCount - 1].count : 0;
 }
 
 /// @brief Tells subscribers that a canvas has a new stroke.
@@ -958,6 +1011,7 @@ static void SketchClear(ECSPanel panel)
     canvas->strokes = nullptr;
     canvas->strokeCount = 0;
     canvas->strokeCapacity = 0;
+    canvas->painted = false; // the next draw paints the whole canvas again
     SketchCanvasChanged(canvas);
 }
 
