@@ -128,7 +128,7 @@ ecs.panel.registerType({
       ui.tabs(state.tab, TABS, { id = "tab", onSelect = set("tab") }),
       -- a table lines its cells up below its columns' titles; a click on a title sorts by that column, and a second one reverses the order
       TABS[state.tab] == "Table" and
-      ui.table(
+      ui.table(COLUMNS, sorted(state),
         {
           id = "table",
           height = 110,
@@ -143,13 +143,13 @@ ecs.panel.registerType({
             state.ascending = column ~= state.sort or not state.ascending
             state.sort, state.row = column, nil
           end
-        }, COLUMNS, sorted(state)) or
+        }) or
       -- a tree shows its open nodes' children below them; the panel keeps which nodes are open, and the chosen one
       TABS[state.tab] == "About" and ui.column({ gap = 8 }, {
         -- a text of spans mixes styles; a click on a span with a link gives the link to onLink
         ui.text({ "The controls of ", { text = "ui", bold = true }, ", each changing the panel's state: ", { text = "ui's design", link = "https://github.com/omerfuyar/OpenECS-std/blob/dev/DESIGN.md" } },
           { id = "about", color = "textDim", onLink = set("link") }),
-        ui.tree(
+        ui.tree(NODES,
           {
             id = "tree",
             height = 110,
@@ -161,7 +161,7 @@ ecs.panel.registerType({
             onToggle = function(id, open)
               state.open[id] = open or nil
             end
-          }, NODES),
+          }),
       }) or ui.group({ title = "Options", gap = 8 }, {
         ui.toggle(state.sound, { id = "sound", label = "Sound", onChange = set("sound") }),
         ui.toggle(state.dark, { id = "dark", label = "Dark", look = "switch", onChange = set("dark") }),
