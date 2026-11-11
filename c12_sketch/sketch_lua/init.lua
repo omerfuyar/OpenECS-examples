@@ -660,7 +660,7 @@ end
 
 ecs.handle.registerType("brush")
 
-assert(ecs.service.register({
+ecs.service.register({
   strokeCount = { sig = "int(handle<ecs.panel>)", doc = "Counts a canvas's strokes", fn = services.strokeCount },
   clear = { sig = "void(handle<ecs.panel>)", doc = "Clear the canvas", fn = services.clear },
   export = { sig = "void(handle<ecs.panel>)", doc = "Export the canvas as an image", fn = services.export },
@@ -676,12 +676,12 @@ assert(ecs.service.register({
   pixels = { sig = "buffer(handle<ecs.panel>)", doc = "Gives a canvas as a PPM image", fn = services.pixels },
   brush = { sig = "handle<sketch_lua.brush>(int, string)", doc = "Makes a brush of a size and a colour", fn = services.brush },
   useBrush = { sig = "void(handle<sketch_lua.brush>, handle<ecs.panel>)", doc = "Makes a canvas draw with a brush", fn = services.useBrush },
-}))
+})
 
 -- default keys that work while a canvas has the focus; the canvas's menu shows the same functions with their keys
 for key, service in pairs({ Delete = "clear", ["Ctrl+E"] = "export", ["Ctrl+C"] = "copy", ["Ctrl+V"] = "paste", ["Ctrl+B"] = "openBeside", ["Ctrl+G"] = "gather" }) do
-  assert(ecs.key.bind(name("canvas"), key, name(service)))
-  assert(ecs.panel.addMenuEntry(name("canvas"), name(service)))
+  ecs.key.bind(name("canvas"), key, name(service))
+  ecs.panel.addMenuEntry(name("canvas"), name(service))
 end
 
 -- events ----------------------------------------------------------------

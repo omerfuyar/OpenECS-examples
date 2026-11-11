@@ -55,7 +55,7 @@ ecs.panel.registerType({
 
 -- register functions while the plugin loads; keys, menus and other plugins run them by name
 -- a signature says the result's type, then the parameters' types and names; callers in C rely on it
-assert(ecs.service.register({
+ecs.service.register({
   reset = {
     sig = "void()",
     doc = "Sets the click counter back to 0",
@@ -63,4 +63,4 @@ assert(ecs.service.register({
       counter.add("clicks", -counter.get("clicks"))
     end,
   },
-}))
+})
