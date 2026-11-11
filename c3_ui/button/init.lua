@@ -232,6 +232,7 @@ ecs.panel.registerType({
       count = state.count,
       tab = TABS[state.tab],
       tip = ui.tooltip(state.panel),
+      inspected = ui.inspected(state.panel),
       selected = state.selected,
       name = state.name,
       node = state.node,
