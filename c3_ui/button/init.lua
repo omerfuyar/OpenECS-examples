@@ -9,6 +9,7 @@ local ui = require("ui")
 
 local FRUITS = { "Apple", "Banana", "Cherry" }
 local SIZES = { "S", "M", "L" }
+local TABS = { "Options", "About", "Table" }
 local ITEMS = { "First item", "Second item", "Third item" }
 
 -- the Table tab's columns and rows; the panel sorts the rows, and the table shows them in its order
@@ -57,10 +58,10 @@ local START = {
   sound = false,
   dark = true,
   volume = 0.5,
-  size = "M",
-  fruit = "Apple",
+  size = 2,
+  fruit = 1,
   count = 3,
-  tab = "Options",
+  tab = 1,
   selected = 1,
   name = "",
   node = "readme",
@@ -124,9 +125,9 @@ ecs.panel.registerType({
       }),
       ui.separator(),
       -- tabs choose what shows below them; the panel keeps the chosen one and describes only its elements
-      ui.tabs(state.tab, { "Options", "About", "Table" }, { id = "tab", onChange = set("tab") }),
+      ui.tabs(state.tab, TABS, { id = "tab", onSelect = set("tab") }),
       -- a table lines its cells up below its columns' titles; a click on a title sorts by that column, and a second one reverses the order
-      state.tab == "Table" and
+      TABS[state.tab] == "Table" and
       ui.table(
         {
           id = "table",
@@ -144,7 +145,7 @@ ecs.panel.registerType({
           end
         }, COLUMNS, sorted(state)) or
       -- a tree shows its open nodes' children below them; the panel keeps which nodes are open, and the chosen one
-      state.tab == "About" and ui.column({ gap = 8 }, {
+      TABS[state.tab] == "About" and ui.column({ gap = 8 }, {
         -- a text of spans mixes styles; a click on a span with a link gives the link to onLink
         ui.text({ "The controls of ", { text = "ui", bold = true }, ", each changing the panel's state: ", { text = "ui's design", link = "https://github.com/omerfuyar/OpenECS-std/blob/dev/DESIGN.md" } },
           { id = "about", color = "textDim", onLink = set("link") }),
@@ -168,13 +169,14 @@ ecs.panel.registerType({
           { ui.text("Volume"), ui.slider(state.volume,
             { id = "volume", step = 0.1, grow = 1, onChange = set("volume") }) }),
         ui.row({ gap = 8 },
-          { ui.text("Size"), ui.selector(state.size, SIZES, { id = "size", onChange = set("size") }) }),
+          { ui.text("Size"), ui.selector(state.size, SIZES, { id = "size", onSelect = set("size") }) }),
         ui.row({ gap = 8 },
-          { ui.text("Fruit"), ui.dropdown(state.fruit, FRUITS, { id = "fruit", onChange = set("fruit") }) }),
-        -- a number field takes a number from min to max: Return gives what is typed, and Up and Down change it by step
+          { ui.text("Fruit"), ui.dropdown(state.fruit, FRUITS, { id = "fruit", onSelect = set("fruit") }) }),
+        -- a number field takes a number from min to max: Return gives what is typed to onSubmit, and Up and Down change it by step;
+        -- onChange would get the number at each edit
         ui.row({ gap = 8 },
           { ui.text("Count"), ui.number(state.count,
-            { id = "count", min = 0, max = 10, step = 1, grow = 1, onChange = set("count") }) }),
+            { id = "count", min = 0, max = 10, step = 1, grow = 1, onSubmit = set("count") }) }),
       }),
       ui.list(
         {
@@ -225,10 +227,10 @@ ecs.panel.registerType({
       clicks = state.clicks,
       sound = state.sound,
       volume = state.volume,
-      size = state.size,
-      fruit = state.fruit,
+      size = SIZES[state.size],
+      fruit = FRUITS[state.fruit],
       count = state.count,
-      tab = state.tab,
+      tab = TABS[state.tab],
       tip = ui.tooltip(state.panel),
       selected = state.selected,
       name = state.name,
@@ -237,7 +239,7 @@ ecs.panel.registerType({
       sort = state.sort,
       ascending = state.ascending,
       row = state.row,
-      first = state.tab == "Table" and sorted(state)[1].name or nil,
+      first = TABS[state.tab] == "Table" and sorted(state)[1].name or nil,
       link = state.link,
       rects = state.rects
     }

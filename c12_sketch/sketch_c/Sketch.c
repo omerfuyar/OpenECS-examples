@@ -926,10 +926,18 @@ static void SketchExportWork(void *data)
 }
 
 /// @brief Reports the export on the main thread, and finds the canvas again by its id, because it may have closed.
-static void SketchExportDone(void *data)
+/// It runs once for each export, also for one that was dropped before it ran, when the plugin is disabled or the program exits, so it frees the job.
+static void SketchExportDone(void *data, bool dropped)
 {
     SketchExportJob *job = data;
     ECSPanel panel = ECSLayout_FindPanel(job->panelID);
+
+    if (dropped)
+    {
+        SketchExportFree(job);
+        return;
+    }
+
     ECS_Log(SKETCH.plugin, job->written ? ECSLogLevel_Info : ECSLogLevel_Warning, "%s %s %s.", panel == nullptr ? "A closed canvas" : ECSPanel_GetTitle(panel), job->written ? "was exported to" : "could not be exported to", job->path);
     SketchExportFree(job);
 }
