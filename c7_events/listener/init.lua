@@ -4,6 +4,7 @@ local ecs = require("ecs")
 
 local listeners = {} -- every open listener, by its panel
 local opened = 0
+local renewed = 0 -- the ticks that the subscription below heard, which it renews at each
 
 local function show(listener)
   listener.panel.title = ("Ticks %d, panels %d%s"):format(listener.ticks, opened, listener.greeted and ", greeted" or "")
@@ -39,6 +40,18 @@ ecs.event.subscribe("ticker.tick", function(_, ticks)
   end
 end)
 
+-- a handler may cancel its subscription and subscribe again: the new subscription hears the next tick, not the one being delivered,
+-- so each tick is heard once
+local renewing
+
+local function renew()
+  renewed = renewed + 1
+  renewing:unsubscribe()
+  renewing = ecs.event.subscribe("ticker.tick", renew)
+end
+
+renewing = ecs.event.subscribe("ticker.tick", renew)
+
 -- the core's events start with "ecs."; ecs.panelOpened's value names the panel and its type
 ecs.event.subscribe("ecs.panelOpened", function(_, value)
   opened = opened + 1
@@ -61,6 +74,10 @@ ecs.panel.registerType({
 
   destroy = function(state)
     listeners[state.panel] = nil
+  end,
+
+  saveState = function(state)
+    return { ticks = state.ticks, renewed = renewed }
   end,
 
   draw = function(_, surface)
