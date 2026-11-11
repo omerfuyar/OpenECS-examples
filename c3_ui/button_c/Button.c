@@ -49,10 +49,10 @@ typedef struct Controls
     bool sound;
     bool dark;
     f64 volume;
-    i32 size;  // the chosen size's index in SIZES
-    i32 fruit; // the chosen fruit's index in FRUITS
+    i32 size;  // the chosen size's number in SIZES, from 1
+    i32 fruit; // the chosen fruit's number in FRUITS, from 1
     f64 count;
-    i32 tab;      // the chosen tab's index in TABS
+    i32 tab;      // the chosen tab's number in TABS, from 1
     i32 selected; // the list's chosen item, from 1
     char name[64];
     const char *node; // the tree's chosen node's id
@@ -76,7 +76,7 @@ static SHUResult ControlsCreate(ECSPanel panel, const ECSValue *savedState, u32 
         return SHUResult_ErrAllocation;
     }
 
-    *state = (Controls){.panel = panel, .scale = 1.0f, .dark = true, .volume = 0.5, .size = 1, .count = 3, .selected = 1, .node = "readme", .sort = "name", .ascending = true};
+    *state = (Controls){.panel = panel, .scale = 1.0f, .dark = true, .volume = 0.5, .size = 2, .fruit = 1, .tab = 1, .count = 3, .selected = 1, .node = "readme", .sort = "name", .ascending = true};
     *retState = state;
     return SHUResult_Ok;
 }
@@ -141,7 +141,7 @@ static void DescribeTable(Controls *controls)
     }
 
     UI_TABLE(&controls->row, COLUMNS, cells, COUNT(FRUIT_ROWS), .id = "table", .height = 110, .grow = UI_FIXED, .stretch = true, .border = "tabShown",
-             .sort = controls->sort, .ascending = controls->ascending);
+             .onSort = true, .sort = controls->sort, .ascending = controls->ascending ? UI_TRUE : UI_FALSE);
 }
 
 // a tree shows its open nodes' children below them; the panel keeps which nodes are open, and the chosen one
@@ -228,11 +228,11 @@ static void ControlsDraw(void *data, ECSSurface *surface, f64 seconds)
             // tabs choose what shows below them; the panel keeps the chosen one and describes only its elements
             UI_TABS(&state->tab, TABS, .id = "tab");
 
-            if (strcmp(TABS[state->tab], "Table") == 0)
+            if (strcmp(TABS[state->tab - 1], "Table") == 0)
             {
                 DescribeTable(state);
             }
-            else if (strcmp(TABS[state->tab], "About") == 0)
+            else if (strcmp(TABS[state->tab - 1], "About") == 0)
             {
                 DescribeTree(state);
             }
@@ -341,10 +341,10 @@ static SHUResult ControlsSaveState(void *data, ECSValue *retSavedState)
     SHU_ReturnResult(SetNumber(retSavedState, "clicks", state->clicks));
     SHU_ReturnResult(SetBool(retSavedState, "sound", state->sound));
     SHU_ReturnResult(SetNumber(retSavedState, "volume", state->volume));
-    SHU_ReturnResult(SetString(retSavedState, "size", SIZES[state->size]));
-    SHU_ReturnResult(SetString(retSavedState, "fruit", FRUITS[state->fruit]));
+    SHU_ReturnResult(SetString(retSavedState, "size", SIZES[state->size - 1]));
+    SHU_ReturnResult(SetString(retSavedState, "fruit", FRUITS[state->fruit - 1]));
     SHU_ReturnResult(SetNumber(retSavedState, "count", state->count));
-    SHU_ReturnResult(SetString(retSavedState, "tab", TABS[state->tab]));
+    SHU_ReturnResult(SetString(retSavedState, "tab", TABS[state->tab - 1]));
     SHU_ReturnResult(SetString(retSavedState, "tip", ECSValue_GetString(UI_PLUGIN.functions.tooltip(state->panel), nullptr)));
     SHU_ReturnResult(SetNumber(retSavedState, "selected", state->selected));
     SHU_ReturnResult(SetString(retSavedState, "name", state->name));
@@ -372,7 +372,7 @@ static SHUResult ControlsSaveState(void *data, ECSValue *retSavedState)
         SHU_ReturnResult(SetNumber(retSavedState, "row", state->row));
     }
 
-    if (strcmp(TABS[state->tab], "Table") == 0)
+    if (strcmp(TABS[state->tab - 1], "Table") == 0)
     {
         FruitRow rows[COUNT(FRUIT_ROWS)];
         SortRows(state, rows);

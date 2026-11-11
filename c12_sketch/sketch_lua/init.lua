@@ -646,7 +646,7 @@ end
 
 -- makes a brush, which a canvas can use instead of the settings' brush
 function services.brush(size, color)
-  return ecs.handle.new(name("brush"), { size = clamp(size, MIN_SIZE, MAX_SIZE), color = COLORS[color] or COLORS.white })
+  return ecs.handle.new("brush", { size = clamp(size, MIN_SIZE, MAX_SIZE), color = COLORS[color] or COLORS.white })
 end
 
 -- the canvas keeps the brush's value, so the brush lives while the canvas uses it
@@ -654,7 +654,7 @@ function services.useBrush(brush, panel)
   local canvas = findCanvas(panel)
 
   if canvas then
-    canvas.brush = ecs.handle.value(brush, name("brush"))
+    canvas.brush = ecs.handle.value(brush, "brush")
   end
 end
 

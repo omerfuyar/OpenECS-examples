@@ -46,7 +46,8 @@ local function open(browser, folder)
   browser.text = ""
   read(browser)
 
-  -- the list is read again when an entry of the folder is added, removed or changed
+  -- the list is read again when an entry of the folder is added, removed or changed; changed also comes with an empty name and "overflow",
+  -- when changes were lost, or "gone", when the folder is removed, so reading again is right for each
   browser.watch = fs.watch(folder, function()
     read(browser)
     browser.panel:redraw()

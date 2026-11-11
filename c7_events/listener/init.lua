@@ -17,7 +17,7 @@ ecs.handle.registerType("note")
 
 -- a note's text, which is its value; as a method of the type, Lua writes note:text()
 assert(ecs.service.register({
-  text = { sig = "string(handle<listener.note>)", doc = "Gives a note's text", fn = function(note) return ecs.handle.value(note, "listener.note") end },
+  text = { sig = "string(handle<listener.note>)", doc = "Gives a note's text", fn = function(note) return ecs.handle.value(note, "note") end },
 }))
 ecs.handle.addMethod("note", "text", "text")
 
@@ -65,7 +65,7 @@ ecs.panel.registerType({
   create = function(panel)
     local listener = { panel = panel, ticks = 0 }
     listeners[panel] = listener
-    ecs.event.emit("listener.opened", { panel = panel, mark = "\0\255", note = ecs.handle.new("listener.note", "hello") })
+    ecs.event.emit("listener.opened", { panel = panel, mark = "\0\255", note = ecs.handle.new("note", "hello") })
 
     -- nothing but the event keeps the note now, and a collection before the delivery does not take it
     collectgarbage()

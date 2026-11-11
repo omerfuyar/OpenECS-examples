@@ -16,9 +16,10 @@ local function read(name)
 end
 
 -- the file's language comes from its name, and spans gives a list of spans for each line
-local function load(state, name)
+local function load(state, file)
+  local name = FILES[file]
   local language = syntax.languageOf(name)
-  state.name, state.language = name, language
+  state.file, state.name, state.language = file, name, language
   state.lines = assert(syntax.spans(language, read(name)))
   state.panel.title = name
   state.panel:redraw()
@@ -30,7 +31,7 @@ ecs.panel.registerType({
 
   create = function(panel)
     local state = { panel = panel }
-    load(state, FILES[1])
+    load(state, 1)
     return state
   end,
 
@@ -42,8 +43,8 @@ ecs.panel.registerType({
     end
 
     ui.show(state.panel, surface, ui.column({ padding = 12, gap = 8 }, {
-      ui.selector(state.name, FILES, { id = "file", onChange = function(name)
-        load(state, name)
+      ui.selector(state.file, FILES, { id = "file", onSelect = function(file)
+        load(state, file)
       end }),
       ui.scroll({ id = "code", grow = 1 }, lines),
     }))
