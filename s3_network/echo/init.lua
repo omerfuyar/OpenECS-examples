@@ -9,19 +9,20 @@ local draw = require("draw")
 local PORT = 47200
 local SIZE = 16
 
-local server = net.listen(PORT) -- nil if the port is taken
+-- a function that can fail outside the plugin, as when the port is taken, gives nil and why, as Lua's io.open does
+local server, reason = net.listen(PORT)
 local client = net.connect("127.0.0.1", PORT)
 local accepted -- the server's end of the connection, once the client is accepted
 local udpServer = net.udp(PORT) -- UDP ports are apart from TCP ports, so the same number serves both
 local udpClient = net.udp(0)    -- port 0: any free port
-local log = { server and "Listening on port " .. PORT or "Cannot listen on port " .. PORT }
+local log = { server and "Listening on port " .. PORT or reason }
 
 -- connectTLS starts a TLS connection: its status is 0 until the handshake is done, and the server's certificate is checked against the system's trusted ones
--- this one goes to a plain server on the next port, which answers in plain text, so its handshake fails and its status becomes -1
+-- this one goes to a plain server on the next port, which answers in plain text, so its handshake fails, its status becomes -1, and its error says why
 local plain = net.listen(PORT + 1)
 local secure = net.connectTLS("127.0.0.1", PORT + 1)
 local plainClient
-local tls = 0 -- the TLS connection's status, saved for the test
+local tls, tlsError = 0, "" -- the TLS connection's status and error, saved for the test
 
 -- listenTLS serves TLS with a certificate and its key; this pair was made for this example, for localhost, and is not secret
 -- the certificate is nobody's trusted one, so trust adds it to the client's; the server sends back in capitals what the client sends
@@ -53,7 +54,7 @@ local timer = ecs.timer.start(0.05, true, function()
     plainClient:send("not TLS\n")
   end
 
-  tls = secure:status()
+  tls, tlsError = secure:status(), secure:error()
 
   secureAccepted = secureAccepted or (secureServer and secureServer:accept())
 
@@ -159,7 +160,7 @@ ecs.panel.registerType({
 ecs.plugin.register({
   stateVersion = 1,
   saveState = function()
-    return { log = log, tls = tls, secure = secureAnswer, connected = client:status() == 1 }
+    return { log = log, tls = tls, tlsError = tlsError, secure = secureAnswer, connected = client:status() == 1 }
   end,
   restoreState = function() end,
   destroy = function()

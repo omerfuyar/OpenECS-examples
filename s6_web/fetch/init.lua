@@ -169,9 +169,9 @@ ecs.panel.registerType({
         socket.handle:close()
       end
 
-      local handle = web.socket(state.line)
+      local handle, reason = web.socket(state.line)
       socket = handle and { handle = handle, url = state.line, open = false }
-      add(handle and "Connecting to " .. state.line or "Cannot connect to " .. state.line)
+      add(handle and "Connecting to " .. state.line or reason)
       state.line = ""
     elseif event.type == "keyDown" and event.key == "Return" and state.line ~= "" then
       -- web.get starts a request and gives its handle at once; web.request takes a method, headers and a body too
@@ -179,7 +179,7 @@ ecs.panel.registerType({
       -- web asks for a compressed answer and uses HTTP/2 when an HTTPS server offers it; the body comes unpacked
       local url = state.line
 
-      local request = web.get(url, function(done)
+      local request, reason = web.get(url, function(done)
         -- status is the HTTP status, or -1 if the request failed
         local status = done:status()
 
@@ -193,7 +193,7 @@ ecs.panel.registerType({
       end)
 
       if not request then
-        add("Cannot request " .. url)
+        add(reason)
       end
 
       state.line = ""

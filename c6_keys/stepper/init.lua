@@ -45,7 +45,7 @@ ecs.panel.registerType({
 
 -- a handle stands for an object of the core or a plugin, here a panel
 -- a function that keys run on a panel takes it as handle<ecs.panel>; the key passes the focused panel
-assert(ecs.service.register({
+ecs.service.register({
   up = { sig = "void(handle<ecs.panel>)", doc = "Step up", fn = function(panel) step(panel, 1) end },
   down = { sig = "void(handle<ecs.panel>)", doc = "Step down", fn = function(panel) step(panel, -1) end },
   resetAll = {
@@ -57,12 +57,12 @@ assert(ecs.service.register({
       end
     end,
   },
-}))
+})
 
 -- bind gives a function a default key, working while a panel of the plugin's type has focus; the function must exist first
 -- the preset's keys and the user's settings win over these defaults, as preset.lua shows
-assert(ecs.key.bind("stepper.panel", "Up", "stepper.up"))
-assert(ecs.key.bind("stepper.panel", "Down", "stepper.down"))
+ecs.key.bind("stepper.panel", "Up", "stepper.up")
+ecs.key.bind("stepper.panel", "Down", "stepper.down")
 
 -- the panel's menu (a right click on its tab) shows these functions with their keys
 ecs.panel.addMenuEntry("stepper.panel", "stepper.up")

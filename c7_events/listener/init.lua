@@ -16,9 +16,9 @@ ecs.event.declare("opened", "A listener opened: its panel, a mark of two bytes, 
 ecs.handle.registerType("note")
 
 -- a note's text, which is its value; as a method of the type, Lua writes note:text()
-assert(ecs.service.register({
+ecs.service.register({
   text = { sig = "string(handle<listener.note>)", doc = "Gives a note's text", fn = function(note) return ecs.handle.value(note, "note") end },
-}))
+})
 ecs.handle.addMethod("note", "text", "text")
 
 ecs.event.subscribe("listener.opened", function(_, value)
