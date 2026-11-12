@@ -7,9 +7,10 @@ local ecs = require("ecs")
 -- editors complete them from the definitions that the build writes, which .luarc.json names (README.md, "Editors")
 local ui = require("ui")
 
--- a style is a look that elements share: the props of size, room, colour and font. ui.style gives back its name, which a variable keeps, and an
--- element's style prop names it; the element's own props win. Its name has a dot, and any plugin may use it, so a tool's plugins share a look
-local LABELED = ui.style("button.labeled", { gap = 8 })
+-- a style is a table of the props of an element's look, kept in a variable so elements share it; an element's style prop takes it, and the
+-- element's own props win. ui.styles gives ui's own styles, which its standard views use too: view, item, title, heading and note
+local LABELED = { gap = 8 }
+local STYLES = ui.styles()
 
 local FRUITS = { "Apple", "Banana", "Cherry" }
 local SIZES = { "S", "M", "L" }
@@ -116,9 +117,8 @@ ecs.panel.registerType({
       items[i] = ui.text(text, { id = "item:" .. i })
     end
 
-    -- ui has styles of its own, which its standard views use too: view, item, title, heading and note
-    ui.show(state.panel, surface, ui.column({ style = "view" }, {
-      ui.text(("Clicked %d times"):format(state.clicks), { style = "title" }),
+    ui.show(state.panel, surface, ui.column({ style = STYLES.view }, {
+      ui.text(("Clicked %d times"):format(state.clicks), { style = STYLES.title }),
       -- a tooltip shows when the pointer rests on its element
       ui.button("Click me", {
         id = "button",
@@ -201,7 +201,7 @@ ecs.panel.registerType({
         "Tab gives the keys to the next control and Shift+Tab to the one before. Return or Space presses the control that has them, " ..
         "Left and Right change a selector or a slider, and Escape takes the keys away. A field takes typing as soon as it has the keys. " ..
         "In a field, Home and End move the cursor to its start and end, Shift with them selects, and Ctrl+C, Ctrl+X and Ctrl+V copy, cut and paste.",
-        { id = "note", style = "note", wrap = true }),
+        { id = "note", style = STYLES.note, wrap = true }),
     }))
 
     -- the rectangles of the elements, in the panel's surface pixels; ui.rect gives nil for an element that is not shown, such as one on another tab
