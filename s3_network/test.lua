@@ -47,6 +47,7 @@ return {
     -- the TLS connection to the plain server fails its handshake
     waitUntil(test, function() return state().tls == -1 end)
     test.match(state().tls, -1, "the TLS connection")
+    test.match(state().tlsError:find("TLS handshake failed", 1, true) ~= nil, true, "the TLS connection's error")
 
     -- the TLS server, whose certificate the client trusts, sends back in capitals what the client sent
     waitUntil(test, function() return state().secure == "SECRET" end)

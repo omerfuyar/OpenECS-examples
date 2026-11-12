@@ -11,6 +11,21 @@ local counter = require("counter")
 
 local panels = {}
 
+-- a Lua function fails and checks its arguments as a C one does: ecs.check stops the Lua code at a misuse, the caller's mistake,
+-- and a failure, which is not the caller's mistake, returns nil and why, as ecs.fail gives it
+local function addTo(name, amount)
+  ecs.check(amount > 0, "tally.addTo adds an amount above 0.")
+
+  -- a function that can fail gives nil and why
+  local value, reason = counter.add(name, amount)
+
+  if not value then
+    return nil, ecs.fail(reason)
+  end
+
+  return value
+end
+
 local function redrawAll()
   for panel in pairs(panels) do
     panel:redraw()
@@ -48,7 +63,7 @@ ecs.panel.registerType({
 
   event = function(state, event)
     if event.type == "pointerDown" then
-      counter.add("clicks", 1)
+      addTo("clicks", 1)
     end
   end,
 })
@@ -62,5 +77,12 @@ ecs.service.register({
     fn = function()
       counter.add("clicks", -counter.get("clicks"))
     end,
+  },
+
+  -- a function that can fail says why in "out string error", its last parameter
+  addTo = {
+    sig = "int(string name, int amount, out string error)",
+    doc = "Adds clicks to a named counter, and gives its new value",
+    fn = addTo,
   },
 })
