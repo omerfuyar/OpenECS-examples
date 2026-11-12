@@ -5,6 +5,9 @@
 local ecs = require("ecs")
 local ui = require("ui")
 
+-- ui's own styles, which its standard views use too
+local STYLES = ui.styles()
+
 local WORKERS = 4
 local CHUNKS = 40 -- the numbers are split into this many chunks
 local LIMITS = { "100 000", "1 000 000", "10 000 000" }
@@ -100,7 +103,7 @@ ecs.panel.registerType({
         ui.row({ width = BAR, height = 12, background = "tabRow" }, {
           ui.row({ width = BAR * done / CHUNKS, height = 12, background = "accent" }),
         }),
-        ui.text(("%d chunks"):format(done), { color = "textDim" }),
+        ui.text(("%d chunks"):format(done), { style = STYLES.note }),
       })
     end
 
@@ -114,7 +117,7 @@ ecs.panel.registerType({
         or state.chunks == CHUNKS and ("%d primes below %s, in about %.1f s"):format(state.primes, LIMITS[state.limit], state.seconds)
         or "Press Start to count the primes."
 
-    ui.show(state.panel, surface, ui.column({ padding = 24, gap = 12 }, {
+    ui.show(state.panel, surface, ui.column({ style = STYLES.view }, {
       ui.text("Four workers count the primes, each on a thread of its own. Drag the panel or open its menu while they count: it stays free.", { wrap = true }),
       ui.row({ gap = 8, align = "center" }, {
         ui.text("Below"),

@@ -11,6 +11,9 @@
 /// @brief ui's functions, and what the macros describe into.
 static Ui UI_PLUGIN;
 
+// a style is a UiProps of look props, kept in a variable so elements share it, and .style points to it; UI_PLUGIN.styles holds ui's own
+static const UiProps LABELED = {.gap = 8};
+
 #define COUNT(array) (sizeof(array) / sizeof((array)[0]))
 
 static const char *const FRUITS[] = {"Apple", "Banana", "Cherry", nullptr};
@@ -173,26 +176,26 @@ static void DescribeOptions(Controls *controls)
         UI_TOGGLE(&controls->sound, .id = "sound", .label = "Sound");
         UI_TOGGLE(&controls->dark, .id = "dark", .label = "Dark", .look = "switch");
 
-        UI_ROW(.gap = 8)
+        UI_ROW(.style = &LABELED)
         {
             UI_TEXT("Volume");
             UI_SLIDER(&controls->volume, .id = "volume", .step = 0.1, .grow = 1);
         }
 
-        UI_ROW(.gap = 8)
+        UI_ROW(.style = &LABELED)
         {
             UI_TEXT("Size");
             UI_SELECTOR(&controls->size, SIZES, .id = "size");
         }
 
-        UI_ROW(.gap = 8)
+        UI_ROW(.style = &LABELED)
         {
             UI_TEXT("Fruit");
             UI_DROPDOWN(&controls->fruit, FRUITS, .id = "fruit");
         }
 
         // a number field takes a number from min to max: Return gives what is typed, and Up and Down change it by step
-        UI_ROW(.gap = 8)
+        UI_ROW(.style = &LABELED)
         {
             UI_TEXT("Count");
             UI_NUMBER(&controls->count, .id = "count", .min = 0, .max = 10, .step = 1, .grow = 1);
@@ -211,9 +214,9 @@ static void ControlsDraw(void *data, ECSSurface *surface, f64 seconds)
 
     UI_SHOW(&UI_PLUGIN, state->panel, surface)
     {
-        UI_COLUMN(.padding = 24, .gap = 12)
+        UI_COLUMN(.style = &UI_PLUGIN.styles.view)
         {
-            UI_TEXT(clicked, .size = 18);
+            UI_TEXT(clicked, .style = &UI_PLUGIN.styles.title);
 
             // UI_BUTTON gives whether the button was clicked since the last draw; a tooltip shows when the pointer rests on its element
             if (UI_BUTTON("Click me", .id = "button", .tooltip = "Counts the clicks in the panel's title"))
@@ -252,14 +255,14 @@ static void ControlsDraw(void *data, ECSSurface *surface, f64 seconds)
             }
 
             // a field keeps what is typed while it has the keys; Left, Right, Home and End move its cursor, Shift with them selects, and Ctrl+C, Ctrl+X and Ctrl+V copy, cut and paste
-            UI_ROW(.gap = 8)
+            UI_ROW(.style = &LABELED)
             {
                 UI_TEXT("Name");
                 UI_FIELD(state->name, sizeof(state->name), .id = "name", .grow = 1);
             }
 
             // text with wrap = true breaks into lines at the width of its column
-            UI_TEXT(NOTE, .id = "note", .wrap = true, .color = "textDim");
+            UI_TEXT(NOTE, .id = "note", .style = &UI_PLUGIN.styles.note, .wrap = true);
         }
     }
 }

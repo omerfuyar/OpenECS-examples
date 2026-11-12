@@ -7,6 +7,11 @@ local ecs = require("ecs")
 -- editors complete them from the definitions that the build writes, which .luarc.json names (README.md, "Editors")
 local ui = require("ui")
 
+-- a style is a table of the props of an element's look, kept in a variable so elements share it; an element's style prop takes it, and the
+-- element's own props win. ui.styles gives ui's own styles, which its standard views use too: view, item, title, heading and note
+local LABELED = { gap = 8 }
+local STYLES = ui.styles()
+
 local FRUITS = { "Apple", "Banana", "Cherry" }
 local SIZES = { "S", "M", "L" }
 local TABS = { "Options", "About", "Table" }
@@ -112,8 +117,8 @@ ecs.panel.registerType({
       items[i] = ui.text(text, { id = "item:" .. i })
     end
 
-    ui.show(state.panel, surface, ui.column({ padding = 24, gap = 12 }, {
-      ui.text(("Clicked %d times"):format(state.clicks), { size = 18 }),
+    ui.show(state.panel, surface, ui.column({ style = STYLES.view }, {
+      ui.text(("Clicked %d times"):format(state.clicks), { style = STYLES.title }),
       -- a tooltip shows when the pointer rests on its element
       ui.button("Click me", {
         id = "button",
@@ -165,16 +170,16 @@ ecs.panel.registerType({
       }) or ui.group({ title = "Options", gap = 8 }, {
         ui.toggle(state.sound, { id = "sound", label = "Sound", onChange = set("sound") }),
         ui.toggle(state.dark, { id = "dark", label = "Dark", look = "switch", onChange = set("dark") }),
-        ui.row({ gap = 8 },
+        ui.row({ style = LABELED },
           { ui.text("Volume"), ui.slider(state.volume,
             { id = "volume", step = 0.1, grow = 1, onChange = set("volume") }) }),
-        ui.row({ gap = 8 },
+        ui.row({ style = LABELED },
           { ui.text("Size"), ui.selector(state.size, SIZES, { id = "size", onSelect = set("size") }) }),
-        ui.row({ gap = 8 },
+        ui.row({ style = LABELED },
           { ui.text("Fruit"), ui.dropdown(state.fruit, FRUITS, { id = "fruit", onSelect = set("fruit") }) }),
         -- a number field takes a number from min to max: Return gives what is typed to onSubmit, and Up and Down change it by step;
         -- onChange would get the number at each edit
-        ui.row({ gap = 8 },
+        ui.row({ style = LABELED },
           { ui.text("Count"), ui.number(state.count,
             { id = "count", min = 0, max = 10, step = 1, grow = 1, onSubmit = set("count") }) }),
       }),
@@ -190,13 +195,13 @@ ecs.panel.registerType({
         },
         items),
       -- a field keeps what is typed while it has the keys; Left, Right, Home and End move its cursor, Shift with them selects, and Ctrl+C, Ctrl+X and Ctrl+V copy, cut and paste
-      ui.row({ gap = 8 }, { ui.text("Name"), ui.field(state.name, { id = "name", grow = 1, onChange = set("name") }) }),
+      ui.row({ style = LABELED }, { ui.text("Name"), ui.field(state.name, { id = "name", grow = 1, onChange = set("name") }) }),
       -- text with wrap = true breaks into lines at the width of its column
       ui.text(
         "Tab gives the keys to the next control and Shift+Tab to the one before. Return or Space presses the control that has them, " ..
         "Left and Right change a selector or a slider, and Escape takes the keys away. A field takes typing as soon as it has the keys. " ..
         "In a field, Home and End move the cursor to its start and end, Shift with them selects, and Ctrl+C, Ctrl+X and Ctrl+V copy, cut and paste.",
-        { id = "note", wrap = true, color = "textDim" }),
+        { id = "note", style = STYLES.note, wrap = true }),
     }))
 
     -- the rectangles of the elements, in the panel's surface pixels; ui.rect gives nil for an element that is not shown, such as one on another tab
