@@ -9,6 +9,8 @@ return {
   hint = "Click to place dots, then quit and start again: the tool's last session brings them back",
   depends = { marks = "0.1" },
   pluginsDir = ".",
+  -- while it runs, a saved change to marks/init.lua reloads the plugin: its panels keep their dots, and the plugin its count, through the reload
+  settings = { ["ecs.reloadPlugins"] = true },
   workspaces = {
     { name = "Main",
       windows = {
