@@ -1,4 +1,5 @@
--- Packs this plugin's files in each of compress's formats and unpacks them again, then writes them into a zip archive and reads it back.
+-- Packs this plugin's files in each of compress's formats and unpacks them again, then writes them into a zip archive and reads it back,
+-- and makes a tar archive, packed with gzip as a .tar.gz, and reads it back.
 -- Lua's io library reads the files; compress works on their texts, and on archives by their paths.
 
 local ecs = require("ecs")
@@ -54,6 +55,31 @@ local function archive(state)
   end
 end
 
+local function tarball(state)
+  -- a tar archive is made in memory, so gzip packs it into a .tar.gz; a name that ends with / is a folder,
+  -- and a long name, up to 255 bytes, is split at a slash, as the ustar format keeps it
+  local long = "archive/" .. ("deep/"):rep(24) .. "manifest.lua"
+  local files = {
+    { name = "archive/" },
+    { name = "archive/run.sh", data = "#!/bin/sh\necho run\n", executable = true },
+    { name = long, data = readFile(ecs.plugin.folder .. "manifest.lua") },
+  }
+  local packed = assert(compress.gzip.pack(assert(compress.tar.pack(files)), 0))
+  state.tarPath = ecs.plugin.folder .. "archive.tar.gz.ignore"
+  local file = assert(io.open(state.tarPath, "wb"))
+  file:write(packed)
+  file:close()
+
+  -- tar.unpack gives the same tables back
+  local back = assert(compress.tar.unpack(assert(compress.gzip.unpack(packed))))
+  state.tar = { long = long, names = {}, same = #back == #files }
+  for i, entry in ipairs(back) do
+    state.tar.names[i] = entry.name
+    state.tar.same = state.tar.same and entry.name == files[i].name and entry.data == (files[i].data or "") and entry.executable == (files[i].executable or false)
+  end
+  table.insert(state.lines, ("a .tar.gz of %d entries: %d bytes"):format(#back, #packed))
+end
+
 ecs.panel.registerType({
   name = "panel",
   title = "Archive",
@@ -62,6 +88,7 @@ ecs.panel.registerType({
     local state = { panel = panel }
     pack(state)
     archive(state)
+    tarball(state)
     return state
   end,
 
@@ -85,6 +112,6 @@ ecs.panel.registerType({
   end,
 
   saveState = function(state)
-    return { same = state.same, entries = state.entries, readBack = state.readBack, problem = state.problem }
+    return { same = state.same, entries = state.entries, readBack = state.readBack, problem = state.problem, tar = state.tar, tarPath = state.tarPath }
   end,
 })
