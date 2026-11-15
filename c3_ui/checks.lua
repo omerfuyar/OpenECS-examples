@@ -50,8 +50,14 @@ return function(test, number, title)
   local menu = test.popup(1)
   test.click(menu.x + 10, menu.y + menu.height * 2.5 / 3)
   test.match(state().fruit, "Cherry", "the dropdown")
+  -- typing in it shows only the choices that hold the text, and Return chooses the first of them
+  test.click(at("fruit"))
+  test.key("A")
+  test.key("N")
+  test.key("Return")
+  test.match(state().fruit, "Banana", "the dropdown's search")
 
-  -- the number field keeps its number from 0 to 10; Up and Down change it by 1, and a text that is not a number is not taken
+  -- the number field keeps its number from 0 to 10; Up and Down change it by 1, a text that is not a number is not taken, and a sum is
   test.click(at("count"))
   test.text("7")
   test.key("Return")
@@ -63,6 +69,12 @@ return function(test, number, title)
   test.key("Return")
   test.key("Escape")
   test.match(state().count, 9, "the number, after a text that is not one")
+  -- a sum gives its result
+  test.click(at("count"))
+  test.key("Ctrl+A")
+  test.text("2*3+1")
+  test.key("Return")
+  test.match(state().count, 7, "the number, from a sum")
 
   -- a drag sideways on the number changes it by a step each unit, kept from 0 to 10, and a tenth of that with Shift
   local x, y = at("count")
