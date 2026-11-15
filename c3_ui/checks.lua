@@ -50,6 +50,12 @@ return function(test, number, title)
   local menu = test.popup(1)
   test.click(menu.x + 10, menu.y + menu.height * 2.5 / 3)
   test.match(state().fruit, "Cherry", "the dropdown")
+  -- typing in it shows only the choices that hold the text, and Return chooses the first of them
+  test.click(at("fruit"))
+  test.key("A")
+  test.key("N")
+  test.key("Return")
+  test.match(state().fruit, "Banana", "the dropdown's search")
 
   -- the number field keeps its number from 0 to 10; Up and Down change it by 1, and a text that is not a number is not taken
   test.click(at("count"))
