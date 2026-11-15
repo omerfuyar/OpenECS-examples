@@ -36,7 +36,8 @@ local NODES = {
 
 -- the elements the test clicks, by id; their rectangles are saved, so the test finds them
 local IDS = { "button", "tab", "sound", "volume", "size", "fruit", "count", "item:2", "name", "note", "tree:src",
-  "tree:lib", "table:header", "table:1", "table:2", "table:title:name", "table:title:price", "about" }
+  "tree:lib", "table:header", "table:1", "table:2", "table:title:name", "table:title:price", "about",
+  "tint", "colors:heading" }
 
 -- the rows of the Table tab, in the order the panel sorts them
 local function sorted(controls)
@@ -73,6 +74,8 @@ local START = {
   open = {},
   sort = "name",
   ascending = true,
+  tint = "#3366CC",
+  colors = true,
   rects = {},
 }
 
@@ -182,6 +185,11 @@ ecs.panel.registerType({
         ui.row({ style = LABELED },
           { ui.text("Count"), ui.number(state.count,
             { id = "count", min = 0, max = 10, step = 1, grow = 1, onSubmit = set("count") }) }),
+        -- a section's heading shows and hides what is below it, at a click; the panel keeps whether it is open
+        -- a colour element is a swatch, which a click opens in a picker; onChange gets the colour a press in the picker ends on
+        ui.section("Colour", { id = "colors", open = state.colors, onToggle = set("colors") }, {
+          ui.row({ style = LABELED }, { ui.text("Tint"), ui.color(state.tint, { id = "tint", onChange = set("tint") }) }),
+        }),
       }),
       ui.list(
         {
@@ -247,6 +255,8 @@ ecs.panel.registerType({
       row = state.row,
       first = TABS[state.tab] == "Table" and sorted(state)[1].name or nil,
       link = state.link,
+      tint = state.tint,
+      colors = state.colors,
       rects = state.rects
     }
   end,
