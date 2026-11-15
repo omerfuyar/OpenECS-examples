@@ -41,6 +41,9 @@ return {
       os.remove(mark)
     end
 
+    test.click(log.x + 150, log.y + 121)
+    test.match(state(), { shown = 1 }, "a click on the error's own link calls its function")
+
     -- the Errors toggle hides the errors' entries, which the panel's state keeps, and shows them again
     test.click(log.x + 189, log.y + 21)
     test.match(test.panel(logId).state, { hidden = { error = true } }, "the toggle hides the errors")
