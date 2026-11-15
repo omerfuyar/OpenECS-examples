@@ -1,16 +1,20 @@
--- A runner built on the console: the console plugin keeps the lines that plugins add, colours them by level, and opens
--- the file that a line names in the user's code editor, with the command of its setting console.editor.
+-- A runner built on the console: the console plugin keeps the entries that plugins add, each in a box of its level's colour,
+-- stacks an entry that repeats the one before it, and opens the file that an entry names in the user's code editor, with
+-- the command of its setting console.editor.
 
 local ecs = require("ecs")
 local console = require("console")
 local ui = require("ui")
 
--- a relative path in a line starts at the console's folder
+-- a relative path in an entry starts at the console's folder
 console.setFolder(ecs.plugin.folder)
 
 local function run()
-  -- each line of a text is a line of the console; a line such as "main.lua:3" names a file and a line
+  -- a run clears the console first, while its setting console.clearOnRun is on, as it is by default
+  console.run()
+  -- an entry may hold many lines; one such as "main.lua:3" names a file and a line, and the same entry twice in a row stacks
   console.add("Running main.lua\nstarted", "info")
+  console.add("main.lua:3: attempt to call a nil value", "error")
   console.add("main.lua:3: attempt to call a nil value", "error")
 end
 
@@ -26,9 +30,10 @@ ecs.panel.registerType({
   event = function(state, event)
     ui.event(state.panel, event)
   end,
-  -- the console's lines and the folder, for the test
+  -- the console's entries and the folder, for the test
   saveState = function()
-    return { lines = #console.lines(), folder = ecs.plugin.folder }
+    local entries = console.entries()
+    return { entries = #entries, count = entries[#entries] and entries[#entries].count or 0, folder = ecs.plugin.folder }
   end,
   destroy = function(state)
     ui.forget(state.panel)
