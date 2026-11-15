@@ -70,6 +70,7 @@ local START = {
   selected = 1,
   name = "",
   node = "readme",
+  nodes = { "readme" },
   open = {},
   sort = "name",
   ascending = true,
@@ -161,8 +162,32 @@ ecs.panel.registerType({
             grow = 0,
             border = "tabShown",
             open = state.open,
-            selected = state.node,
-            onSelect = set("node"),
+            -- the tree chooses many nodes: selected is the list of the chosen ones, and the first is where Up and Down move from;
+            -- a press with Ctrl adds a node or takes it out, and one with Shift chooses the shown nodes from the first chosen one to it
+            selected = state.nodes,
+            onSelect = function(id, how, between)
+              if how == "toggle" then
+                local kept = {}
+
+                for _, other in ipairs(state.nodes) do
+                  if other ~= id then
+                    kept[#kept + 1] = other
+                  end
+                end
+
+                if #kept == #state.nodes then
+                  kept[#kept + 1] = id
+                end
+
+                state.nodes = kept
+              elseif how == "range" then
+                state.nodes = between
+              else
+                state.nodes = { id }
+              end
+
+              state.node = state.nodes[1]
+            end,
             onToggle = function(id, open)
               state.open[id] = open or nil
             end
@@ -241,6 +266,7 @@ ecs.panel.registerType({
       selected = state.selected,
       name = state.name,
       node = state.node,
+      nodes = state.nodes,
       open = state.open,
       sort = state.sort,
       ascending = state.ascending,
