@@ -229,6 +229,8 @@ ecs.panel.registerType({
         { id = "note", style = STYLES.note, wrap = true }),
     }))
 
+    state.scale = surface.scale
+
     -- the rectangles of the elements, in the panel's surface pixels; ui.rect gives nil for an element that is not shown, such as one on another tab
     for _, id in ipairs(IDS) do
       local rect = ui.rect(state.panel, id)
@@ -244,7 +246,19 @@ ecs.panel.registerType({
   -- the panel's events go to ui, which calls the callbacks of the elements they reach; Up and Down choose a list's or the tree's next item and
   -- the one before, and Right and Left open and close the tree's chosen node
   event = function(state, event)
-    ui.event(state.panel, event)
+    if ui.event(state.panel, event) then
+      return
+    end
+
+    -- a right click that no element takes opens a menu where it was; ui.menu takes the place in layout units, as the
+    -- elements' rectangles are, so the event's surface pixels are divided by the scale that the last draw had
+    if event.type == "pointerUp" and event.button == 3 then
+      ui.menu(state.panel, event.x / state.scale, event.y / state.scale, {
+        { label = "Add a click", onClick = function() state.clicks = state.clicks + 1 end },
+        { line = true },
+        { label = "Reset the clicks", enabled = state.clicks > 0, onClick = function() state.clicks = 0 end },
+      })
+    end
   end,
 
   destroy = function(state)
