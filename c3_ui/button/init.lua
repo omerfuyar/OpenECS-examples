@@ -121,7 +121,16 @@ ecs.panel.registerType({
       items[i] = ui.text(text, { id = "item:" .. i })
     end
 
-    ui.show(state.panel, surface, ui.column({ style = STYLES.view }, {
+    -- a right click that no other element takes reaches the root's onMenu, which opens a menu there, in layout units as ui.menu takes them
+    local function menu(x, y)
+      ui.menu(state.panel, x, y, {
+        { label = "Add a click", onClick = function() state.clicks = state.clicks + 1 end },
+        { line = true },
+        { label = "Reset the clicks", enabled = state.clicks > 0, onClick = function() state.clicks = 0 end },
+      })
+    end
+
+    ui.show(state.panel, surface, ui.column({ style = STYLES.view, onMenu = menu }, {
       ui.text(("Clicked %d times"):format(state.clicks), { style = STYLES.title }),
       -- a tooltip shows when the pointer rests on its element
       ui.button("Click me", {
@@ -193,7 +202,11 @@ ecs.panel.registerType({
             end,
             onToggle = function(id, open)
               state.open[id] = open or nil
-            end
+            end,
+            -- a right click on a node chooses it, unless it is chosen, and gives its id, as a menu about it would take it
+            onMenu = function(id)
+              state.menuNode = id
+            end,
           }),
       }) or ui.group({ title = "Options", gap = 8 }, {
         ui.toggle(state.sound, { id = "sound", label = "Sound", onChange = set("sound") }),
@@ -275,6 +288,7 @@ ecs.panel.registerType({
       name = state.name,
       node = state.node,
       nodes = state.nodes,
+      menuNode = state.menuNode,
       open = state.open,
       sort = state.sort,
       ascending = state.ascending,
