@@ -37,7 +37,8 @@ static const FruitRow FRUIT_ROWS[] = {{"Cherry", 4.5, 12, "4.5", "12"}, {"Apple"
 
 /// @brief The elements the test clicks, by id; their rectangles are saved, so the test finds them.
 static const char *const IDS[] = {"button", "tab", "sound", "volume", "size", "fruit", "count", "item:2", "name", "note", "tree:src",
-                                  "tree:lib", "table:header", "table:1", "table:2", "table:title:name", "table:title:price", "about"};
+                                  "tree:lib", "table:header", "table:1", "table:2", "table:title:name", "table:title:price", "about",
+                                  "tint", "colors:heading"};
 
 static const char *const NOTE = "Tab gives the keys to the next control and Shift+Tab to the one before. Return or Space presses the control that has them, "
                                 "Left and Right change a selector or a slider, and Escape takes the keys away. A field takes typing as soon as it has the keys. "
@@ -65,6 +66,8 @@ typedef struct Controls
     bool ascending;
     i32 row;       // the table's chosen row, from 1, or 0 for none
     char link[96]; // the link last clicked in the About tab's text
+    char tint[10]; // a colour, "#RRGGBB"
+    bool colors;   // whether the Colour section is open
 } Controls;
 
 static SHUResult ControlsCreate(ECSPanel panel, const ECSValue *savedState, u32 version, void **retState)
@@ -79,7 +82,7 @@ static SHUResult ControlsCreate(ECSPanel panel, const ECSValue *savedState, u32 
         return SHUResult_ErrAllocation;
     }
 
-    *state = (Controls){.panel = panel, .scale = 1.0f, .dark = true, .volume = 0.5, .size = 2, .fruit = 1, .tab = 1, .count = 3, .selected = 1, .node = "readme", .sort = "name", .ascending = true};
+    *state = (Controls){.panel = panel, .scale = 1.0f, .dark = true, .volume = 0.5, .size = 2, .fruit = 1, .tab = 1, .count = 3, .selected = 1, .node = "readme", .sort = "name", .ascending = true, .tint = "#3366CC", .colors = true};
     *retState = state;
     return SHUResult_Ok;
 }
@@ -199,6 +202,17 @@ static void DescribeOptions(Controls *controls)
         {
             UI_TEXT("Count");
             UI_NUMBER(&controls->count, .id = "count", .min = 0, .max = 10, .step = 1, .grow = 1);
+        }
+
+        // a section's heading shows and hides what is below it, at a click, which UI_SECTION writes into the bool
+        // a colour element is a swatch, which a click opens in a picker; UI_COLOR writes the colour a press in the picker ends on
+        UI_SECTION(&controls->colors, "Colour", .id = "colors")
+        {
+            UI_ROW(.style = &LABELED)
+            {
+                UI_TEXT("Tint");
+                UI_COLOR(controls->tint, sizeof(controls->tint), .id = "tint");
+            }
         }
     }
 }
@@ -352,6 +366,8 @@ static SHUResult ControlsSaveState(void *data, ECSValue *retSavedState)
     SHU_ReturnResult(SetNumber(retSavedState, "selected", state->selected));
     SHU_ReturnResult(SetString(retSavedState, "name", state->name));
     SHU_ReturnResult(SetString(retSavedState, "link", state->link[0] != '\0' ? state->link : nullptr));
+    SHU_ReturnResult(SetString(retSavedState, "tint", state->tint));
+    SHU_ReturnResult(SetBool(retSavedState, "colors", state->colors));
     SHU_ReturnResult(SetString(retSavedState, "node", state->node));
     SHU_ReturnResult(SetString(retSavedState, "sort", state->sort));
     SHU_ReturnResult(SetBool(retSavedState, "ascending", state->ascending));

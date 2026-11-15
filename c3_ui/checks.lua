@@ -64,6 +64,18 @@ return function(test, number, title)
   test.key("Escape")
   test.match(state().count, 9, "the number, after a text that is not one")
 
+  -- the colour element opens a picker in a popup; a press in its square gives the colour there, more saturated and brighter to the top right,
+  -- and Return closes it
+  test.click(at("tint"))
+  local picker = test.popup(1)
+  test.click(picker.x + picker.width * 0.75, picker.y + picker.height * 0.1)
+  test.key("Return")
+  test.match(#state().tint == 7 and state().tint ~= "#3366CC", true, "the picked colour")
+
+  -- a click on the section's heading hides what is below it
+  test.click(at("colors:heading"))
+  test.match({ state().colors, state().rects.tint }, { false, nil }, "the closed section")
+
   test.click(at("item:2"))
   test.match(state().selected, 2, "the list")
 
