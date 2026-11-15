@@ -1,5 +1,5 @@
 -- the files panel shows the tool's folder: a click chooses a file and a double click opens it, through the tool's handlers;
--- it follows the folder's changes, New makes the tool's own kind of file, and Rename and Delete change the folder
+-- it follows the folder's changes, and its right click's menu makes the tool's own kind of file, renames and deletes
 return {
   preset = "preset.lua",
   run = function(test)
@@ -39,10 +39,10 @@ return {
     os.remove(folder .. "banana.txt")
     test.wait(0.3)
 
-    -- the panel's rows: its name field, the kinds and New, then Rename and Delete, then the folder's files by name
+    -- the panel's rows: the folder's files by name
     local panel = test.rect(idOf("files.tree"))
     local function row(i)
-      return panel.x + 60, panel.y + 84 + 21 * (i - 1)
+      return panel.x + 60, panel.y + 18 + 21 * (i - 1)
     end
 
     -- one click chooses a file, and a second one soon after opens it, each with the tool's handler
@@ -64,31 +64,37 @@ return {
     os.remove(folder .. "banana.txt")
     test.wait(1)
 
-    -- New makes the kind that the dropdown names: Folder, the tool's Note, or File
-    test.click(panel.x + 100, panel.y + 21)
-    test.text("milk")
-    test.click(panel.x + panel.width - 98, panel.y + 21)
+    -- a right click beside the files opens the menu of New: a folder, the tool's note, or a file; the note's entry asks for a name
+    -- in a field above the files, which has the keys, and Return makes it with the tool's make
+    test.click(panel.x + 60, panel.y + panel.height - 20, 3)
     test.key("Down")
     test.key("Return")
-    test.click(panel.x + panel.width - 33, panel.y + 21)
+    -- the field shows, and takes the keys, at the panel's next draw
+    test.wait()
+    test.text("milk")
+    test.key("Return")
     assert(waitFor(function()
       return exists(folder .. "milk.txt")
     end), "New makes a note with the tool's make")
 
-    -- Rename gives the chosen file the name in the field
+    -- a right click on a file chooses it, and its menu's Rename, the entry before the last, asks for the new name
     x, y = row(2)
-    test.click(x, y)
-    test.click(panel.x + 100, panel.y + 21)
+    test.click(x, y, 3)
+    test.key("Up")
+    test.key("Up")
+    test.key("Return")
+    test.wait()
     test.key("Ctrl+A")
     test.text("bread.txt")
-    test.click(panel.x + 43, panel.y + 54)
+    test.key("Return")
     assert(waitFor(function()
       return exists(folder .. "bread.txt") and not exists(folder .. "milk.txt")
     end), "Rename renames the chosen file")
 
-    -- Delete asks first
-    test.click(x, y)
-    test.click(panel.x + 111, panel.y + 54)
+    -- Delete, the last entry, asks first
+    test.click(x, y, 3)
+    test.key("Up")
+    test.key("Return")
     test.match(test.dialog(), { title = "Delete bread.txt" }, "Delete asks")
     test.key("Return")
     assert(waitFor(function()
