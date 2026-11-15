@@ -228,7 +228,7 @@ ecs.panel.registerType({
         },
         items),
       -- a field keeps what is typed while it has the keys; Left, Right, Home and End move its cursor, Shift with them selects, and Ctrl+C, Ctrl+X and Ctrl+V copy, cut and paste
-      ui.row({ style = LABELED }, { ui.text("Name"), ui.field(state.name, { id = "name", grow = 1, onChange = set("name") }) }),
+      ui.row({ style = LABELED }, { ui.text("Name"), ui.field(state.name, { id = "name", grow = 1, placeholder = "Your name", onChange = set("name") }) }),
       -- text with wrap = true breaks into lines at the width of its column
       ui.text(
         "Tab gives the keys to the next control and Shift+Tab to the one before. Return or Space presses the control that has them, " ..
