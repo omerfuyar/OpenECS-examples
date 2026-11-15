@@ -39,10 +39,10 @@ return {
     os.remove(folder .. "banana.txt")
     test.wait(0.3)
 
-    -- the panel's rows: the folder's files by name
+    -- the panel's rows, below the selector of the tree and the grid: the folder's files by name
     local panel = test.rect(idOf("files.tree"))
     local function row(i)
-      return panel.x + 60, panel.y + 18 + 21 * (i - 1)
+      return panel.x + 60, panel.y + 51 + 21 * (i - 1)
     end
 
     -- one click chooses a file, and a second one soon after opens it, each with the tool's handler
@@ -90,6 +90,14 @@ return {
     assert(waitFor(function()
       return exists(folder .. "bread.txt") and not exists(folder .. "milk.txt")
     end), "Rename renames the chosen file")
+
+    -- the grid shows the folder as tiles, which a click chooses and a double click opens, as the tree's rows do
+    test.click(panel.x + 80, panel.y + 20)
+    test.click(panel.x + 138, panel.y + 110)
+    test.match(notes(), { chosen = "bread.txt" }, "a click on a tile chooses the file")
+    test.click(panel.x + 138, panel.y + 110)
+    test.match(notes(), { opened = "bread.txt" }, "a double click on a tile opens it")
+    test.click(panel.x + 30, panel.y + 20)
 
     -- Delete, the last entry, asks first
     test.click(x, y, 3)
