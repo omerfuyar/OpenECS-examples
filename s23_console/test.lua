@@ -1,6 +1,6 @@
 -- the console keeps the entries that a plugin adds, and stacks a repeated one; a click on the place that an entry names runs
--- the command of console.editor; the levels' toggles filter the entries, a run clears them while Clear on run is on, and Clear
--- empties the console
+-- the command of console.editor; the levels' toggles and the search filter the entries, a run clears them while Clear on run
+-- is on, and Clear empties the console
 return {
   preset = "preset.lua",
   run = function(test)
@@ -49,6 +49,16 @@ return {
     test.match(test.panel(logId).state, { hidden = { error = true } }, "the toggle hides the errors")
     test.click(log.x + 189, log.y + 21)
     test.match(test.panel(logId).state, { hidden = {} }, "and shows them again")
+
+    -- the search, beside the toggles, shows only the entries that hold its text
+    test.click(log.x + 340, log.y + 21)
+    test.text("NIL")
+    test.wait()
+    test.match(test.panel(logId).state, { shown = 1 }, "the search shows the error alone")
+    test.key("Ctrl+A")
+    test.key("Backspace")
+    test.wait()
+    test.match(test.panel(logId).state, { shown = 2 }, "and every entry when it is empty")
 
     -- another run clears the console first; with Clear on run off, it adds to it
     test.click(button.x + 30, button.y + 24)
