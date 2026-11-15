@@ -42,8 +42,12 @@ return {
     test.match(state().nodes, { "lib", "readme" }, "Shift chooses the nodes from the first chosen one")
     test.click(row(2))
     test.match(state().nodes, { "main" }, "a press alone chooses one again")
+    x, y = row(4)
+    test.click(x, y, 3)
+    test.match(state().nodes, { "readme" }, "a right click chooses a node that is not chosen")
+    test.match(state().menuNode, "readme", "and gives it to onMenu")
 
-    -- a right click beside the elements opens the panel's menu there: its entries are a row each, with a line between the
+    -- a right click beside the elements reaches the root's onMenu, which opens the panel's menu there: its entries are a row each, with a line between the
     -- first and the second, and Reset is enabled only when there are clicks
     local clicks = state().clicks
     local corner = test.rect(1)

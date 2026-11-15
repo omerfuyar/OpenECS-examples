@@ -118,7 +118,16 @@ ecs.panel.registerType({
       items[i] = ui.text(text, { id = "item:" .. i })
     end
 
-    ui.show(state.panel, surface, ui.column({ style = STYLES.view }, {
+    -- a right click that no other element takes reaches the root's onMenu, which opens a menu there, in layout units as ui.menu takes them
+    local function menu(x, y)
+      ui.menu(state.panel, x, y, {
+        { label = "Add a click", onClick = function() state.clicks = state.clicks + 1 end },
+        { line = true },
+        { label = "Reset the clicks", enabled = state.clicks > 0, onClick = function() state.clicks = 0 end },
+      })
+    end
+
+    ui.show(state.panel, surface, ui.column({ style = STYLES.view, onMenu = menu }, {
       ui.text(("Clicked %d times"):format(state.clicks), { style = STYLES.title }),
       -- a tooltip shows when the pointer rests on its element
       ui.button("Click me", {
@@ -190,7 +199,11 @@ ecs.panel.registerType({
             end,
             onToggle = function(id, open)
               state.open[id] = open or nil
-            end
+            end,
+            -- a right click on a node chooses it, unless it is chosen, and gives its id, as a menu about it would take it
+            onMenu = function(id)
+              state.menuNode = id
+            end,
           }),
       }) or ui.group({ title = "Options", gap = 8 }, {
         ui.toggle(state.sound, { id = "sound", label = "Sound", onChange = set("sound") }),
@@ -229,8 +242,6 @@ ecs.panel.registerType({
         { id = "note", style = STYLES.note, wrap = true }),
     }))
 
-    state.scale = surface.scale
-
     -- the rectangles of the elements, in the panel's surface pixels; ui.rect gives nil for an element that is not shown, such as one on another tab
     for _, id in ipairs(IDS) do
       local rect = ui.rect(state.panel, id)
@@ -246,19 +257,7 @@ ecs.panel.registerType({
   -- the panel's events go to ui, which calls the callbacks of the elements they reach; Up and Down choose a list's or the tree's next item and
   -- the one before, and Right and Left open and close the tree's chosen node
   event = function(state, event)
-    if ui.event(state.panel, event) then
-      return
-    end
-
-    -- a right click that no element takes opens a menu where it was; ui.menu takes the place in layout units, as the
-    -- elements' rectangles are, so the event's surface pixels are divided by the scale that the last draw had
-    if event.type == "pointerUp" and event.button == 3 then
-      ui.menu(state.panel, event.x / state.scale, event.y / state.scale, {
-        { label = "Add a click", onClick = function() state.clicks = state.clicks + 1 end },
-        { line = true },
-        { label = "Reset the clicks", enabled = state.clicks > 0, onClick = function() state.clicks = 0 end },
-      })
-    end
+    ui.event(state.panel, event)
   end,
 
   destroy = function(state)
@@ -281,6 +280,7 @@ ecs.panel.registerType({
       name = state.name,
       node = state.node,
       nodes = state.nodes,
+      menuNode = state.menuNode,
       open = state.open,
       sort = state.sort,
       ascending = state.ascending,
