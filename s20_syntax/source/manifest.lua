@@ -1,6 +1,6 @@
 ---@type ecs.Manifest
 return {
-  name = "viewer",
+  name = "source",
   version = "0.1.0",
   api = 2,
   description = "Shows source files with their syntax highlighted by the syntax plugin",
