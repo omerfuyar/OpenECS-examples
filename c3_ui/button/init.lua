@@ -16,6 +16,7 @@ local FRUITS = { "Apple", "Banana", "Cherry" }
 local SIZES = { "S", "M", "L" }
 local TABS = { "Options", "About", "Table" }
 local ITEMS = { "First item", "Second item", "Third item" }
+local TAGS = { "Lua", "C", "SDL", "Clay", "libffi", "stb" }
 
 -- the Table tab's columns and rows; the panel sorts the rows, and the table shows them in its order
 local COLUMNS = { { id = "name", title = "Fruit" }, { id = "price", title = "Price" }, { id = "stock", title = "In stock" } }
@@ -37,7 +38,7 @@ local NODES = {
 -- the elements the test clicks, by id; their rectangles are saved, so the test finds them
 local IDS = { "button", "tab", "sound", "volume", "size", "fruit", "count", "item:2", "name", "note", "tree:src",
   "tree:lib", "table:header", "table:1", "table:2", "table:title:name", "table:title:price", "about",
-  "tint", "colors:heading" }
+  "tint", "colors:heading", "tag:1", "tag:2", "tag:6" }
 
 -- the rows of the Table tab, in the order the panel sorts them
 local function sorted(controls)
@@ -115,13 +116,26 @@ ecs.panel.registerType({
       end
     end
 
-    local items = {}
+    local items, tags = {}, {}
+
+    for i, text in ipairs(TAGS) do
+      tags[i] = ui.button(text, { id = "tag:" .. i })
+    end
 
     for i, text in ipairs(ITEMS) do
       items[i] = ui.text(text, { id = "item:" .. i })
     end
 
-    ui.show(state.panel, surface, ui.column({ style = STYLES.view }, {
+    -- a right click that no other element takes reaches the root's onMenu, which opens a menu there, in layout units as ui.menu takes them
+    local function menu(x, y)
+      ui.menu(state.panel, x, y, {
+        { label = "Add a click", onClick = function() state.clicks = state.clicks + 1 end },
+        { line = true },
+        { label = "Reset the clicks", enabled = state.clicks > 0, onClick = function() state.clicks = 0 end },
+      })
+    end
+
+    ui.show(state.panel, surface, ui.column({ style = STYLES.view, onMenu = menu }, {
       ui.text(("Clicked %d times"):format(state.clicks), { style = STYLES.title }),
       -- a tooltip shows when the pointer rests on its element
       ui.button("Click me", {
@@ -193,8 +207,15 @@ ecs.panel.registerType({
             end,
             onToggle = function(id, open)
               state.open[id] = open or nil
-            end
+            end,
+            -- a right click on a node chooses it, unless it is chosen, and gives its id, as a menu about it would take it
+            onMenu = function(id)
+              state.menuNode = id
+            end,
           }),
+        -- a row with wrap = true puts the children that do not fit the rest of a line on the next line, as a toolbar does in a narrow panel;
+        -- this one is in a narrow column, so its buttons take two lines
+        ui.column({ width = 160 }, { ui.row({ wrap = true, gap = 4 }, tags) }),
       }) or ui.group({ title = "Options", gap = 8 }, {
         ui.toggle(state.sound, { id = "sound", label = "Sound", onChange = set("sound") }),
         ui.toggle(state.dark, { id = "dark", label = "Dark", look = "switch", onChange = set("dark") }),
@@ -275,6 +296,7 @@ ecs.panel.registerType({
       name = state.name,
       node = state.node,
       nodes = state.nodes,
+      menuNode = state.menuNode,
       open = state.open,
       sort = state.sort,
       ascending = state.ascending,

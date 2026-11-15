@@ -64,6 +64,15 @@ return function(test, number, title)
   test.key("Escape")
   test.match(state().count, 9, "the number, after a text that is not one")
 
+  -- a drag sideways on the number changes it by a step each unit, kept from 0 to 10, and a tenth of that with Shift
+  local x, y = at("count")
+  test.drag(x, y, x - 40, y)
+  test.match(state().count, 0, "a drag to the left, down to the least")
+  test.drag(x, y, x + 100, y)
+  test.match(state().count, 10, "a drag to the right, up to the most")
+  test.drag(x, y, x - 20, y, "Shift")
+  test.match(state().count, 8, "a drag with Shift, by a tenth of the steps")
+
   -- the colour element opens a picker in a popup; a press in its square gives the colour there, more saturated and brighter to the top right,
   -- and Return closes it
   test.click(at("tint"))
@@ -141,6 +150,9 @@ return function(test, number, title)
   -- the About tab's text ends with a link, which a click gives to the panel
   test.click(at("about", 0.95))
   test.match(state().link, "https://github.com/omerfuyar/OpenECS-std/blob/dev/DESIGN.md", "the clicked link")
+  -- the tags' row wraps in its narrow column: the first two share a line, and the last is on a line below
+  local tags = state().rects
+  test.match({ tags["tag:2"].y == tags["tag:1"].y, tags["tag:6"].y > tags["tag:1"].y }, { true, true }, "the wrapped row")
   local _, srcY = at("tree:src")
   test.click(panel.x + state().rects["tree:src"].x + 14, srcY)
   test.match(state().open, { src = true }, "the opened node")
