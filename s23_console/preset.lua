@@ -1,4 +1,4 @@
--- Run it with: OpenECS --fresh --preset examples/s24_console/preset.lua
+-- Run it with: OpenECS --fresh --preset examples/s23_console/preset.lua
 ---@type ecs.Preset
 return {
   format = 3,

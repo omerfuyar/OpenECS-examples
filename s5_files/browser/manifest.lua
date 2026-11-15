@@ -1,9 +1,0 @@
----@type ecs.Manifest
-return {
-  name = "browser",
-  version = "0.1.0",
-  api = 2,
-  description = "Browses folders, follows their changes and shows the start of a file, with the fs and ui plugins and Lua's io library",
-  depends = { fs = "0.1", ui = "0.1" },
-  type = "lua",
-}

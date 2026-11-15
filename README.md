@@ -3,7 +3,7 @@
 Examples for writing [OpenECS](https://github.com/omerfuyar/OpenECS) plugins, one part at a time. Read them in the order of their names, the `c` ones first: each explains the parts that it is the first to use.
 
 - `c1_hello` to `c12_sketch` teach OpenECS: panels, native plugins, settings, services, keys, events, saved state, drag and drop, typed text, popups, and a whole tool in C and in Lua. `c13_workers` shows workers: Lua scripts that run on threads of their own, here four that count primes at once while the panel stays free. `c14_structs` shows structs: plain data, here a vector of a C plugin, that Lua uses as a table with methods and operators, such as `a - b` and `v:length()`.
-- From `s1_terminal`, each teaches standard plugins of [OpenECS-std](https://github.com/omerfuyar/OpenECS-std): `s1_terminal` textgrid, `s2_media` the loaders image and audio with draw and mixer, `s3_network` net over TCP and UDP, `s4_model` gltf with draw's lines, `s5_files` fs with Lua's `io`, and `s6_web` web's HTTP and HTTPS requests and WebSocket connections, from a page and an echo server that it serves itself with net. `c3_ui` already shows ui's controls, in Lua and, on its second workspace, in C with ui's macros.
+- From `s1_terminal`, each teaches standard plugins of [OpenECS-std](https://github.com/omerfuyar/OpenECS-std): `s1_terminal` textgrid, `s2_media` the loaders image and audio with draw and mixer, `s3_network` net over TCP and UDP, `s4_model` gltf with draw's lines, `s5_files` the files panel, which follows its folder with fs, with Lua's `io`, and `s6_web` web's HTTP and HTTPS requests and WebSocket connections, from a page and an echo server that it serves itself with net. `c3_ui` already shows ui's controls, in Lua and, on its second workspace, in C with ui's macros.
 - `s7_first_party` shows a tool with the first-party plugins that every tool can have: the settings window, the panel list, the plugin list and the launcher, and tests the themes.
 - `s8_gpu` shows GPU panels, which draw into a texture on the GPU that shows in any window the panel moves to: a plugin in Lua and one in C draw the same picture with the gpu standard plugin.
 - `s9_gpu_model` draws a glTF model on the GPU with shaders of its own: gltf reads its vertices, normals and triangles, which go to the GPU once as buffers, and gpu draws them each frame with a pipeline, cglm's matrices and a depth texture. Its shaders are GLSL, which gpu compiles. Drag to turn it.
@@ -19,9 +19,8 @@ Examples for writing [OpenECS](https://github.com/omerfuyar/OpenECS) plugins, on
 - `s19_markdown` shows a Markdown file as a help panel with ui's elements, and lists its headings from its tree.
 - `s20_syntax` shows a C, a Lua and a JSON file with their syntax highlighted; the selector chooses one.
 - `s21_video` plays a two-second video with its sound: Space plays and pauses, and Left and Right go back and forward.
-- `s22_files_panel` is a tool of notes built on the files panel: a second click opens a note, and New, Rename and Delete change the folder.
-- `s23_viewer` shows an image, a sound and a text in the viewer, one after another, from the tool's menu.
-- `s24_console` adds a program's output to the console; a click on a line that names a file opens it with the command of `console.editor`.
+- `s22_viewer` shows an image, a sound and a text in the viewer, one after another, from the tool's menu.
+- `s23_console` adds a program's output to the console; a click on a line that names a file opens it with the command of `console.editor`.
 
 Each example holds a preset, `preset.lua`, its plugins and its tests. The examples are the tests of OpenECS and its standard plugins too: each test checks what its example shows. OpenECS ships the examples in `examples/`, next to the program. Run one with `--fresh`, so it starts from its preset even if you keep sessions (`ecs.keepSession`):
 
