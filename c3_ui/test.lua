@@ -42,6 +42,23 @@ return {
     test.match(state().nodes, { "lib", "readme" }, "Shift chooses the nodes from the first chosen one")
     test.click(row(2))
     test.match(state().nodes, { "main" }, "a press alone chooses one again")
+    x, y = row(4)
+    test.click(x, y, 3)
+    test.match(state().nodes, { "readme" }, "a right click chooses a node that is not chosen")
+    test.match(state().menuNode, "readme", "and gives it to onMenu")
+
+    -- a right click beside the elements reaches the root's onMenu, which opens the panel's menu there: its entries are a row each, with a line between the
+    -- first and the second, and Reset is enabled only when there are clicks
+    local clicks = state().clicks
+    local corner = test.rect(1)
+    test.click(corner.x + corner.width - 20, corner.y + corner.height - 20, 3)
+    local menu = test.popup(1)
+    test.click(menu.x + 10, menu.y + 10)
+    test.match(state().clicks, clicks + 1, "the menu's first entry")
+    test.click(corner.x + corner.width - 20, corner.y + corner.height - 20, 3)
+    test.key("Down")
+    test.key("Return")
+    test.match(state().clicks, 0, "Down goes past the line to the last entry")
 
     -- ui's inspector outlines every element, and names the one under the pointer: the innermost element there, with its id
     local panel = test.rect(1)
