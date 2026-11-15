@@ -16,6 +16,7 @@ local FRUITS = { "Apple", "Banana", "Cherry" }
 local SIZES = { "S", "M", "L" }
 local TABS = { "Options", "About", "Table" }
 local ITEMS = { "First item", "Second item", "Third item" }
+local TAGS = { "Lua", "C", "SDL", "Clay", "libffi", "stb" }
 
 -- the Table tab's columns and rows; the panel sorts the rows, and the table shows them in its order
 local COLUMNS = { { id = "name", title = "Fruit" }, { id = "price", title = "Price" }, { id = "stock", title = "In stock" } }
@@ -37,7 +38,7 @@ local NODES = {
 -- the elements the test clicks, by id; their rectangles are saved, so the test finds them
 local IDS = { "button", "tab", "sound", "volume", "size", "fruit", "count", "item:2", "name", "note", "tree:src",
   "tree:lib", "table:header", "table:1", "table:2", "table:title:name", "table:title:price", "about",
-  "tint", "colors:heading" }
+  "tint", "colors:heading", "tag:1", "tag:2", "tag:6" }
 
 -- the rows of the Table tab, in the order the panel sorts them
 local function sorted(controls)
@@ -115,7 +116,11 @@ ecs.panel.registerType({
       end
     end
 
-    local items = {}
+    local items, tags = {}, {}
+
+    for i, text in ipairs(TAGS) do
+      tags[i] = ui.button(text, { id = "tag:" .. i })
+    end
 
     for i, text in ipairs(ITEMS) do
       items[i] = ui.text(text, { id = "item:" .. i })
@@ -208,6 +213,9 @@ ecs.panel.registerType({
               state.menuNode = id
             end,
           }),
+        -- a row with wrap = true puts the children that do not fit the rest of a line on the next line, as a toolbar does in a narrow panel;
+        -- this one is in a narrow column, so its buttons take two lines
+        ui.column({ width = 160 }, { ui.row({ wrap = true, gap = 4 }, tags) }),
       }) or ui.group({ title = "Options", gap = 8 }, {
         ui.toggle(state.sound, { id = "sound", label = "Sound", onChange = set("sound") }),
         ui.toggle(state.dark, { id = "dark", label = "Dark", look = "switch", onChange = set("dark") }),

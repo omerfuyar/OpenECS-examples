@@ -150,6 +150,9 @@ return function(test, number, title)
   -- the About tab's text ends with a link, which a click gives to the panel
   test.click(at("about", 0.95))
   test.match(state().link, "https://github.com/omerfuyar/OpenECS-std/blob/dev/DESIGN.md", "the clicked link")
+  -- the tags' row wraps in its narrow column: the first two share a line, and the last is on a line below
+  local tags = state().rects
+  test.match({ tags["tag:2"].y == tags["tag:1"].y, tags["tag:6"].y > tags["tag:1"].y }, { true, true }, "the wrapped row")
   local _, srcY = at("tree:src")
   test.click(panel.x + state().rects["tree:src"].x + 14, srcY)
   test.match(state().open, { src = true }, "the opened node")
