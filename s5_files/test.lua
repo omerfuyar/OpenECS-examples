@@ -17,7 +17,7 @@ return {
     end
 
     local folder = test.session().workspaces[1].windows[1].panels[1].state.folder
-    assert(folder:match("files/$"), "the folder: " .. folder)
+    assert(folder:match("browser/$"), "the folder: " .. folder)
 
     -- a file left by a run that stopped early goes first
     local path = folder .. "watched.ignore"

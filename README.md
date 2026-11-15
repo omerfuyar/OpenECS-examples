@@ -19,6 +19,9 @@ Examples for writing [OpenECS](https://github.com/omerfuyar/OpenECS) plugins, on
 - `s19_markdown` shows a Markdown file as a help panel with ui's elements, and lists its headings from its tree.
 - `s20_syntax` shows a C, a Lua and a JSON file with their syntax highlighted; the selector chooses one.
 - `s21_video` plays a two-second video with its sound: Space plays and pauses, and Left and Right go back and forward.
+- `s22_files_panel` is a tool of notes built on the files panel: a second click opens a note, and New, Rename and Delete change the folder.
+- `s23_viewer` shows an image, a sound and a text in the viewer, one after another, from the tool's menu.
+- `s24_console` adds a program's output to the console; a click on a line that names a file opens it with the command of `console.editor`.
 
 Each example holds a preset, `preset.lua`, its plugins and its tests. The examples are the tests of OpenECS and its standard plugins too: each test checks what its example shows. OpenECS ships the examples in `examples/`, next to the program. Run one with `--fresh`, so it starts from its preset even if you keep sessions (`ecs.keepSession`):
 

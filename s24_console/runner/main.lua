@@ -1,0 +1,3 @@
+local start = nil
+
+start()
