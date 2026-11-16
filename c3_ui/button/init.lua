@@ -232,8 +232,11 @@ ecs.panel.registerType({
         ui.toggle(state.dark, { id = "dark", label = "Dark", look = "switch", onChange = set("dark") }),
         ui.row({ style = LABELED },
           { ui.text("Volume"), ui.slider(state.volume,
-            -- onChange gets each value of a drag, and onSubmit the one that its release ends on, which a tool keeps as one change
-            { id = "volume", step = 0.1, grow = 1, onChange = set("volume"), onSubmit = set("kept") }) }),
+            -- onChange would get each value of a drag; onSubmit gets the one that its release ends on, which a tool keeps as one change,
+            -- and the slider shows the dragged value until then
+            { id = "volume", step = 0.1, grow = 1, onSubmit = function(value)
+              state.volume, state.kept = value, value
+            end }) }),
         ui.row({ style = LABELED },
           { ui.text("Size"), ui.selector(state.size, SIZES, { id = "size", onSelect = set("size") }) }),
         ui.row({ style = LABELED },
