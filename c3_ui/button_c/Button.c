@@ -55,6 +55,7 @@ typedef struct Controls
     bool sound;
     bool dark;
     f64 volume;
+    f64 kept;  // the volume that the slider's drag ended on
     i32 size;  // the chosen size's number in SIZES, from 1
     i32 fruit; // the chosen fruit's number in FRUITS, from 1
     f64 count;
@@ -84,7 +85,7 @@ static SHUResult ControlsCreate(ECSPanel panel, const ECSValue *savedState, u32 
         return SHUResult_ErrAllocation;
     }
 
-    *state = (Controls){.panel = panel, .scale = 1.0f, .dark = true, .volume = 0.5, .size = 2, .fruit = 1, .tab = 1, .count = 3, .selected = 1, .node = "readme", .sort = "name", .ascending = true, .tint = "#3366CC", .colors = true};
+    *state = (Controls){.panel = panel, .scale = 1.0f, .dark = true, .volume = 0.5, .kept = 0.5, .size = 2, .fruit = 1, .tab = 1, .count = 3, .selected = 1, .node = "readme", .sort = "name", .ascending = true, .tint = "#3366CC", .colors = true};
     *retState = state;
     return SHUResult_Ok;
 }
@@ -198,6 +199,11 @@ static void DescribeOptions(Controls *controls)
         {
             UI_TEXT("Volume");
             UI_SLIDER(&controls->volume, .id = "volume", .step = 0.1, .grow = 1);
+            // UI_SUBMITTED tells when a drag of the slider ended, as a tool keeps one change for it
+            if (UI_SUBMITTED("volume"))
+            {
+                controls->kept = controls->volume;
+            }
         }
 
         UI_ROW(.style = &LABELED)
@@ -373,6 +379,7 @@ static SHUResult ControlsSaveState(void *data, ECSValue *retSavedState)
     SHU_ReturnResult(SetNumber(retSavedState, "clicks", state->clicks));
     SHU_ReturnResult(SetBool(retSavedState, "sound", state->sound));
     SHU_ReturnResult(SetNumber(retSavedState, "volume", state->volume));
+    SHU_ReturnResult(SetNumber(retSavedState, "kept", state->kept));
     SHU_ReturnResult(SetString(retSavedState, "size", SIZES[state->size - 1]));
     SHU_ReturnResult(SetString(retSavedState, "fruit", FRUITS[state->fruit - 1]));
     SHU_ReturnResult(SetNumber(retSavedState, "count", state->count));

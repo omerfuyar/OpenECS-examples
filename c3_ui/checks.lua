@@ -41,6 +41,7 @@ return function(test, number, title)
   local right = at("volume", 1)
   test.drag(x, y, right + 20, y)
   test.match(state().volume, 1.0, "the slider")
+  test.match(state().kept, 1.0, "the slider's release")
 
   test.click(at("size", 5 / 6))
   test.match(state().size, "L", "the selector")

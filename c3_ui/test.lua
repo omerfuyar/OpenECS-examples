@@ -47,6 +47,17 @@ return {
     test.match(state().nodes, { "readme" }, "a right click chooses a node that is not chosen")
     test.match(state().menuNode, "readme", "and gives it to onMenu")
 
+    -- a node dragged onto the middle of another's row drops into it, and onto the upper quarter of a row before it
+    local toX, toY
+    x, y = row(4)
+    toX, toY = row(1)
+    test.drag(x, y, toX, toY)
+    test.match(state().dropped, { node = "readme", where = "into", on = "src" }, "a drop into a node")
+    x, y = row(2)
+    toX, toY = row(3)
+    test.drag(x, y, toX, toY - height * 0.4)
+    test.match(state().dropped, { node = "main", where = "before", on = "lib" }, "a drop before a node")
+
     -- a right click beside the elements reaches the root's onMenu, which opens the panel's menu there: its entries are a row each, with a line between the
     -- first and the second, and Reset is enabled only when there are clicks
     local clicks = state().clicks

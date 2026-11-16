@@ -65,6 +65,7 @@ local START = {
   sound = false,
   dark = true,
   volume = 0.5,
+  kept = 0.5,
   size = 2,
   fruit = 1,
   count = 3,
@@ -103,6 +104,8 @@ ecs.panel.registerType({
   create = function(panel)
     local controls = copy(START)
     controls.panel = panel
+    -- the panel takes the tree's nodes that are dragged onto it, as data of the core's drag and drop
+    panel:acceptDrops({ "example.node" })
     return controls
   end,
 
@@ -212,6 +215,14 @@ ecs.panel.registerType({
             onMenu = function(id)
               state.menuNode = id
             end,
+            -- a press on a node and a move of the pointer drag what onDrag gives, as data of the core's drag and drop
+            onDrag = function(id)
+              return "example.node", id
+            end,
+            -- a node dropped on the tree gives the node it landed on, and where: before it, into it, or after it, by where on its row
+            onDrop = function(id, where, _, value)
+              state.dropped = { node = value, where = where, on = id }
+            end,
           }),
         -- a row with wrap = true puts the children that do not fit the rest of a line on the next line, as a toolbar does in a narrow panel;
         -- this one is in a narrow column, so its buttons take two lines
@@ -221,7 +232,11 @@ ecs.panel.registerType({
         ui.toggle(state.dark, { id = "dark", label = "Dark", look = "switch", onChange = set("dark") }),
         ui.row({ style = LABELED },
           { ui.text("Volume"), ui.slider(state.volume,
-            { id = "volume", step = 0.1, grow = 1, onChange = set("volume") }) }),
+            -- onChange would get each value of a drag; onSubmit gets the one that its release ends on, which a tool keeps as one change,
+            -- and the slider shows the dragged value until then
+            { id = "volume", step = 0.1, grow = 1, onSubmit = function(value)
+              state.volume, state.kept = value, value
+            end }) }),
         ui.row({ style = LABELED },
           { ui.text("Size"), ui.selector(state.size, SIZES, { id = "size", onSelect = set("size") }) }),
         ui.row({ style = LABELED },
@@ -286,6 +301,8 @@ ecs.panel.registerType({
       clicks = state.clicks,
       sound = state.sound,
       volume = state.volume,
+      kept = state.kept,
+      dropped = state.dropped,
       size = SIZES[state.size],
       fruit = FRUITS[state.fruit],
       count = state.count,
