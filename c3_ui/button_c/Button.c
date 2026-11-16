@@ -55,7 +55,7 @@ typedef struct Controls
     bool sound;
     bool dark;
     f64 volume;
-    f64 kept; // the volume that the slider's drag ended on
+    f64 kept;  // the volume that the slider's drag ended on
     i32 size;  // the chosen size's number in SIZES, from 1
     i32 fruit; // the chosen fruit's number in FRUITS, from 1
     f64 count;
