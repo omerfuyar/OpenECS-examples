@@ -155,6 +155,12 @@ return function(test, number, title)
   test.key("Space")
   test.match(state().clicks, 3, "the keys")
 
+  -- a path is typed as a field is, and Return gives it; its button would open the file dialog
+  test.click(at("file", 0.1))
+  test.text("plugin.lua")
+  test.key("Return")
+  test.match(state().file, "plugin.lua", "the path")
+
   -- the About tab holds a tree; a click on a node's arrow opens it, and a click beside the arrow chooses the node
   test.click(at("tab", 0.02))
   test.key("Right")

@@ -40,7 +40,7 @@ static const FruitRow FRUIT_ROWS[] = {{"Cherry", 4.5, 12, "4.5", "12"}, {"Apple"
 /// @brief The elements the test clicks, by id; their rectangles are saved, so the test finds them.
 static const char *const IDS[] = {"button", "tab", "sound", "volume", "size", "fruit", "count", "item:2", "name", "note", "tree:src",
                                   "tree:lib", "table:header", "table:1", "table:2", "table:title:name", "table:title:price", "about",
-                                  "tint", "colors:heading", "tag:1", "tag:2", "tag:6"};
+                                  "tint", "colors:heading", "tag:1", "tag:2", "tag:6", "file"};
 
 static const char *const NOTE = "Tab gives the keys to the next control and Shift+Tab to the one before. Return or Space presses the control that has them, "
                                 "Left and Right change a selector or a slider, and Escape takes the keys away. A field takes typing as soon as it has the keys. "
@@ -62,6 +62,7 @@ typedef struct Controls
     i32 tab;      // the chosen tab's number in TABS, from 1
     i32 selected; // the list's chosen item, from 1
     char name[64];
+    char file[256];
     const char *node; // the tree's chosen node's id
     bool srcOpen;     // the tree's open nodes
     bool libOpen;
@@ -289,6 +290,13 @@ static void ControlsDraw(void *data, ECSSurface *surface, f64 seconds)
                 }
             }
 
+            // a path is a field with a button that opens the system's file dialog; UI_PATH writes the typed or chosen path into its buffer
+            UI_ROW(.style = &LABELED)
+            {
+                UI_TEXT("File");
+                UI_PATH(state->file, sizeof(state->file), .id = "file", .grow = 1, .pattern = "lua");
+            }
+
             // a field keeps what is typed while it has the keys; Left, Right, Home and End move its cursor, Shift with them selects, and Ctrl+C, Ctrl+X and Ctrl+V copy, cut and paste
             UI_ROW(.style = &LABELED)
             {
@@ -387,6 +395,7 @@ static SHUResult ControlsSaveState(void *data, ECSValue *retSavedState)
     SHU_ReturnResult(SetString(retSavedState, "tip", ECSValue_GetString(UI_PLUGIN.functions.tooltip(state->panel), nullptr)));
     SHU_ReturnResult(SetNumber(retSavedState, "selected", state->selected));
     SHU_ReturnResult(SetString(retSavedState, "name", state->name));
+    SHU_ReturnResult(SetString(retSavedState, "file", state->file));
     SHU_ReturnResult(SetString(retSavedState, "link", state->link[0] != '\0' ? state->link : nullptr));
     SHU_ReturnResult(SetString(retSavedState, "tint", state->tint));
     SHU_ReturnResult(SetBool(retSavedState, "colors", state->colors));
