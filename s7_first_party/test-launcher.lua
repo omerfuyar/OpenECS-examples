@@ -15,8 +15,18 @@ return {
     test.match(chosen(test), { type = "session", name = "drawing" }, "after Down")
 
     -- a click chooses the entry under it and opens it; a test cannot open one, so the launcher stays
-    local list = test.rect(1)
-    test.click(list.x + 100, list.y + 90)
+    local panel = test.rect(1)
+    test.click(panel.x + 100, panel.y + 116)
     test.match(chosen(test), { type = "preset", name = "squares" }, "after a click on the first entry")
+
+    -- Ctrl+F gives the keys to the search above the list, which shows only the entries that hold each word typed;
+    -- Down there chooses among them, and Escape clears the search
+    test.key("Ctrl+F")
+    test.text("draw")
+    test.key("Down")
+    test.match(chosen(test), { type = "session", name = "drawing" }, "after a search for a session")
+    test.key("Escape")
+    test.key("Up")
+    test.match(chosen(test), { type = "preset", name = "squares" }, "after the search is cleared")
   end,
 }
