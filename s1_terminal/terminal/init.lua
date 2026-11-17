@@ -71,7 +71,8 @@ ecs.panel.registerType({
 
   draw = function(state, surface)
     -- the grid takes as many cells as fit the panel; resizing wraps its lines again at the new width
-    local columns, rows = textgrid.fit(surface.width / surface.scale, surface.height / surface.scale, state.size)
+    -- fit measures at the surface's scale, as draw does, so the cells it counts are the ones drawn
+    local columns, rows = textgrid.fit(surface.width / surface.scale, surface.height / surface.scale, state.size, surface.scale)
     state.grid:resize(math.max(columns, 1), math.max(rows, 1))
 
     -- the command line is written over the row of the cursor each time, so it never scrolls the grid
