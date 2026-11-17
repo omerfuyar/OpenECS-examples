@@ -26,6 +26,11 @@ local function run()
   console.add("main.lua:3: attempt to call a nil value", "error", links)
 end
 
+-- empties the clipboard, so the test sees what the console's menu copies
+ecs.service.register({ forget = { sig = "void()", doc = "Empty the clipboard", fn = function()
+  ecs.clipboard.setText("")
+end } })
+
 ecs.panel.registerType({
   name = "panel",
   title = "Runner",
@@ -38,10 +43,11 @@ ecs.panel.registerType({
   event = function(state, event)
     ui.event(state.panel, event)
   end,
-  -- the console's entries and the folder, for the test
+  -- the console's entries, the folder and the clipboard, for the test
   saveState = function()
     local entries = console.entries()
-    return { entries = #entries, count = entries[#entries] and entries[#entries].count or 0, shown = shown, folder = ecs.plugin.folder }
+    return { entries = #entries, count = entries[#entries] and entries[#entries].count or 0, shown = shown, folder = ecs.plugin.folder,
+      clipboard = ecs.clipboard.getText() }
   end,
   destroy = function(state)
     ui.forget(state.panel)
