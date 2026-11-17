@@ -1,6 +1,7 @@
 -- the console keeps the entries that a plugin adds, and stacks a repeated one; a click on the place that an entry names runs
--- the command of console.editor; the levels' toggles and the search filter the entries, a run clears them while Clear on run
--- is on, and Clear empties the console
+-- the command of console.editor; a click chooses an entry, a double click goes to what it is about, and Ctrl+C and its menu copy
+-- it; the levels' toggles and the search filter the entries, a run clears them while Clear on run is on, and Clear empties the
+-- console
 return {
   preset = "preset.lua",
   run = function(test)
@@ -43,6 +44,45 @@ return {
 
     test.click(log.x + 150, log.y + 121)
     test.match(state(), { shown = 1 }, "a click on the error's own link calls its function")
+
+    -- a click on an entry chooses it, and Ctrl+C copies its text, with how many times it stacked
+    test.click(log.x + 400, log.y + 141)
+    test.match(test.panel(logId).state, { chosen = "main.lua:3: attempt to call a nil value" }, "a click chooses the entry")
+    test.key("Ctrl+C")
+    test.match(state(), { clipboard = "main.lua:3: attempt to call a nil value (×2)" }, "Ctrl+C copies the chosen entry")
+    test.wait(0.5)
+
+    -- a double click goes to what an entry is about: the file and line it names, or else its first link, as the info's
+    -- entry names neither, and the error's runs console.editor, as a click on its place does
+    test.click(log.x + 400, log.y + 78)
+    test.click(log.x + 400, log.y + 78)
+    test.match(test.panel(logId).state, { chosen = "Running main.lua\nstarted" }, "a double click on an entry without a place chooses it")
+    test.wait(0.5)
+    if package.config:sub(1, 1) == "/" then
+      test.click(log.x + 400, log.y + 141)
+      test.click(log.x + 400, log.y + 141)
+      local found = false
+      for _ = 1, 100 do
+        local file = io.open(mark, "rb")
+        if file then
+          file:close()
+          found = true
+          break
+        end
+        test.wait(0.05)
+      end
+      assert(found, "a double click on the error ran the command of console.editor")
+      os.remove(mark)
+      test.wait(0.5)
+    end
+
+    -- a right click opens the entry's menu, whose Copy copies it
+    test.call("runner.forget")
+    test.click(log.x + 400, log.y + 78, 3)
+    local menu = test.popup(1)
+    assert(menu, "a right click opens a menu")
+    test.click(menu.x + 20, menu.y + menu.height * 3 / 4)
+    test.match(state(), { clipboard = "Running main.lua\nstarted" }, "the menu's Copy copies the entry")
 
     -- the Errors toggle hides the errors' entries, which the panel's state keeps, and shows them again
     test.click(log.x + 189, log.y + 21)
