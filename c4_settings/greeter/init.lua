@@ -19,7 +19,7 @@ local function changed()
   end
 end
 
--- a setting has a type, and the core takes only values of that type: bool, integer, number, string, choice, key, color, list or table
+-- a setting has a type, and the core takes only values of that type: bool, integer, number, string, choice, key, color, path, list or table
 -- its value in effect comes from the highest of three layers: the default declared here, then the preset, then the user's settings file
 -- declare settings while the plugin loads; a setting's name starts with the plugin's name
 ecs.setting.declare({ name = "name", type = "string", description = "Who to greet", default = "world", changed = changed })
@@ -69,6 +69,9 @@ ecs.panel.registerType({
       -- set writes the value into the user's settings file, the highest layer; changed runs afterwards, not during this call
       local size = ecs.setting.get("greeter.size") + (event.scrollY > 0 and 2 or -2)
       ecs.setting.set("greeter.size", math.max(8, math.min(96, size)))
+    elseif event.type == "pointerDown" and event.button == 3 then
+      -- set with nil takes the user's value away, so the value below it applies again: the preset's, a theme's or the default
+      ecs.setting.set("greeter.size", nil)
     elseif event.type == "pointerDown" then
       -- explain tells which layer a value comes from: "default", "preset" or "user"
       local explanation = assert(ecs.setting.explain("greeter.name"))

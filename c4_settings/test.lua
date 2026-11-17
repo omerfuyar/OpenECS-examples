@@ -1,4 +1,4 @@
--- the preset's value is in effect, and the wheel changes the size
+-- the preset's value is in effect, the wheel changes the size, and a right click resets it
 return {
   preset = "preset.lua",
   run = function(test)
@@ -8,5 +8,9 @@ return {
     test.wheel(panel.x + 50, panel.y + 50, 1)
     test.match(test.panel(1), { title = "Hello, OpenECS (34)" }, "after the wheel")
     test.match(test.session().workspaces[1].windows[1].panels[1].state, { heard = { ["greeter.size"] = 1 } }, "ecs.settingChanged")
+
+    -- a right click takes the user's size away, so the default applies again
+    test.click(panel.x + 50, panel.y + 50, 3)
+    test.match(test.panel(1), { title = "Hello, OpenECS (32)" }, "after the reset")
   end,
 }

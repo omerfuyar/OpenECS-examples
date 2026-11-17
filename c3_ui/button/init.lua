@@ -38,7 +38,7 @@ local NODES = {
 -- the elements the test clicks, by id; their rectangles are saved, so the test finds them
 local IDS = { "button", "tab", "sound", "volume", "size", "fruit", "count", "item:2", "name", "note", "tree:src",
   "tree:lib", "table:header", "table:1", "table:2", "table:title:name", "table:title:price", "about",
-  "tint", "colors:heading", "tag:1", "tag:2", "tag:6" }
+  "tint", "colors:heading", "tag:1", "tag:2", "tag:6", "file" }
 
 -- the rows of the Table tab, in the order the panel sorts them
 local function sorted(controls)
@@ -72,6 +72,7 @@ local START = {
   tab = 1,
   selected = 1,
   name = "",
+  file = "",
   node = "readme",
   nodes = { "readme" },
   open = {},
@@ -263,6 +264,8 @@ ecs.panel.registerType({
             "selected")
         },
         items),
+      -- a path is a field with a button that opens the system's file dialog; the chosen file goes to onSubmit, as a typed path does at Return
+      ui.row({ style = LABELED }, { ui.text("File"), ui.path(state.file, { id = "file", grow = 1, pattern = "lua", onSubmit = set("file") }) }),
       -- a field keeps what is typed while it has the keys; Left, Right, Home and End move its cursor, Shift with them selects, and Ctrl+C, Ctrl+X and Ctrl+V copy, cut and paste
       ui.row({ style = LABELED }, { ui.text("Name"), ui.field(state.name, { id = "name", grow = 1, placeholder = "Your name", onChange = set("name") }) }),
       -- text with wrap = true breaks into lines at the width of its column
@@ -311,6 +314,7 @@ ecs.panel.registerType({
       inspected = ui.inspected(state.panel),
       selected = state.selected,
       name = state.name,
+      file = state.file,
       node = state.node,
       nodes = state.nodes,
       menuNode = state.menuNode,
