@@ -51,8 +51,10 @@ end
 
 -- paints strokes by calling plot(x, y, count, color) for each run of pixels in a row: dabs at every point, and between points every half brush
 -- a run is one call, so the draw makes one call to the core for each row of a dab, not one for each pixel
-local function paint(width, height, strokes, plot)
-  for _, stroke in ipairs(strokes) do
+-- it starts at the point at index first of the stroke at index from, so a draw can paint only what is new; the first of each stroke if missing
+local function paint(width, height, strokes, plot, from, first)
+  for s = from or 1, #strokes do
+    local stroke = strokes[s]
     local radius = stroke.size / 2
     local step = stroke.size > 2 and stroke.size / 2 or 1
     local points = stroke.points
@@ -78,7 +80,7 @@ local function paint(width, height, strokes, plot)
       end
     end
 
-    for p = 1, #points - 1, 2 do
+    for p = s == from and first or 1, #points - 1, 2 do
       local x, y = points[p], points[p + 1]
       dab(x, y)
 
@@ -283,11 +285,34 @@ ecs.panel.registerType({
 
   draw = function(state, surface)
     state.width, state.height = surface.width, surface.height
-    surface:fill(0, 0, surface.width, surface.height, hex(BACKGROUND))
+    local strokes, painted = state.strokes, state.painted
 
-    paint(surface.width, surface.height, state.strokes, function(x, y, count, color)
-      surface:fill(x, y, count, 1, hex(color))
-    end)
+    -- the surface keeps the last picture, so while the strokes only grew, the draw paints from the last point it painted, and tells the core that part
+    if surface.kept and painted and painted.strokes == strokes and painted.count <= #strokes then
+      local stroke = strokes[painted.count]
+      local left, top, right, bottom = surface.width, surface.height, -1, -1
+
+      paint(surface.width, surface.height, strokes, function(x, y, count, color)
+        surface:fill(x, y, count, 1, hex(color))
+        left, top, right, bottom = math.min(left, x), math.min(top, y), math.max(right, x + count), math.max(bottom, y + 1)
+      end, math.max(painted.count, 1), stroke and math.max(painted.points - 1, 1) or 1)
+
+      if right < 0 then
+        surface:changed(0, 0, 0, 0) -- nothing new
+      else
+        surface:changed(left, top, right - left, bottom - top)
+      end
+    else
+      surface:fill(0, 0, surface.width, surface.height, hex(BACKGROUND))
+
+      paint(surface.width, surface.height, strokes, function(x, y, count, color)
+        surface:fill(x, y, count, 1, hex(color))
+      end)
+    end
+
+    -- the strokes and points painted; clearing the canvas gives it a new table of strokes, which paints it all again
+    local last = strokes[#strokes]
+    state.painted = { strokes = strokes, count = #strokes, points = last and #last.points or 0 }
   end,
 
   event = function(state, event)
@@ -621,7 +646,7 @@ end
 
 -- makes a brush, which a canvas can use instead of the settings' brush
 function services.brush(size, color)
-  return ecs.handle.new(name("brush"), { size = clamp(size, MIN_SIZE, MAX_SIZE), color = COLORS[color] or COLORS.white })
+  return ecs.handle.new("brush", { size = clamp(size, MIN_SIZE, MAX_SIZE), color = COLORS[color] or COLORS.white })
 end
 
 -- the canvas keeps the brush's value, so the brush lives while the canvas uses it
@@ -629,13 +654,13 @@ function services.useBrush(brush, panel)
   local canvas = findCanvas(panel)
 
   if canvas then
-    canvas.brush = ecs.handle.value(brush, name("brush"))
+    canvas.brush = ecs.handle.value(brush, "brush")
   end
 end
 
 ecs.handle.registerType("brush")
 
-assert(ecs.service.register({
+ecs.service.register({
   strokeCount = { sig = "int(handle<ecs.panel>)", doc = "Counts a canvas's strokes", fn = services.strokeCount },
   clear = { sig = "void(handle<ecs.panel>)", doc = "Clear the canvas", fn = services.clear },
   export = { sig = "void(handle<ecs.panel>)", doc = "Export the canvas as an image", fn = services.export },
@@ -651,12 +676,12 @@ assert(ecs.service.register({
   pixels = { sig = "buffer(handle<ecs.panel>)", doc = "Gives a canvas as a PPM image", fn = services.pixels },
   brush = { sig = "handle<sketch_lua.brush>(int, string)", doc = "Makes a brush of a size and a colour", fn = services.brush },
   useBrush = { sig = "void(handle<sketch_lua.brush>, handle<ecs.panel>)", doc = "Makes a canvas draw with a brush", fn = services.useBrush },
-}))
+})
 
 -- default keys that work while a canvas has the focus; the canvas's menu shows the same functions with their keys
 for key, service in pairs({ Delete = "clear", ["Ctrl+E"] = "export", ["Ctrl+C"] = "copy", ["Ctrl+V"] = "paste", ["Ctrl+B"] = "openBeside", ["Ctrl+G"] = "gather" }) do
-  assert(ecs.key.bind(name("canvas"), key, name(service)))
-  assert(ecs.panel.addMenuEntry(name("canvas"), name(service)))
+  ecs.key.bind(name("canvas"), key, name(service))
+  ecs.panel.addMenuEntry(name("canvas"), name(service))
 end
 
 -- events ----------------------------------------------------------------

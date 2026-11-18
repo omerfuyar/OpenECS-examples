@@ -5,6 +5,9 @@
 local ecs = require("ecs")
 local ui = require("ui")
 
+-- ui's own styles, which its standard views use too
+local STYLES = ui.styles()
+
 local WORKERS = 4
 local CHUNKS = 40 -- the numbers are split into this many chunks
 local LIMITS = { "100 000", "1 000 000", "10 000 000" }
@@ -29,7 +32,7 @@ end
 local function start(counter)
   stop(counter)
 
-  local limit = tonumber((counter.limit:gsub(" ", "")))
+  local limit = tonumber((LIMITS[counter.limit]:gsub(" ", "")))
   local size = (limit - 2) // CHUNKS + 1
   local next, finished = 1, 0
   counter.primes, counter.chunks, counter.seconds, counter.done, counter.running = 0, 0, 0, {}, true
@@ -89,7 +92,7 @@ ecs.panel.registerType({
   title = "Workers",
 
   create = function(panel)
-    return { panel = panel, limit = "1 000 000", running = false, primes = 0, chunks = 0, seconds = 0, done = {}, workers = {}, rects = {} }
+    return { panel = panel, limit = 2, running = false, primes = 0, chunks = 0, seconds = 0, done = {}, workers = {}, rects = {} }
   end,
 
   draw = function(state, surface)
@@ -100,7 +103,7 @@ ecs.panel.registerType({
         ui.row({ width = BAR, height = 12, background = "tabRow" }, {
           ui.row({ width = BAR * done / CHUNKS, height = 12, background = "accent" }),
         }),
-        ui.text(("%d chunks"):format(done), { color = "textDim" }),
+        ui.text(("%d chunks"):format(done), { style = STYLES.note }),
       })
     end
 
@@ -111,14 +114,14 @@ ecs.panel.registerType({
     end
 
     local status = state.running and ("Counting: %d of %d chunks, %.1f s"):format(state.chunks, CHUNKS, state.seconds)
-        or state.chunks == CHUNKS and ("%d primes below %s, in about %.1f s"):format(state.primes, state.limit, state.seconds)
+        or state.chunks == CHUNKS and ("%d primes below %s, in about %.1f s"):format(state.primes, LIMITS[state.limit], state.seconds)
         or "Press Start to count the primes."
 
-    ui.show(state.panel, surface, ui.column({ padding = 24, gap = 12 }, {
+    ui.show(state.panel, surface, ui.column({ style = STYLES.view }, {
       ui.text("Four workers count the primes, each on a thread of its own. Drag the panel or open its menu while they count: it stays free.", { wrap = true }),
       ui.row({ gap = 8, align = "center" }, {
         ui.text("Below"),
-        ui.selector(state.limit, LIMITS, { id = "limit", onChange = function(limit) state.limit = limit end }),
+        ui.selector(state.limit, LIMITS, { id = "limit", onSelect = function(limit) state.limit = limit end }),
       }),
       ui.row({ gap = 8 }, {
         ui.button("Start", { id = "start", onClick = function() start(state) end }),
@@ -151,6 +154,6 @@ ecs.panel.registerType({
 
   -- the counts are saved, so the test can read them
   saveState = function(state)
-    return { limit = state.limit, running = state.running, primes = state.primes, chunks = state.chunks, done = state.done, rects = state.rects }
+    return { limit = LIMITS[state.limit], running = state.running, primes = state.primes, chunks = state.chunks, done = state.done, rects = state.rects }
   end,
 })

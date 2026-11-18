@@ -7,6 +7,11 @@ return {
   preset = "preset.lua",
   run = function(test)
     test.call("ecs.workspace.switch2")
+    test.wait(0.2)
+
+    -- the same elements have the same places in both panels, before anything is clicked
+    local workspaces = test.session().workspaces
+    test.match(workspaces[2].windows[1].panels[1].state.rects, workspaces[1].windows[1].panels[1].state.rects, "the elements' places in C and in Lua")
     checks(test, 2, "Controls in C")
   end,
 }

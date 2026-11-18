@@ -1,5 +1,6 @@
 # Checks every change to dev and main: the examples' C files keep their format, and OpenECS's dev is checked out with its submodules, this repository's commit is put in its examples/ folder,
 # and the examples are built and their tests run, on SDL's offscreen driver and on Wayland. The examples are the tests of OpenECS and its standard plugins.
+# Windows builds Release only for a release: on pull requests into main, pushes to main and by hand.
 name: Checks
 
 on:
@@ -148,6 +149,7 @@ jobs:
         run: .github/scripts/test.sh
 
       - name: Build Release with LLVM-MinGW
+        if: github.event_name == 'workflow_dispatch' || github.base_ref == 'main' || github.ref == 'refs/heads/main'
         run: .github/scripts/build.sh R
 
       - name: Keep the build log

@@ -11,12 +11,17 @@
 /// @brief ui's functions, and what the macros describe into.
 static Ui UI_PLUGIN;
 
+// a style is a UiProps of look props, kept in a variable so elements share it, and .style points to it; UI_PLUGIN.styles holds ui's own
+static const UiProps LABELED = {.gap = 8};
+
 #define COUNT(array) (sizeof(array) / sizeof((array)[0]))
 
 static const char *const FRUITS[] = {"Apple", "Banana", "Cherry", nullptr};
 static const char *const SIZES[] = {"S", "M", "L", nullptr};
 static const char *const TABS[] = {"Options", "About", "Table", nullptr};
 static const char *const ITEMS[] = {"First item", "Second item", "Third item"};
+static const char *const TAGS[] = {"Lua", "C", "SDL", "Clay", "libffi", "stb"};
+static const char *const TAG_IDS[] = {"tag:1", "tag:2", "tag:3", "tag:4", "tag:5", "tag:6"};
 
 /// @brief The Table tab's columns and rows; the panel sorts the rows, and the table shows them in its order.
 static const UiColumn COLUMNS[] = {{.id = "name", .title = "Fruit"}, {.id = "price", .title = "Price"}, {.id = "stock", .title = "In stock"}, {0}};
@@ -34,7 +39,8 @@ static const FruitRow FRUIT_ROWS[] = {{"Cherry", 4.5, 12, "4.5", "12"}, {"Apple"
 
 /// @brief The elements the test clicks, by id; their rectangles are saved, so the test finds them.
 static const char *const IDS[] = {"button", "tab", "sound", "volume", "size", "fruit", "count", "item:2", "name", "note", "tree:src",
-                                  "tree:lib", "table:header", "table:1", "table:2", "table:title:name", "table:title:price"};
+                                  "tree:lib", "table:header", "table:1", "table:2", "table:title:name", "table:title:price", "about",
+                                  "tint", "colors:heading", "tag:1", "tag:2", "tag:6", "file"};
 
 static const char *const NOTE = "Tab gives the keys to the next control and Shift+Tab to the one before. Return or Space presses the control that has them, "
                                 "Left and Right change a selector or a slider, and Escape takes the keys away. A field takes typing as soon as it has the keys. "
@@ -49,18 +55,23 @@ typedef struct Controls
     bool sound;
     bool dark;
     f64 volume;
-    i32 size;  // the chosen size's index in SIZES
-    i32 fruit; // the chosen fruit's index in FRUITS
+    f64 kept;  // the volume that the slider's drag ended on
+    i32 size;  // the chosen size's number in SIZES, from 1
+    i32 fruit; // the chosen fruit's number in FRUITS, from 1
     f64 count;
-    i32 tab;      // the chosen tab's index in TABS
+    i32 tab;      // the chosen tab's number in TABS, from 1
     i32 selected; // the list's chosen item, from 1
     char name[64];
+    char file[256];
     const char *node; // the tree's chosen node's id
     bool srcOpen;     // the tree's open nodes
     bool libOpen;
     const char *sort; // the id of the column the rows are sorted by
     bool ascending;
-    i32 row; // the table's chosen row, from 1, or 0 for none
+    i32 row;       // the table's chosen row, from 1, or 0 for none
+    char link[96]; // the link last clicked in the About tab's text
+    char tint[10]; // a colour, "#RRGGBB"
+    bool colors;   // whether the Colour section is open
 } Controls;
 
 static SHUResult ControlsCreate(ECSPanel panel, const ECSValue *savedState, u32 version, void **retState)
@@ -75,7 +86,7 @@ static SHUResult ControlsCreate(ECSPanel panel, const ECSValue *savedState, u32 
         return SHUResult_ErrAllocation;
     }
 
-    *state = (Controls){.panel = panel, .scale = 1.0f, .dark = true, .volume = 0.5, .size = 1, .count = 3, .selected = 1, .node = "readme", .sort = "name", .ascending = true};
+    *state = (Controls){.panel = panel, .scale = 1.0f, .dark = true, .volume = 0.5, .kept = 0.5, .size = 2, .fruit = 1, .tab = 1, .count = 3, .selected = 1, .node = "readme", .sort = "name", .ascending = true, .tint = "#3366CC", .colors = true};
     *retState = state;
     return SHUResult_Ok;
 }
@@ -140,7 +151,7 @@ static void DescribeTable(Controls *controls)
     }
 
     UI_TABLE(&controls->row, COLUMNS, cells, COUNT(FRUIT_ROWS), .id = "table", .height = 110, .grow = UI_FIXED, .stretch = true, .border = "tabShown",
-             .sort = controls->sort, .ascending = controls->ascending);
+             .onSort = true, .sort = controls->sort, .ascending = controls->ascending ? UI_TRUE : UI_FALSE);
 }
 
 // a tree shows its open nodes' children below them; the panel keeps which nodes are open, and the chosen one
@@ -152,8 +163,29 @@ static void DescribeTree(Controls *controls)
 
     UI_COLUMN(.gap = 8)
     {
-        UI_TEXT("The controls of ui, each changing the panel's state.", .color = "textDim");
+        // a text of spans mixes styles; UI_SPANS gives the link of a span that was clicked
+        const UiSpan about[] = {{.text = "The controls of "}, {.text = "ui", .bold = true}, {.text = ", each changing the panel's state: "}, {.text = "ui's design", .link = "https://github.com/omerfuyar/OpenECS-std/blob/dev/DESIGN.md"}};
+        const char *link = UI_SPANS(about, COUNT(about), .id = "about", .color = "textDim");
+
+        if (link != nullptr)
+        {
+            snprintf(controls->link, sizeof(controls->link), "%s", link);
+        }
+
         UI_TREE(&controls->node, nodes, .id = "tree", .height = 110, .grow = UI_FIXED, .border = "tabShown");
+
+        // a row with wrap = true puts the children that do not fit the rest of a line on the next line, as a toolbar does in a narrow panel;
+        // this one is in a narrow column, so its buttons take two lines
+        UI_COLUMN(.width = 160)
+        {
+            UI_ROW(.wrap = true, .gap = 4)
+            {
+                for (usz i = 0; i < COUNT(TAGS); i++)
+                {
+                    (void)UI_BUTTON(TAGS[i], .id = TAG_IDS[i]);
+                }
+            }
+        }
     }
 }
 
@@ -164,29 +196,45 @@ static void DescribeOptions(Controls *controls)
         UI_TOGGLE(&controls->sound, .id = "sound", .label = "Sound");
         UI_TOGGLE(&controls->dark, .id = "dark", .label = "Dark", .look = "switch");
 
-        UI_ROW(.gap = 8)
+        UI_ROW(.style = &LABELED)
         {
             UI_TEXT("Volume");
             UI_SLIDER(&controls->volume, .id = "volume", .step = 0.1, .grow = 1);
+            // UI_SUBMITTED tells when a drag of the slider ended, as a tool keeps one change for it
+            if (UI_SUBMITTED("volume"))
+            {
+                controls->kept = controls->volume;
+            }
         }
 
-        UI_ROW(.gap = 8)
+        UI_ROW(.style = &LABELED)
         {
             UI_TEXT("Size");
             UI_SELECTOR(&controls->size, SIZES, .id = "size");
         }
 
-        UI_ROW(.gap = 8)
+        UI_ROW(.style = &LABELED)
         {
             UI_TEXT("Fruit");
             UI_DROPDOWN(&controls->fruit, FRUITS, .id = "fruit");
         }
 
         // a number field takes a number from min to max: Return gives what is typed, and Up and Down change it by step
-        UI_ROW(.gap = 8)
+        UI_ROW(.style = &LABELED)
         {
             UI_TEXT("Count");
             UI_NUMBER(&controls->count, .id = "count", .min = 0, .max = 10, .step = 1, .grow = 1);
+        }
+
+        // a section's heading shows and hides what is below it, at a click, which UI_SECTION writes into the bool
+        // a colour element is a swatch, which a click opens in a picker; UI_COLOR writes the colour a press in the picker ends on
+        UI_SECTION(&controls->colors, "Colour", .id = "colors")
+        {
+            UI_ROW(.style = &LABELED)
+            {
+                UI_TEXT("Tint");
+                UI_COLOR(controls->tint, sizeof(controls->tint), .id = "tint");
+            }
         }
     }
 }
@@ -202,9 +250,9 @@ static void ControlsDraw(void *data, ECSSurface *surface, f64 seconds)
 
     UI_SHOW(&UI_PLUGIN, state->panel, surface)
     {
-        UI_COLUMN(.padding = 24, .gap = 12)
+        UI_COLUMN(.style = &UI_PLUGIN.styles.view)
         {
-            UI_TEXT(clicked, .size = 18);
+            UI_TEXT(clicked, .style = &UI_PLUGIN.styles.title);
 
             // UI_BUTTON gives whether the button was clicked since the last draw; a tooltip shows when the pointer rests on its element
             if (UI_BUTTON("Click me", .id = "button", .tooltip = "Counts the clicks in the panel's title"))
@@ -219,11 +267,11 @@ static void ControlsDraw(void *data, ECSSurface *surface, f64 seconds)
             // tabs choose what shows below them; the panel keeps the chosen one and describes only its elements
             UI_TABS(&state->tab, TABS, .id = "tab");
 
-            if (strcmp(TABS[state->tab], "Table") == 0)
+            if (strcmp(TABS[state->tab - 1], "Table") == 0)
             {
                 DescribeTable(state);
             }
-            else if (strcmp(TABS[state->tab], "About") == 0)
+            else if (strcmp(TABS[state->tab - 1], "About") == 0)
             {
                 DescribeTree(state);
             }
@@ -242,15 +290,22 @@ static void ControlsDraw(void *data, ECSSurface *surface, f64 seconds)
                 }
             }
 
+            // a path is a field with a button that opens the system's file dialog; UI_PATH writes the typed or chosen path into its buffer
+            UI_ROW(.style = &LABELED)
+            {
+                UI_TEXT("File");
+                UI_PATH(state->file, sizeof(state->file), .id = "file", .grow = 1, .pattern = "lua");
+            }
+
             // a field keeps what is typed while it has the keys; Left, Right, Home and End move its cursor, Shift with them selects, and Ctrl+C, Ctrl+X and Ctrl+V copy, cut and paste
-            UI_ROW(.gap = 8)
+            UI_ROW(.style = &LABELED)
             {
                 UI_TEXT("Name");
                 UI_FIELD(state->name, sizeof(state->name), .id = "name", .grow = 1);
             }
 
             // text with wrap = true breaks into lines at the width of its column
-            UI_TEXT(NOTE, .id = "note", .wrap = true, .color = "textDim");
+            UI_TEXT(NOTE, .id = "note", .style = &UI_PLUGIN.styles.note, .wrap = true);
         }
     }
 }
@@ -332,13 +387,18 @@ static SHUResult ControlsSaveState(void *data, ECSValue *retSavedState)
     SHU_ReturnResult(SetNumber(retSavedState, "clicks", state->clicks));
     SHU_ReturnResult(SetBool(retSavedState, "sound", state->sound));
     SHU_ReturnResult(SetNumber(retSavedState, "volume", state->volume));
-    SHU_ReturnResult(SetString(retSavedState, "size", SIZES[state->size]));
-    SHU_ReturnResult(SetString(retSavedState, "fruit", FRUITS[state->fruit]));
+    SHU_ReturnResult(SetNumber(retSavedState, "kept", state->kept));
+    SHU_ReturnResult(SetString(retSavedState, "size", SIZES[state->size - 1]));
+    SHU_ReturnResult(SetString(retSavedState, "fruit", FRUITS[state->fruit - 1]));
     SHU_ReturnResult(SetNumber(retSavedState, "count", state->count));
-    SHU_ReturnResult(SetString(retSavedState, "tab", TABS[state->tab]));
+    SHU_ReturnResult(SetString(retSavedState, "tab", TABS[state->tab - 1]));
     SHU_ReturnResult(SetString(retSavedState, "tip", ECSValue_GetString(UI_PLUGIN.functions.tooltip(state->panel), nullptr)));
     SHU_ReturnResult(SetNumber(retSavedState, "selected", state->selected));
     SHU_ReturnResult(SetString(retSavedState, "name", state->name));
+    SHU_ReturnResult(SetString(retSavedState, "file", state->file));
+    SHU_ReturnResult(SetString(retSavedState, "link", state->link[0] != '\0' ? state->link : nullptr));
+    SHU_ReturnResult(SetString(retSavedState, "tint", state->tint));
+    SHU_ReturnResult(SetBool(retSavedState, "colors", state->colors));
     SHU_ReturnResult(SetString(retSavedState, "node", state->node));
     SHU_ReturnResult(SetString(retSavedState, "sort", state->sort));
     SHU_ReturnResult(SetBool(retSavedState, "ascending", state->ascending));
@@ -362,7 +422,7 @@ static SHUResult ControlsSaveState(void *data, ECSValue *retSavedState)
         SHU_ReturnResult(SetNumber(retSavedState, "row", state->row));
     }
 
-    if (strcmp(TABS[state->tab], "Table") == 0)
+    if (strcmp(TABS[state->tab - 1], "Table") == 0)
     {
         FruitRow rows[COUNT(FRUIT_ROWS)];
         SortRows(state, rows);

@@ -14,6 +14,7 @@ typedef void (*CounterWatchFunction)(const char *name, i32 value);
 
 static struct
 {
+    ECSPlugin plugin;
     char names[COUNTER_MAX][COUNTER_NAME_SIZE];
     i64 values[COUNTER_MAX];
     usz count;
@@ -21,7 +22,8 @@ static struct
     usz watcherCount;
 } COUNTERS = {0};
 
-/// @brief Finds a counter, and makes it if it is new; nullptr if there is no room.
+/// @brief Finds a counter.
+/// @return The counter, or nullptr if there is none of the name.
 static i64 *CounterFind(const char *name)
 {
     for (usz i = 0; i < COUNTERS.count; i++)
@@ -32,23 +34,33 @@ static i64 *CounterFind(const char *name)
         }
     }
 
-    if (COUNTERS.count == COUNTER_MAX || strlen(name) >= COUNTER_NAME_SIZE)
-    {
-        return nullptr;
-    }
-
-    strcpy(COUNTERS.names[COUNTERS.count], name);
-    return &COUNTERS.values[COUNTERS.count++];
+    return nullptr;
 }
 
 // the string is valid only during the call, so it is copied if kept
-static i32 CounterAdd(const char *name, i32 amount)
+static i32 CounterAdd(const char *name, i32 amount, const char **retError)
 {
+    *retError = nullptr;
+
+    // a misuse is the caller's mistake: ECS_Check reports it, fails the callback that made the call, and gives false, so the function returns at once
+    if (!ECS_Check(COUNTERS.plugin, strlen(name) < COUNTER_NAME_SIZE, "A counter's name is shorter than %d bytes.", COUNTER_NAME_SIZE))
+    {
+        return 0;
+    }
+
     i64 *value = CounterFind(name);
+
+    // a failure is not the caller's mistake: ECS_Fail writes why into the out string error, which Lua gets as nil and why
+    if (value == nullptr && COUNTERS.count == COUNTER_MAX)
+    {
+        ECS_Fail(COUNTERS.plugin, retError, "There is no room for the counter '%s'.", name);
+        return 0;
+    }
 
     if (value == nullptr)
     {
-        return 0;
+        strcpy(COUNTERS.names[COUNTERS.count], name);
+        value = &COUNTERS.values[COUNTERS.count++];
     }
 
     *value += amount;
@@ -68,12 +80,15 @@ static i32 CounterGet(const char *name)
 }
 
 // a callback of type "keep fn<...>" stays valid after the call, so the plugin can call it later; a plain "fn<...>" is valid only during the call
-static bool CounterWatch(CounterWatchFunction watcher)
+static bool CounterWatch(CounterWatchFunction watcher, const char **retError)
 {
+    *retError = nullptr;
+
     // a watcher that is not stored is released at once, as nothing calls it later
-    if (watcher == nullptr || COUNTERS.watcherCount == COUNTER_WATCHERS)
+    if (COUNTERS.watcherCount == COUNTER_WATCHERS)
     {
         ECSService_ReleaseCallback((ECSFunction)watcher);
+        ECS_Fail(COUNTERS.plugin, retError, "%d functions watch the counters already.", COUNTER_WATCHERS);
         return false;
     }
 
@@ -96,13 +111,15 @@ static void CounterDestroy(void *data)
 
 SHUResult ECSPlugin_Init(ECSPlugin plugin)
 {
+    COUNTERS.plugin = plugin;
     const ECSPluginDesc desc = {.Destroy = CounterDestroy};
     SHU_ReturnResult(ECSPlugin_Register(plugin, &desc));
 
     // the signature tells the core how to pass the arguments: the result's type, then each parameter's type and name
     // the function is cast to ECSFunction, the type of any function; the signature says its real type
-    SHU_ReturnResult(ECSService_RegisterFunction(plugin, "add", (ECSFunction)CounterAdd, "int(string name, int amount)", "Adds to a named counter, and gives its new value"));
+    // a function that can fail says why in "out string error", its last parameter
+    SHU_ReturnResult(ECSService_RegisterFunction(plugin, "add", (ECSFunction)CounterAdd, "int(string name, int amount, out string error)", "Adds to a named counter, and gives its new value"));
     SHU_ReturnResult(ECSService_RegisterFunction(plugin, "get", (ECSFunction)CounterGet, "int(string name)", "Gives a named counter's value"));
-    SHU_ReturnResult(ECSService_RegisterFunction(plugin, "watch", (ECSFunction)CounterWatch, "bool(keep fn<void(string name, int value)> watcher)", "Calls a function with each change of a counter, until the program exits"));
+    SHU_ReturnResult(ECSService_RegisterFunction(plugin, "watch", (ECSFunction)CounterWatch, "bool(keep fn<void(string name, int value)> watcher, out string error)", "Calls a function with each change of a counter, until the program exits"));
     return SHUResult_Ok;
 }

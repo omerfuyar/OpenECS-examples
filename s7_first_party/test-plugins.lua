@@ -58,9 +58,14 @@ return {
     test.match(find(test, "plugins.list").state.selected, "shapes", "the chosen plugin")
     test.match(panelOf(test, "shapes.square"), { title = "Square, #A3BE8C", fault = nil }, "the square before")
 
-    -- Return disables shapes, and badges, which needs it: their panels wait as placeholders, and the session lists them as disabled
+    -- badges needs shapes, so shapes stays enabled until badges is disabled; then their panels wait as placeholders, and the session lists them
     test.key("Return")
-    test.match(test.session().disabled, { "shapes", "badges" }, "shapes and the plugin that needs it")
+    test.match(test.session().disabled, {}, "shapes stays, as badges needs it")
+    choose(test, "badges")
+    test.key("Return")
+    choose(test, "shapes")
+    test.key("Return")
+    test.match(test.session().disabled, { "shapes", "badges" }, "badges, then shapes")
     assert(panelOf(test, "shapes.square").fault, "the square is a placeholder")
     assert(panelOf(test, "badges.badge").fault, "the badge is a placeholder")
 
@@ -74,5 +79,24 @@ return {
     test.key("Return")
     test.match(test.session().disabled, {}, "no plugin is disabled")
     test.match(panelOf(test, "badges.badge"), { title = "Badge", fault = nil }, "the badge after")
+
+    -- each standard plugin registers the same things again when it is enabled again; the plugin list needs ui, draw and image, so they stay
+    for _, name in ipairs({ "audio", "cglm", "compress", "fs", "gamepad", "gltf", "gpu", "hash", "launcher", "mixer", "net", "notify", "panels", "parse", "process", "settings", "sqlite", "textgrid", "web", "regex", "markdown", "syntax", "video" }) do
+      choose(test, name)
+      test.key("Return")
+
+      -- a plugin that another needs stays enabled, such as mixer, which audio needs; the others are disabled, then enabled again
+      if test.session().disabled[1] then
+        test.match(test.session().disabled, { name }, name .. " is disabled alone")
+        test.key("Return")
+      end
+
+      test.match(test.session().disabled, {}, name .. " is enabled")
+    end
+
+    -- a plugin that fails when it is enabled is reported and stays disabled, so the session lists it
+    choose(test, "broken")
+    test.key("Return")
+    test.match(test.session().disabled, { "broken" }, "the plugin that failed stays disabled")
   end,
 }

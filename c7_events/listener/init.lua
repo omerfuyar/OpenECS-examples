@@ -4,6 +4,7 @@ local ecs = require("ecs")
 
 local listeners = {} -- every open listener, by its panel
 local opened = 0
+local renewed = 0 -- the ticks that the subscription below heard, which it renews at each
 
 local function show(listener)
   listener.panel.title = ("Ticks %d, panels %d%s"):format(listener.ticks, opened, listener.greeted and ", greeted" or "")
@@ -15,9 +16,9 @@ ecs.event.declare("opened", "A listener opened: its panel, a mark of two bytes, 
 ecs.handle.registerType("note")
 
 -- a note's text, which is its value; as a method of the type, Lua writes note:text()
-assert(ecs.service.register({
-  text = { sig = "string(handle<listener.note>)", doc = "Gives a note's text", fn = function(note) return ecs.handle.value(note, "listener.note") end },
-}))
+ecs.service.register({
+  text = { sig = "string(handle<listener.note>)", doc = "Gives a note's text", fn = function(note) return ecs.handle.value(note, "note") end },
+})
 ecs.handle.addMethod("note", "text", "text")
 
 ecs.event.subscribe("listener.opened", function(_, value)
@@ -39,6 +40,18 @@ ecs.event.subscribe("ticker.tick", function(_, ticks)
   end
 end)
 
+-- a handler may cancel its subscription and subscribe again: the new subscription hears the next tick, not the one being delivered,
+-- so each tick is heard once
+local renewing
+
+local function renew()
+  renewed = renewed + 1
+  renewing:unsubscribe()
+  renewing = ecs.event.subscribe("ticker.tick", renew)
+end
+
+renewing = ecs.event.subscribe("ticker.tick", renew)
+
 -- the core's events start with "ecs."; ecs.panelOpened's value names the panel and its type
 ecs.event.subscribe("ecs.panelOpened", function(_, value)
   opened = opened + 1
@@ -52,7 +65,7 @@ ecs.panel.registerType({
   create = function(panel)
     local listener = { panel = panel, ticks = 0 }
     listeners[panel] = listener
-    ecs.event.emit("listener.opened", { panel = panel, mark = "\0\255", note = ecs.handle.new("listener.note", "hello") })
+    ecs.event.emit("listener.opened", { panel = panel, mark = "\0\255", note = ecs.handle.new("note", "hello") })
 
     -- nothing but the event keeps the note now, and a collection before the delivery does not take it
     collectgarbage()
@@ -61,6 +74,10 @@ ecs.panel.registerType({
 
   destroy = function(state)
     listeners[state.panel] = nil
+  end,
+
+  saveState = function(state)
+    return { ticks = state.ticks, renewed = renewed }
   end,
 
   draw = function(_, surface)

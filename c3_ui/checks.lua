@@ -41,6 +41,7 @@ return function(test, number, title)
   local right = at("volume", 1)
   test.drag(x, y, right + 20, y)
   test.match(state().volume, 1.0, "the slider")
+  test.match(state().kept, 1.0, "the slider's release")
 
   test.click(at("size", 5 / 6))
   test.match(state().size, "L", "the selector")
@@ -50,8 +51,14 @@ return function(test, number, title)
   local menu = test.popup(1)
   test.click(menu.x + 10, menu.y + menu.height * 2.5 / 3)
   test.match(state().fruit, "Cherry", "the dropdown")
+  -- typing in it shows only the choices that hold the text, and Return chooses the first of them
+  test.click(at("fruit"))
+  test.key("A")
+  test.key("N")
+  test.key("Return")
+  test.match(state().fruit, "Banana", "the dropdown's search")
 
-  -- the number field keeps its number from 0 to 10; Up and Down change it by 1, and a text that is not a number is not taken
+  -- the number field keeps its number from 0 to 10; Up and Down change it by 1, a text that is not a number is not taken, and a sum is
   test.click(at("count"))
   test.text("7")
   test.key("Return")
@@ -63,9 +70,44 @@ return function(test, number, title)
   test.key("Return")
   test.key("Escape")
   test.match(state().count, 9, "the number, after a text that is not one")
+  -- a sum gives its result
+  test.click(at("count"))
+  test.key("Ctrl+A")
+  test.text("2*3+1")
+  test.key("Return")
+  test.match(state().count, 7, "the number, from a sum")
+
+  -- a drag sideways on the number changes it by a step each unit, kept from 0 to 10, and a tenth of that with Shift
+  local x, y = at("count")
+  test.drag(x, y, x - 40, y)
+  test.match(state().count, 0, "a drag to the left, down to the least")
+  test.drag(x, y, x + 100, y)
+  test.match(state().count, 10, "a drag to the right, up to the most")
+  test.drag(x, y, x - 20, y, "Shift")
+  test.match(state().count, 8, "a drag with Shift, by a tenth of the steps")
+
+  -- the colour element opens a picker in a popup; a press in its square gives the colour there, more saturated and brighter to the top right,
+  -- and Return closes it
+  test.click(at("tint"))
+  local picker = test.popup(1)
+  test.click(picker.x + picker.width * 0.75, picker.y + picker.height * 0.1)
+  test.key("Return")
+  test.match(#state().tint == 7 and state().tint ~= "#3366CC", true, "the picked colour")
+
+  -- a click on the section's heading hides what is below it
+  test.click(at("colors:heading"))
+  test.match({ state().colors, state().rects.tint }, { false, nil }, "the closed section")
 
   test.click(at("item:2"))
   test.match(state().selected, 2, "the list")
+
+  -- the click gave the list the keys, so Down chooses the next item; a list is one stop of Tab, which leaves it and comes back to it
+  test.key("Down")
+  test.match(state().selected, 3, "the item below")
+  test.key("Tab")
+  test.key("Shift+Tab")
+  test.key("Up")
+  test.match(state().selected, 2, "the item above, after Tab and Shift+Tab")
 
   -- typing goes in at the cursor, which the arrows move
   test.click(at("name"))
@@ -113,10 +155,23 @@ return function(test, number, title)
   test.key("Space")
   test.match(state().clicks, 3, "the keys")
 
+  -- a path is typed as a field is, and Return gives it; its button would open the file dialog
+  test.click(at("file", 0.1))
+  test.text("plugin.lua")
+  test.key("Return")
+  test.match(state().file, "plugin.lua", "the path")
+
   -- the About tab holds a tree; a click on a node's arrow opens it, and a click beside the arrow chooses the node
   test.click(at("tab", 0.02))
   test.key("Right")
   test.match(state().tab, "About", "the tab of the tree")
+
+  -- the About tab's text ends with a link, which a click gives to the panel
+  test.click(at("about", 0.95))
+  test.match(state().link, "https://github.com/omerfuyar/OpenECS-std/blob/dev/DESIGN.md", "the clicked link")
+  -- the tags' row wraps in its narrow column: the first two share a line, and the last is on a line below
+  local tags = state().rects
+  test.match({ tags["tag:2"].y == tags["tag:1"].y, tags["tag:6"].y > tags["tag:1"].y }, { true, true }, "the wrapped row")
   local _, srcY = at("tree:src")
   test.click(panel.x + state().rects["tree:src"].x + 14, srcY)
   test.match(state().open, { src = true }, "the opened node")
