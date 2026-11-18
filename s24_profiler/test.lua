@@ -22,9 +22,12 @@ return {
     test.wait(1.7)
     test.match(test.panel(busy).state, { measured = true, busy = true, draw = true }, "busy and draw each have their own time")
 
-    -- the tabs choose the table, and Pause keeps the numbers; the panel saves both
-    test.click(view.x + 120, view.y + 142)
+    -- Pause keeps the numbers, and the tabs choose the table; the panel saves both. A click gives Pause the keys, and Tab goes on past Copy
+    -- report to the tabs, where Right chooses the next one
     test.click(view.x + 139, view.y + 75)
+    test.key("Tab")
+    test.key("Tab")
+    test.key("Right")
     test.match(test.panel(profiler).state, { tab = 2, paused = true }, "the Panels tab and Pause are kept")
 
     test.click(view.x + 40, view.y + 75)

@@ -21,6 +21,8 @@ local TAGS = { "Lua", "C", "SDL", "Clay", "libffi", "stb" }
 -- the Table tab's columns and rows; the panel sorts the rows, and the table shows them in its order
 local COLUMNS = { { id = "name", title = "Fruit" }, { id = "price", title = "Price" }, { id = "stock", title = "In stock" } }
 local FRUIT_ROWS = { { name = "Cherry", price = 4.5, stock = 12 }, { name = "Apple", price = 1.2, stock = 40 }, { name = "Banana", price = 0.8, stock = 25 } }
+-- the colours of the graph of the stock below the table, and of its line at the stock to buy more at
+local GRAPH_COLOR, LINE_COLOR = "#61AFEF", "#E06C75"
 
 -- the nodes of the About tab's tree; a node with children opens and closes
 local NODES = {
@@ -37,7 +39,7 @@ local NODES = {
 
 -- the elements the test clicks, by id; their rectangles are saved, so the test finds them
 local IDS = { "button", "tab", "sound", "volume", "size", "fruit", "count", "item:2", "name", "note", "tree:src",
-  "tree:lib", "table:header", "table:1", "table:2", "table:title:name", "table:title:price", "about",
+  "tree:lib", "table:header", "table:1", "table:2", "table:title:name", "table:title:price", "graph", "about",
   "tint", "colors:heading", "tag:1", "tag:2", "tag:6", "file" }
 
 -- the rows of the Table tab, in the order the panel sorts them
@@ -57,6 +59,17 @@ local function sorted(controls)
   end)
 
   return rows
+end
+
+-- the stock of each row, in the table's order, for the graph
+local function stock(controls)
+  local values = {}
+
+  for i, row in ipairs(sorted(controls)) do
+    values[i] = row.stock
+  end
+
+  return values
 end
 
 -- the state a new panel starts with: the value of each control, and the rectangles of the elements the test clicks
@@ -154,7 +167,7 @@ ecs.panel.registerType({
       -- tabs choose what shows below them; the panel keeps the chosen one and describes only its elements
       ui.tabs(state.tab, TABS, { id = "tab", onSelect = set("tab") }),
       -- a table lines its cells up below its columns' titles; a click on a title sorts by that column, and a second one reverses the order
-      TABS[state.tab] == "Table" and
+      TABS[state.tab] == "Table" and ui.column({ gap = 8 }, {
       ui.table(COLUMNS, sorted(state),
         {
           id = "table",
@@ -170,7 +183,10 @@ ecs.panel.registerType({
             state.ascending = column ~= state.sort or not state.ascending
             state.sort, state.row = column, nil
           end
-        }) or
+        }),
+        -- a graph draws a bar for each number, in the rows' order, as high as its share of the highest; a line marks a value across it
+        ui.graph(stock(state), { id = "graph", height = 40, colors = { GRAPH_COLOR }, lines = { { value = 20, color = LINE_COLOR } } }),
+      }) or
       -- a tree shows its open nodes' children below them; the panel keeps which nodes are open, and the chosen one
       TABS[state.tab] == "About" and ui.column({ gap = 8 }, {
         -- a text of spans mixes styles; a click on a span with a link gives the link to onLink
