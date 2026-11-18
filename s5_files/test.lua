@@ -37,6 +37,8 @@ return {
     os.remove(folder .. "milk.txt")
     os.remove(folder .. "bread.txt")
     os.remove(folder .. "banana.txt")
+    os.remove(folder .. "dropped.txt")
+    os.remove(folder .. "dropped 2.txt")
     test.wait(0.3)
 
     -- the panel's rows, below the selector of the tree and the grid: the folder's files by name
@@ -119,5 +121,26 @@ return {
     assert(waitFor(function()
       return not exists(folder .. "bread.txt")
     end), "the answer deletes the file")
+
+    -- a file that another application drops on the panel is copied into the folder under the pointer: beside the files, the
+    -- shown folder; a second drop of it gets a free name
+    os.remove(folder .. "dropped.txt")
+    os.remove(folder .. "dropped 2.txt")
+    local outside = folder .. "../dropped.txt"
+    file = assert(io.open(outside, "wb"))
+    file:write("From elsewhere.\n")
+    file:close()
+    test.dropFiles(panel.x + 60, panel.y + panel.height - 20, { outside })
+    assert(waitFor(function()
+      return exists(folder .. "dropped.txt")
+    end), "a dropped file is copied into the folder")
+    local rx, ry = row(1)
+    test.dropFiles(rx, ry, { outside })
+    assert(waitFor(function()
+      return exists(folder .. "dropped 2.txt")
+    end), "dropped on a file, into its folder, under a free name")
+    os.remove(folder .. "dropped.txt")
+    os.remove(folder .. "dropped 2.txt")
+    os.remove(outside)
   end,
 }
