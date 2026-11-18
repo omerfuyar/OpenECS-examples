@@ -1,0 +1,62 @@
+-- the key list changes keys in the user's settings, which win over the preset's: a new key for a function, Reset back to the preset's,
+-- Remove, which takes a key away with false, and a key added for a function; a search shows only the rows that match it
+return {
+  preset = "preset.lua",
+  run = function(test)
+    local counter, list
+    for _, panel in ipairs(test.panels()) do
+      if panel.type == "counter.panel" then
+        counter = panel.id
+      elseif panel.type == "keys.list" then
+        list = test.rect(panel.id)
+      end
+    end
+    local function count()
+      return test.panel(counter).state.count
+    end
+    local function press(key)
+      local before = count()
+      test.key(key)
+      return count() - before
+    end
+    -- the search shows one row, so its key and buttons are at the same place each time
+    local function search(text)
+      test.click(list.x + 400, list.y + 75)
+      test.key("Ctrl+A")
+      test.key("Backspace")
+      test.text(text)
+    end
+    -- the row's key and buttons are at its right side, so their places are measured from the panel's right edge, whatever its width
+    local right = list.x + list.width
+    local key, reset, alone = list.x + list.width * 0.75, right - 57, right - 76
+    local row = list.y + 218
+
+    test.match(press("Ctrl+J"), 1, "the preset's key counts")
+
+    -- a click on the key, then a key press, binds the new key and takes the old one away
+    search("count")
+    test.click(key, row)
+    test.key("Ctrl+L")
+    test.match({ press("Ctrl+L"), press("Ctrl+J") }, { 1, 0 }, "the new key counts, and the old one does nothing")
+
+    -- Reset takes the user's binding away; the old key stays removed, which its own row shows, and its Reset brings it back
+    test.click(reset, row)
+    test.match(press("Ctrl+L"), 0, "Reset takes the new key away")
+    search("ctrl+j")
+    test.click(reset, row)
+    test.match(press("Ctrl+J"), 1, "Reset brings the preset's key back")
+
+    -- Remove takes the preset's key away with false in the user's settings
+    search("count")
+    test.click(alone, row)
+    test.match(press("Ctrl+J"), 0, "Remove takes the key away")
+
+    -- a function and a key add a binding: the dropdown searches what is typed, and Return chooses
+    test.click(list.x + 200, list.y + 144)
+    test.text("counter")
+    test.key("Return")
+    test.click(right - 96, list.y + 144)
+    test.key("Ctrl+K")
+    test.match(press("Ctrl+K"), 1, "the added key counts")
+  end,
+}
