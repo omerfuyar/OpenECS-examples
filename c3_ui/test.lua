@@ -69,7 +69,19 @@ return {
     test.click(corner.x + corner.width - 20, corner.y + corner.height - 20, 3)
     test.key("Down")
     test.key("Return")
-    test.match(state().clicks, 0, "Down goes past the line to the last entry")
+    test.match(state().clicks, 0, "Down goes past the line to Reset")
+    -- More opens its entries in place, below the way back: Right opens it, Left goes back to More, Return opens it again, and Return
+    -- runs its first entry
+    test.click(corner.x + corner.width - 20, corner.y + corner.height - 20, 3)
+    local whole = test.popup(1).height
+    test.key("Up")
+    test.key("Right")
+    local more = test.popup(1).height
+    test.key("Left")
+    test.match({ more < whole, test.popup(1).height }, { true, whole }, "the submenu in place, and back")
+    test.key("Return")
+    test.key("Return")
+    test.match(state().clicks, 10, "the submenu's entry")
 
     -- a graph's bars fill its width in the given order, each as high as its share of the highest; the checks left the rows sorted by price,
     -- so the stock is 25, 40 and 12, and the line marks 20 across it
