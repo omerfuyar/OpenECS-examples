@@ -71,6 +71,22 @@ return {
     test.key("Return")
     test.match(state().clicks, 0, "Down goes past the line to the last entry")
 
+    -- a graph's bars fill its width in the given order, each as high as its share of the highest; the checks left the rows sorted by price,
+    -- so the stock is 25, 40 and 12, and the line marks 20 across it
+    tabs = state().rects.tab
+    test.click(box.x + tabs.x + tabs.width * 0.02, box.y + tabs.y + tabs.height / 2)
+    test.key("Right")
+    test.key("Right")
+    test.match(state().tab, "Table", "the tab of the table and the graph")
+    local graph = state().rects.graph
+    local bar = graph.width / 3
+    local function pixel(index, fromBottom)
+      return test.pixel(box.x + graph.x + bar * (index - 0.5), box.y + graph.y + graph.height * (1 - fromBottom))
+    end
+    test.match({ pixel(1, 0.1), pixel(2, 0.1), pixel(3, 0.1) }, { "#61AFEF", "#61AFEF", "#61AFEF" }, "every bar starts at the bottom")
+    test.match(pixel(2, 0.95), "#61AFEF", "the highest bar fills the graph")
+    test.match(pixel(1, 0.95) ~= "#61AFEF" and pixel(3, 0.4) ~= "#61AFEF", true, "lower bars end at their share of the highest")
+
     -- ui's inspector outlines every element, and names the one under the pointer: the innermost element there, with its id
     local panel = test.rect(1)
     local state = test.session().workspaces[1].windows[1].panels[1].state
