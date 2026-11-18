@@ -26,7 +26,9 @@ return {
       test.key("Backspace")
       test.text(text)
     end
-    local key, remove, reset = list.x + 617, list.x + 774, list.x + 793
+    -- the row's key and buttons are at its right side, so their places are measured from the panel's right edge, whatever its width
+    local right = list.x + list.width
+    local key, reset, alone = list.x + list.width * 0.75, right - 57, right - 76
     local row = list.y + 218
 
     test.match(press("Ctrl+J"), 1, "the preset's key counts")
@@ -46,14 +48,14 @@ return {
 
     -- Remove takes the preset's key away with false in the user's settings
     search("count")
-    test.click(remove, row)
+    test.click(alone, row)
     test.match(press("Ctrl+J"), 0, "Remove takes the key away")
 
     -- a function and a key add a binding: the dropdown searches what is typed, and Return chooses
     test.click(list.x + 200, list.y + 144)
     test.text("counter")
     test.key("Return")
-    test.click(list.x + 754, list.y + 144)
+    test.click(right - 96, list.y + 144)
     test.key("Ctrl+K")
     test.match(press("Ctrl+K"), 1, "the added key counts")
   end,
