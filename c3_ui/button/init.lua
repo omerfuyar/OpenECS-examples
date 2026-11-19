@@ -149,6 +149,10 @@ ecs.panel.registerType({
         { label = "Add a click", onClick = function() state.clicks = state.clicks + 1 end },
         { line = true },
         { label = "Reset the clicks", enabled = state.clicks > 0, onClick = function() state.clicks = 0 end },
+        -- an entry with entries is a submenu, which opens in place of the menu, below a row that goes back
+        { label = "More", entries = {
+          { label = "Add ten clicks", onClick = function() state.clicks = state.clicks + 10 end },
+        } },
       })
     end
 

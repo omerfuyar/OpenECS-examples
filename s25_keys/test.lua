@@ -53,10 +53,27 @@ return {
 
     -- a function and a key add a binding: the dropdown searches what is typed, and Return chooses
     test.click(list.x + 200, list.y + 144)
-    test.text("counter")
+    for letter in ("count"):gmatch(".") do
+      test.key(letter:upper())
+    end
     test.key("Return")
     test.click(right - 96, list.y + 144)
     test.key("Ctrl+K")
     test.match(press("Ctrl+K"), 1, "the added key counts")
+
+    -- the functions are in folders by their names' dots, a folder at a time: Return opens the one hovered, counter, the first, below
+    -- the way back, Left goes up to the folders, Right opens it again, and Return chooses count, the first in it
+    test.click(list.x + 200, list.y + 144)
+    local top = test.popup(1).height
+    test.key("Return")
+    local inside = test.popup(1).height
+    test.key("Left")
+    local back = test.popup(1).height
+    test.key("Right")
+    test.match({ inside < top, back, test.popup(1).height }, { true, top, inside }, "the folders, and back into counter")
+    test.key("Return")
+    test.click(right - 96, list.y + 144)
+    test.key("Ctrl+M")
+    test.match(press("Ctrl+M"), 1, "the key added from the folder counts")
   end,
 }
