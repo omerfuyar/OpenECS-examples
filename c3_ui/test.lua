@@ -58,6 +58,15 @@ return {
     test.drag(x, y, toX, toY - height * 0.4)
     test.match(state().dropped, { node = "main", where = "before", on = "lib" }, "a drop before a node")
 
+    -- README.md's mark, at the end of its row, turns on and off with a click, and chooses nothing
+    local chosen = state().nodes
+    local star = state().rects["tree:readme:star"]
+    test.click(box.x + star.x + star.width / 2, box.y + star.y + star.height / 2)
+    test.match(state().starred, true, "a click turns a mark on")
+    test.match(state().nodes, chosen, "and chooses no node")
+    test.click(box.x + star.x + star.width / 2, box.y + star.y + star.height / 2)
+    test.match(state().starred, false, "and another turns it off")
+
     -- a right click beside the elements reaches the root's onMenu, which opens the panel's menu there: its entries are a row each, with a line between the
     -- first and the second, and Reset is enabled only when there are clicks
     local clicks = state().clicks

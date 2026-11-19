@@ -37,8 +37,14 @@ local NODES = {
   { id = "readme", label = "README.md" },
 }
 
+-- the tree's nodes: a node's marks are short texts at the end of its row, on or off, and README.md has a star, which the panel keeps
+local function nodesOf(state)
+  NODES[2].marks = { { id = "star", text = "Star", on = state.starred == true, tooltip = "A click stars the file, or takes the star off" } }
+  return NODES
+end
+
 -- the elements the test clicks, by id; their rectangles are saved, so the test finds them
-local IDS = { "button", "tab", "sound", "volume", "size", "fruit", "count", "item:2", "name", "note", "tree:src",
+local IDS = { "button", "tab", "sound", "volume", "size", "fruit", "count", "item:2", "name", "note", "tree:src", "tree:readme:star",
   "tree:lib", "table:header", "table:1", "table:2", "table:title:name", "table:title:price", "graph", "about",
   "tint", "colors:heading", "tag:1", "tag:2", "tag:6", "file" }
 
@@ -196,7 +202,7 @@ ecs.panel.registerType({
         -- a text of spans mixes styles; a click on a span with a link gives the link to onLink
         ui.text({ "The controls of ", { text = "ui", bold = true }, ", each changing the panel's state: ", { text = "ui's design", link = "https://github.com/omerfuyar/OpenECS-std/blob/dev/DESIGN.md" } },
           { id = "about", color = "textDim", onLink = set("link") }),
-        ui.tree(NODES,
+        ui.tree(nodesOf(state),
           {
             id = "tree",
             height = 110,
@@ -231,6 +237,10 @@ ecs.panel.registerType({
             end,
             onToggle = function(id, open)
               state.open[id] = open or nil
+            end,
+            -- a click on a mark gives its node, the mark and its new state, and does not choose the node
+            onMark = function(_, _, on)
+              state.starred = on
             end,
             -- a right click on a node chooses it, unless it is chosen, and gives its id, as a menu about it would take it
             onMenu = function(id)
@@ -338,6 +348,7 @@ ecs.panel.registerType({
       node = state.node,
       nodes = state.nodes,
       menuNode = state.menuNode,
+      starred = state.starred == true,
       open = state.open,
       sort = state.sort,
       ascending = state.ascending,
