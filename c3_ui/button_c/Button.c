@@ -39,7 +39,7 @@ static const FruitRow FRUIT_ROWS[] = {{"Cherry", 4.5, 12, "4.5", "12"}, {"Apple"
 
 /// @brief The elements the test clicks, by id; their rectangles are saved, so the test finds them.
 static const char *const IDS[] = {"button", "tab", "sound", "volume", "size", "fruit", "count", "item:2", "name", "note", "tree:src",
-                                  "tree:lib", "table:header", "table:1", "table:2", "table:title:name", "table:title:price", "about",
+                                  "tree:main", "tree:lib", "tree:readme:star", "table:header", "table:1", "table:2", "table:title:name", "table:title:price", "about",
                                   "tint", "colors:heading", "tag:1", "tag:2", "tag:6", "file"};
 
 static const char *const NOTE = "Tab gives the keys to the next control and Shift+Tab to the one before. Return or Space presses the control that has them, "
@@ -66,6 +66,7 @@ typedef struct Controls
     const char *node; // the tree's chosen node's id
     bool srcOpen;     // the tree's open nodes
     bool libOpen;
+    bool starred;     // whether README.md's mark is on
     const char *sort; // the id of the column the rows are sorted by
     bool ascending;
     i32 row;       // the table's chosen row, from 1, or 0 for none
@@ -159,7 +160,9 @@ static void DescribeTree(Controls *controls)
 {
     const UiTreeNode lib[] = {{.id = "util", .label = "util.c"}, {0}};
     const UiTreeNode src[] = {{.id = "main", .label = "main.c"}, {.id = "lib", .label = "lib", .children = lib, .open = &controls->libOpen}, {0}};
-    const UiTreeNode nodes[] = {{.id = "src", .label = "src", .children = src, .open = &controls->srcOpen}, {.id = "readme", .label = "README.md"}, {0}};
+    // a node's marks are short texts at the end of its row, on or off; README.md has a star, which UI_TREE turns in the panel's bool
+    const UiTreeMark star[] = {{.id = "star", .text = "Star", .on = &controls->starred, .tooltip = "A click stars the file, or takes the star off"}, {0}};
+    const UiTreeNode nodes[] = {{.id = "src", .label = "src", .children = src, .open = &controls->srcOpen}, {.id = "readme", .label = "README.md", .marks = star}, {0}};
 
     UI_COLUMN(.gap = 8)
     {
@@ -400,6 +403,7 @@ static SHUResult ControlsSaveState(void *data, ECSValue *retSavedState)
     SHU_ReturnResult(SetString(retSavedState, "tint", state->tint));
     SHU_ReturnResult(SetBool(retSavedState, "colors", state->colors));
     SHU_ReturnResult(SetString(retSavedState, "node", state->node));
+    SHU_ReturnResult(SetBool(retSavedState, "starred", state->starred));
     SHU_ReturnResult(SetString(retSavedState, "sort", state->sort));
     SHU_ReturnResult(SetBool(retSavedState, "ascending", state->ascending));
 
