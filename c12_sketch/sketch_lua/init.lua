@@ -593,6 +593,17 @@ function services.closeOthers(panel)
   return closed
 end
 
+-- draws in yellow for this run only, in the settings' run layer, which no file keeps; again, the brush's own colour comes back
+local highlighting = false
+
+function services.highlight()
+  highlighting = not highlighting
+  -- nil takes the run's value away, so the colour of the layers below applies again
+  if not ecs.setting.setForRun(name("brushColor"), highlighting and "yellow" or nil) then
+    ecs.log.warn("Cannot change the brush's colour for this run.")
+  end
+end
+
 function services.nextWorkspace()
   local next = ecs.workspace.getCurrent() % ecs.workspace.getCount() + 1
   ecs.workspace.switch(next)
@@ -671,6 +682,7 @@ ecs.service.register({
   gather = { sig = "void(handle<ecs.panel>)", doc = "Gather every canvas into this group", fn = services.gather },
   closeOthers = { sig = "int(handle<ecs.panel>)", doc = "Close the other canvases", fn = services.closeOthers },
   nextWorkspace = { sig = "void()", doc = "Switch to the next workspace", fn = services.nextWorkspace },
+  highlight = { sig = "void()", doc = "Draw in yellow for this run, or with the brush's own colour again", fn = services.highlight },
   stats = { sig = "int(out value)", doc = "Counts strokes, canvases and saves", fn = services.stats },
   eachCanvas = { sig = "int(fn<void(handle<ecs.panel>, int)>)", doc = "Calls a function with every canvas and its number of strokes", fn = services.eachCanvas },
   pixels = { sig = "buffer(handle<ecs.panel>)", doc = "Gives a canvas as a PPM image", fn = services.pixels },
