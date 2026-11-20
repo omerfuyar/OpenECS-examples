@@ -1153,25 +1153,38 @@ static i32 SketchCloseOthers(ECSPanel panel)
     return closed;
 }
 
-/// @brief Draws in yellow for this run only, in the settings' run layer, which no file keeps; again, the brush's own colour comes back.
+/// @brief Draws in yellow with a wide brush for this run only, in the settings' run layer, which no file keeps; again, the brush's own
+/// colour and size come back.
 static void SketchHighlight(void)
 {
     ECSValue *color = nullptr;
+    ECSValue *size = nullptr;
 
-    if (ECSValue_Create(&color))
+    if (ECSValue_Create(&color) || ECSValue_Create(&size))
     {
+        ECSValue_Destroy(&color);
         return;
     }
 
     SKETCH.highlighting = !SKETCH.highlighting;
 
-    // nil takes the run's value away, so the colour of the layers below applies again
-    if ((SKETCH.highlighting && ECSValue_SetString(color, "yellow")) || ECSSetting_SetForRun(SKETCH_NAME("brushColor"), color))
+    // nil takes the run's values away, so the values of the layers below apply again
+    if (SKETCH.highlighting)
     {
-        ECS_LogWarn(SKETCH.plugin, "Cannot change the brush's colour for this run.");
+        ECSValue_SetInteger(size, 12);
+    }
+
+    if (SKETCH.highlighting && ECSValue_SetString(color, "yellow"))
+    {
+        ECS_LogWarn(SKETCH.plugin, "Cannot make the highlight's colour.");
+    }
+    else if (ECSSetting_SetForRun(SKETCH_NAME("brushColor"), color) || ECSSetting_SetForRun(SKETCH_NAME("brushSize"), size))
+    {
+        ECS_LogWarn(SKETCH.plugin, "Cannot change the brush for this run.");
     }
 
     ECSValue_Destroy(&color);
+    ECSValue_Destroy(&size);
 }
 
 static void SketchNextWorkspace(void)
