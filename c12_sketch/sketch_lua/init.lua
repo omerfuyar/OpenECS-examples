@@ -598,9 +598,10 @@ local highlighting = false
 
 function services.highlight()
   highlighting = not highlighting
-  -- nil takes the run's value away, so the colour of the layers below applies again
-  if not ecs.setting.setForRun(name("brushColor"), highlighting and "yellow" or nil) then
-    ecs.log.warn("Cannot change the brush's colour for this run.")
+  -- nil takes the run's values away, so the values of the layers below apply again
+  if not ecs.setting.setForRun(name("brushColor"), highlighting and "yellow" or nil)
+      or not ecs.setting.setForRun(name("brushSize"), highlighting and 12 or nil) then
+    ecs.log.warn("Cannot change the brush for this run.")
   end
 end
 
