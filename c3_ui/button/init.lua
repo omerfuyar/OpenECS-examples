@@ -44,7 +44,7 @@ local function nodesOf(state)
 end
 
 -- the elements the test clicks, by id; their rectangles are saved, so the test finds them
-local IDS = { "button", "tab", "sound", "volume", "size", "fruit", "count", "item:2", "name", "note", "tree:src", "tree:readme:star",
+local IDS = { "button", "tab", "sound", "volume", "size", "fruit", "count", "item:2", "name", "note", "tree:src", "tree:main", "tree:readme:star",
   "tree:lib", "table:header", "table:1", "table:2", "table:title:name", "table:title:price", "graph", "about",
   "tint", "colors:heading", "tag:1", "tag:2", "tag:6", "file" }
 

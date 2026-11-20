@@ -190,6 +190,13 @@ return function(test, number, title)
   test.key("Down")
   test.match(state().node, "readme", "the node below the closed one")
 
+  -- README.md's mark, at the end of its row, turns on and off with a click, and keeps the chosen node
+  test.click(at("tree:main"))
+  test.click(at("tree:readme:star"))
+  test.match({ state().starred, state().node }, { true, "main" }, "a click turns a mark on, and chooses no node")
+  test.click(at("tree:readme:star"))
+  test.match(state().starred, false, "and another turns it off")
+
   -- the Table tab: the rows are sorted by name, a click on a title sorts by its column, and a second click reverses the order
   test.click(at("tab", 0.02))
   test.key("Right")
