@@ -142,5 +142,27 @@ return {
     os.remove(folder .. "dropped.txt")
     os.remove(folder .. "dropped 2.txt")
     os.remove(outside)
+
+    -- Show in Files chooses the opened note in the files panel, without the tool's choose; a locked panel stays where it is
+    local files = idOf("files.tree")
+    local opened = test.rect(idOf("notes.opened"))
+    x, y = row(1)
+    test.click(x, y)
+    test.click(x, y)
+    x, y = row(2)
+    test.click(x, y)
+    test.match(test.panel(files).state, { selected = "plumber.txt" }, "plumber.txt is chosen")
+    test.click(opened.x + 50, opened.y + 20)
+    test.wait()
+    test.match(test.panel(files).state, { selected = "apples.txt" }, "Show in Files chooses the opened note")
+    test.match(notes(), { chosen = "plumber.txt" }, "without the tool's choose")
+    test.click(x, y)
+    test.call("files.lock")
+    test.click(opened.x + 50, opened.y + 20)
+    test.wait()
+    test.match(test.panel(files).state, { selected = "plumber.txt", locked = true }, "a locked panel stays")
+    test.click(x, y)
+    test.call("files.lock")
+    test.match(test.panel(files).state, { locked = false }, "and unlocks")
   end,
 }

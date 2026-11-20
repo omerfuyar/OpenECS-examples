@@ -1,7 +1,8 @@
 -- A tool of notes, built on the files panel: the files plugin shows a folder and does what a files panel does, and the
 -- tool tells it which folder, what a click and a double click do, and which files its New makes. Here a click shows a
 -- note's first line, and a double click opens the note, both in a panel of the tool's own. Lua's io reads the notes.
--- The panel follows the folder with fs's watch, so a note that another program adds shows in it too.
+-- The panel follows the folder with fs's watch, so a note that another program adds shows in it too. Show in Files chooses the
+-- opened note in the files panel, as a tool shows there the file of what the user works on, unless the panel is locked.
 
 local ecs = require("ecs")
 local files = require("files")
@@ -69,7 +70,13 @@ ecs.panel.registerType({
         file:close()
       end
     end
-    ui.show(state.panel, surface, ui.column({ padding = 8 }, { ui.text(text, { wrap = true }) }))
+    -- Show in Files shows the opened note in the files panel, unless the panel is locked
+    ui.show(state.panel, surface, ui.column({ padding = 8, gap = 8 }, {
+      ui.button("Show in files", { id = "show", tooltip = "Choose the opened note in the files panel", onClick = function()
+        files.reveal(opened)
+      end }),
+      ui.text(text, { wrap = true }),
+    }))
   end,
   event = function(state, event)
     ui.event(state.panel, event)
