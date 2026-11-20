@@ -105,6 +105,7 @@ static struct
     u8 *pixels;       // the buffer sketch_c.pixels returned last; valid until its next call
     ECSTimer statsTimer;
     SketchEachCanvasFunction eachCanvas; // sketch_c.eachCanvas, through its lookup
+    bool highlighting;                   // the brush is yellow for this run, in the settings' run layer
 } SKETCH = {0};
 
 #pragma region Strokes
@@ -1152,6 +1153,27 @@ static i32 SketchCloseOthers(ECSPanel panel)
     return closed;
 }
 
+/// @brief Draws in yellow for this run only, in the settings' run layer, which no file keeps; again, the brush's own colour comes back.
+static void SketchHighlight(void)
+{
+    ECSValue *color = nullptr;
+
+    if (ECSValue_Create(&color))
+    {
+        return;
+    }
+
+    SKETCH.highlighting = !SKETCH.highlighting;
+
+    // nil takes the run's value away, so the colour of the layers below applies again
+    if ((SKETCH.highlighting && ECSValue_SetString(color, "yellow")) || ECSSetting_SetForRun(SKETCH_NAME("brushColor"), color))
+    {
+        ECS_LogWarn(SKETCH.plugin, "Cannot change the brush's colour for this run.");
+    }
+
+    ECSValue_Destroy(&color);
+}
+
 static void SketchNextWorkspace(void)
 {
     usz next = ECSWorkspace_GetCurrent() % ECSWorkspace_GetCount() + 1;
@@ -1454,6 +1476,7 @@ SHUResult ECSPlugin_Init(ECSPlugin plugin)
         {"gather", (ECSFunction)SketchGather, "void(handle<ecs.panel>)", "Gather every canvas into this group"},
         {"closeOthers", (ECSFunction)SketchCloseOthers, "int(handle<ecs.panel>)", "Close the other canvases"},
         {"nextWorkspace", (ECSFunction)SketchNextWorkspace, "void()", "Switch to the next workspace"},
+        {"highlight", (ECSFunction)SketchHighlight, "void()", "Draw in yellow for this run, or with the brush's own colour again"},
         {"stats", (ECSFunction)SketchStats, "int(out value)", "Counts strokes, canvases and saves"},
         {"eachCanvas", (ECSFunction)SketchEachCanvas, "int(fn<void(handle<ecs.panel>, int)>)", "Calls a function with every canvas and its number of strokes"},
         {"pixels", (ECSFunction)SketchPixels, "buffer(handle<ecs.panel>)", "Gives a canvas as a PPM image"},
