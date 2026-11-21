@@ -48,44 +48,58 @@ files.setHandlers({
   },
 })
 
+-- each panel's state is an object of Notes, whose functions are methods
+local Notes = {}
+Notes.__index = Notes
+
+function Notes.create(panel)
+  panels[panel] = true
+  return setmetatable({ panel = panel }, Notes)
+end
+
+function Notes:draw(surface)
+  local text = "Click a note to see its first line, and double-click it to open it."
+  if chosen ~= "" and opened ~= chosen then
+    local file = io.open(folder .. chosen, "rb")
+    text = chosen .. ": " .. (file and file:read("l") or "")
+    if file then
+      file:close()
+    end
+  elseif opened ~= "" then
+    local file = io.open(folder .. opened, "rb")
+    text = opened .. "\n\n" .. (file and file:read("a") or "")
+    if file then
+      file:close()
+    end
+  end
+  -- Show in Files shows the opened note in the files panel, unless the panel is locked
+  ui.show(self.panel, surface, ui.column({ padding = 8, gap = 8 }, {
+    ui.button("Show in files", { id = "show", tooltip = "Choose the opened note in the files panel", onClick = function()
+      files.reveal(opened)
+    end }),
+    ui.text(text, { wrap = true }),
+  }))
+end
+
+function Notes:event(event)
+  ui.event(self.panel, event)
+end
+
+function Notes:saveState()
+  return { opened = opened, chosen = chosen, folder = folder }
+end
+
+function Notes:destroy()
+  ui.forget(self.panel)
+  panels[self.panel] = nil
+end
+
 ecs.panel.registerType({
   name = "opened",
   title = "Opened",
-  create = function(panel)
-    panels[panel] = true
-    return { panel = panel }
-  end,
-  draw = function(state, surface)
-    local text = "Click a note to see its first line, and double-click it to open it."
-    if chosen ~= "" and opened ~= chosen then
-      local file = io.open(folder .. chosen, "rb")
-      text = chosen .. ": " .. (file and file:read("l") or "")
-      if file then
-        file:close()
-      end
-    elseif opened ~= "" then
-      local file = io.open(folder .. opened, "rb")
-      text = opened .. "\n\n" .. (file and file:read("a") or "")
-      if file then
-        file:close()
-      end
-    end
-    -- Show in Files shows the opened note in the files panel, unless the panel is locked
-    ui.show(state.panel, surface, ui.column({ padding = 8, gap = 8 }, {
-      ui.button("Show in files", { id = "show", tooltip = "Choose the opened note in the files panel", onClick = function()
-        files.reveal(opened)
-      end }),
-      ui.text(text, { wrap = true }),
-    }))
-  end,
-  event = function(state, event)
-    ui.event(state.panel, event)
-  end,
-  saveState = function()
-    return { opened = opened, chosen = chosen, folder = folder }
-  end,
-  destroy = function(state)
-    ui.forget(state.panel)
-    panels[state.panel] = nil
-  end,
+  create = Notes.create,
+  draw = Notes.draw,
+  event = Notes.event,
+  saveState = Notes.saveState,
+  destroy = Notes.destroy,
 })

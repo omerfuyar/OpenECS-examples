@@ -15,57 +15,71 @@ local function read(name)
   return text
 end
 
+-- each panel's state is an object of Source, whose functions are methods
+local Source = {}
+Source.__index = Source
+
 -- the file's language comes from its name, and spans gives a list of spans for each line
-local function load(state, file)
+function Source:load(file)
   local name = FILES[file]
   local language = syntax.languageOf(name)
-  state.file, state.name, state.language = file, name, language
-  state.lines = assert(syntax.spans(language, read(name)))
-  state.panel.title = name
-  state.panel:redraw()
+  self.file, self.name, self.language = file, name, language
+  self.lines = assert(syntax.spans(language, read(name)))
+  self.panel.title = name
+  self.panel:redraw()
+end
+
+function Source.create(panel)
+  local state = setmetatable({ panel = panel }, Source)
+  state:load(1)
+  return state
+end
+
+function Source:draw(surface)
+  local lines = {}
+
+  for i, spans in ipairs(self.lines) do
+    lines[i] = ui.text(spans, { font = "mono" })
+  end
+
+  ui.show(self.panel, surface, ui.column({ padding = 12, gap = 8 }, {
+    ui.selector(self.file, FILES, { id = "file", onSelect = function(file)
+      self:load(file)
+    end }),
+    ui.scroll({ id = "code", grow = 1 }, lines),
+  }))
+end
+
+function Source:event(event)
+  ui.event(self.panel, event)
+end
+
+function Source:destroy()
+  ui.forget(self.panel)
+end
+
+-- what the test reads: the file and the kinds of a line of each sample, from highlight's ranges
+function Source:saveState()
+  local kinds = {}
+
+  for _, range in ipairs(assert(syntax.highlight("c", "int main(void) { return 0; } // done"))) do
+    kinds[#kinds + 1] = range.kind
+  end
+
+  return { name = self.name, language = self.language, lines = #self.lines, kinds = kinds, languages = syntax.languages() }
 end
 
 ecs.panel.registerType({
   name = "panel",
   title = "Viewer",
 
-  create = function(panel)
-    local state = { panel = panel }
-    load(state, 1)
-    return state
-  end,
+  create = Source.create,
 
-  draw = function(state, surface)
-    local lines = {}
+  draw = Source.draw,
 
-    for i, spans in ipairs(state.lines) do
-      lines[i] = ui.text(spans, { font = "mono" })
-    end
+  event = Source.event,
 
-    ui.show(state.panel, surface, ui.column({ padding = 12, gap = 8 }, {
-      ui.selector(state.file, FILES, { id = "file", onSelect = function(file)
-        load(state, file)
-      end }),
-      ui.scroll({ id = "code", grow = 1 }, lines),
-    }))
-  end,
+  destroy = Source.destroy,
 
-  event = function(state, event)
-    ui.event(state.panel, event)
-  end,
-
-  destroy = function(state)
-    ui.forget(state.panel)
-  end,
-
-  -- what the test reads: the file and the kinds of a line of each sample, from highlight's ranges
-  saveState = function(state)
-    local kinds = {}
-
-    for _, range in ipairs(assert(syntax.highlight("c", "int main(void) { return 0; } // done"))) do
-      kinds[#kinds + 1] = range.kind
-    end
-
-    return { name = state.name, language = state.language, lines = #state.lines, kinds = kinds, languages = syntax.languages() }
-  end,
+  saveState = Source.saveState,
 })

@@ -16,31 +16,43 @@ local function step(panel, amount)
   end
 end
 
+-- each panel's state is an object of Stepper, whose functions are methods
+local Stepper = {}
+Stepper.__index = Stepper
+
+function Stepper.create(panel)
+  local stepper = setmetatable({ panel = panel, value = 0 }, Stepper)
+  steppers[panel] = stepper
+  return stepper
+end
+
+function Stepper:destroy()
+  steppers[self.panel] = nil
+end
+
+function Stepper:draw(surface)
+  surface:fill(0, 0, surface.width, surface.height, "background")
+  draw.text(surface, draw.font("ui"), tostring(self.value), 24, 24, 48, "text")
+end
+
+-- keys that no binding takes come to the focused panel
+function Stepper:event(event)
+  if event.type == "keyDown" and event.key == "Space" then
+    step(self.panel, 10)
+  end
+end
+
 ecs.panel.registerType({
   name = "panel",
   title = "Stepper",
 
-  create = function(panel)
-    local stepper = { panel = panel, value = 0 }
-    steppers[panel] = stepper
-    return stepper
-  end,
+  create = Stepper.create,
 
-  destroy = function(state)
-    steppers[state.panel] = nil
-  end,
+  destroy = Stepper.destroy,
 
-  draw = function(state, surface)
-    surface:fill(0, 0, surface.width, surface.height, "background")
-    draw.text(surface, draw.font("ui"), tostring(state.value), 24, 24, 48, "text")
-  end,
+  draw = Stepper.draw,
 
-  -- keys that no binding takes come to the focused panel
-  event = function(state, event)
-    if event.type == "keyDown" and event.key == "Space" then
-      step(state.panel, 10)
-    end
-  end,
+  event = Stepper.event,
 })
 
 -- a handle stands for an object of the core or a plugin, here a panel

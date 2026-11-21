@@ -48,51 +48,65 @@ local tray, problem = notify.tray({
 })
 note(tray and "The tray icon is shown" or ("No tray icon: " .. problem))
 
-local function send(state)
+-- each panel's state is an object of Alerts, whose functions are methods
+local Alerts = {}
+Alerts.__index = Alerts
+
+function Alerts:send()
   local id, why = notify.send({
     title = "Alerts",
-    message = ("Notification number %d"):format(state.sent + 1),
+    message = ("Notification number %d"):format(self.sent + 1),
     buttons = { { id = "yes", label = "Yes" }, { id = "no", label = "No" } },
   })
 
-  state.sent += 1
+  self.sent += 1
   note(id and ("sent notification " .. id) or ("not sent: " .. why))
-  state.answered = id ~= nil or type(why) == "string"
+  self.answered = id ~= nil or type(why) == "string"
+end
+
+function Alerts.create(panel)
+  local state = setmetatable({ panel = panel, sent = 0 }, Alerts)
+  panels[panel] = state
+  return state
+end
+
+function Alerts:destroy()
+  panels[self.panel] = nil
+end
+
+function Alerts:event(event)
+  if event.type == "keyDown" and event.key == "Return" then
+    self:send()
+  end
+end
+
+function Alerts:draw(surface)
+  surface:fill(0, 0, surface.width, surface.height, "background")
+  local font, y = draw.font("ui"), 16
+  draw.text(surface, font, "Return sends a notification", 16, y, 18, "text")
+
+  for i = math.max(1, #lines - 8), #lines do
+    y += 26
+    draw.text(surface, font, lines[i], 16, y, 18, "textDim")
+  end
+end
+
+-- what the test reads
+function Alerts:saveState()
+  return { sent = self.sent, answered = self.answered }
 end
 
 ecs.panel.registerType({
   name = "panel",
   title = "Alerts",
 
-  create = function(panel)
-    local state = { panel = panel, sent = 0 }
-    panels[panel] = state
-    return state
-  end,
+  create = Alerts.create,
 
-  destroy = function(state)
-    panels[state.panel] = nil
-  end,
+  destroy = Alerts.destroy,
 
-  event = function(state, event)
-    if event.type == "keyDown" and event.key == "Return" then
-      send(state)
-    end
-  end,
+  event = Alerts.event,
 
-  draw = function(_, surface)
-    surface:fill(0, 0, surface.width, surface.height, "background")
-    local font, y = draw.font("ui"), 16
-    draw.text(surface, font, "Return sends a notification", 16, y, 18, "text")
+  draw = Alerts.draw,
 
-    for i = math.max(1, #lines - 8), #lines do
-      y += 26
-      draw.text(surface, font, lines[i], 16, y, 18, "textDim")
-    end
-  end,
-
-  -- what the test reads
-  saveState = function(state)
-    return { sent = state.sent, answered = state.answered }
-  end,
+  saveState = Alerts.saveState,
 })

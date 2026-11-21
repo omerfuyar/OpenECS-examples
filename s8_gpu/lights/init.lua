@@ -30,44 +30,52 @@ end
 local light = dot(32)
 local font = draw.font("ui")
 
+-- each panel's state is an object of Lights, whose functions are methods
+local Lights = {}
+Lights.__index = Lights
+
+function Lights.create()
+  return setmetatable({ seconds = 0 }, Lights)
+end
+
+function Lights:draw(surface, seconds)
+  self.seconds += seconds
+
+  -- gpu draws into the surface as draw does into pixels; what it draws reaches the GPU when draw returns
+  local width, height = surface.width / surface.scale, surface.height / surface.scale
+  gpu.clear(surface, BACKGROUND)
+
+  -- text takes draw's fonts; draw.measure gives its size, as for text that draw draws
+  gpu.text(surface, font, "Lights in Lua", 8, 8, 16, "text")
+
+  -- the four tiles fill a square in the middle, half as tall as the panel
+  local side = math.floor(math.min(width, height) / 2)
+  local left, top, half = math.floor((width - side) / 2), math.floor((height - side) / 2), side / 2
+  gpu.fill(surface, left, top, half, half, TILES[1])
+  gpu.fill(surface, left + half, top, half, half, TILES[2])
+  gpu.fill(surface, left, top + half, half, half, TILES[3])
+  gpu.fill(surface, left + half, top + half, half, half, TILES[4])
+
+  -- a line under the tiles, and the light, which goes along the bottom and back every four seconds; the colour multiplies its pixels, so its alpha pulses
+  gpu.line(surface, left, top + side + 8, left + side, top + side + 8, 2, "accent")
+  local size = math.floor(side / 8) + 1
+  local phase = self.seconds / 4 % 1
+  local across = phase < 0.5 and phase * 2 or 2 - phase * 2
+
+  if light then
+    local alpha = math.floor(191 + 64 * math.sin(self.seconds * 4))
+    gpu.imageTransformed(surface, light, across * (width - size * 2), height - size * 3, size * 2, size * 2, 0, ("#FFFFFF%02X"):format(alpha))
+  end
+
+end
+
 ecs.panel.registerType({
   name = "panel",
   title = "Lights in Lua",
   surface = "gpu",   -- the panel draws into a GPU texture instead of pixels
   continuous = true, -- the light moves, so the panel draws every frame
 
-  create = function()
-    return { seconds = 0 }
-  end,
+  create = Lights.create,
 
-  draw = function(state, surface, seconds)
-    state.seconds += seconds
-
-    -- gpu draws into the surface as draw does into pixels; what it draws reaches the GPU when draw returns
-    local width, height = surface.width / surface.scale, surface.height / surface.scale
-    gpu.clear(surface, BACKGROUND)
-
-    -- text takes draw's fonts; draw.measure gives its size, as for text that draw draws
-    gpu.text(surface, font, "Lights in Lua", 8, 8, 16, "text")
-
-    -- the four tiles fill a square in the middle, half as tall as the panel
-    local side = math.floor(math.min(width, height) / 2)
-    local left, top, half = math.floor((width - side) / 2), math.floor((height - side) / 2), side / 2
-    gpu.fill(surface, left, top, half, half, TILES[1])
-    gpu.fill(surface, left + half, top, half, half, TILES[2])
-    gpu.fill(surface, left, top + half, half, half, TILES[3])
-    gpu.fill(surface, left + half, top + half, half, half, TILES[4])
-
-    -- a line under the tiles, and the light, which goes along the bottom and back every four seconds; the colour multiplies its pixels, so its alpha pulses
-    gpu.line(surface, left, top + side + 8, left + side, top + side + 8, 2, "accent")
-    local size = math.floor(side / 8) + 1
-    local phase = state.seconds / 4 % 1
-    local across = phase < 0.5 and phase * 2 or 2 - phase * 2
-
-    if light then
-      local alpha = math.floor(191 + 64 * math.sin(state.seconds * 4))
-      gpu.imageTransformed(surface, light, across * (width - size * 2), height - size * 3, size * 2, size * 2, 0, ("#FFFFFF%02X"):format(alpha))
-    end
-
-  end,
+  draw = Lights.draw,
 })

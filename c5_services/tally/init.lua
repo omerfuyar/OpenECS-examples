@@ -43,29 +43,41 @@ counter.watch(function(name, value)
   end
 end)
 
+-- each panel's state is an object of Tally, whose functions are methods
+local Tally = {}
+Tally.__index = Tally
+
+function Tally.create(panel)
+  panels[panel] = true
+  return setmetatable({ panel = panel }, Tally)
+end
+
+function Tally:destroy()
+  panels[self.panel] = nil
+end
+
+function Tally:draw(surface)
+  surface:fill(0, 0, surface.width, surface.height, "background")
+  draw.text(surface, draw.font("ui"), ("%d clicks in all"):format(counter.get("clicks")), 24, 24, 24, "text")
+end
+
+function Tally:event(event)
+  if event.type == "pointerDown" then
+    addTo("clicks", 1)
+  end
+end
+
 ecs.panel.registerType({
   name = "panel",
   title = "Tally",
 
-  create = function(panel)
-    panels[panel] = true
-    return { panel = panel }
-  end,
+  create = Tally.create,
 
-  destroy = function(state)
-    panels[state.panel] = nil
-  end,
+  destroy = Tally.destroy,
 
-  draw = function(_, surface)
-    surface:fill(0, 0, surface.width, surface.height, "background")
-    draw.text(surface, draw.font("ui"), ("%d clicks in all"):format(counter.get("clicks")), 24, 24, 24, "text")
-  end,
+  draw = Tally.draw,
 
-  event = function(state, event)
-    if event.type == "pointerDown" then
-      addTo("clicks", 1)
-    end
-  end,
+  event = Tally.event,
 })
 
 -- register functions while the plugin loads; keys, menus and other plugins run them by name

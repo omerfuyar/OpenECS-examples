@@ -27,85 +27,99 @@ local DURATION = assert(regex.compile("(\\d+(?:\\.\\d+)?)s\\b"))
 -- what separates words: a run of blanks
 local BLANKS = assert(regex.compile("\\s+"))
 
+-- each panel's state is an object of LogFilter, whose functions are methods
+local LogFilter = {}
+LogFilter.__index = LogFilter
+
 -- compiles the typed text, and keeps the lines it matches; i ignores case. A pattern that cannot be read gives nothing and why
-local function filter(state)
-  local source = state.exact and regex.escape(state.typed) or state.typed
+function LogFilter:filter()
+  local source = self.exact and regex.escape(self.typed) or self.typed
   local pattern, problem = regex.compile(source, "i")
-  state.problem = problem
-  state.shown = {}
+  self.problem = problem
+  self.shown = {}
 
   for _, line in ipairs(pattern and LOG or {}) do
     if pattern:test(line) then
       local parts = LINE:match(line).named
-      state.shown[#state.shown + 1] = { level = parts.level, text = ("%s  %-5s %s"):format(parts.time, parts.level, parts.message) }
+      self.shown[#self.shown + 1] = { level = parts.level, text = ("%s  %-5s %s"):format(parts.time, parts.level, parts.message) }
     end
   end
+end
+
+function LogFilter.create(panel)
+  local state = setmetatable({ panel = panel, typed = "error|warn", exact = false }, LogFilter)
+  state:filter()
+
+  -- the day of the log, as 09.11.2026, and the words of its first message, split at runs of blanks
+  state.day = DATE:replaceFirst(LOG[1]:sub(1, 10), "$3.$2.$1")
+  state.words = BLANKS:split(LINE:match(LOG[1]).named.message)
+
+  -- every duration in the log, and the log's numbers hidden: replace gives the new text and how many matches it replaced
+  state.durations = {}
+
+  for _, match in ipairs(DURATION:matchAll(table.concat(LOG, "\n")) or {}) do
+    state.durations[#state.durations + 1] = match.groups[1]
+  end
+
+  state.hidden, state.numbers = assert(regex.compile("\\d")):replace(LOG[2], "#")
+  return state
+end
+
+function LogFilter:draw(surface)
+  local lines = {}
+
+  for _, line in ipairs(self.shown) do
+    lines[#lines + 1] = ui.text(line.text, { font = "mono", color = line.level == "ERROR" and "accent" or "text" })
+  end
+
+  ui.show(self.panel, surface, ui.column({ padding = 12, gap = 8 }, {
+    ui.text("The log of " .. self.day),
+    ui.row({ gap = 8 }, {
+      ui.field(self.typed, { id = "pattern", grow = 1, valid = self.problem == nil, onChange = function(text)
+        self.typed = text
+        self:filter()
+      end }),
+      ui.toggle(self.exact, { id = "exact", label = "Exact text", onChange = function(on)
+        self.exact = on
+        self:filter()
+      end }),
+    }),
+    ui.text(self.problem or ("%d of %d lines match"):format(#self.shown, #LOG), { color = self.problem and "accent" or "textDim", wrap = true }),
+    ui.scroll({ id = "lines", grow = 1, gap = 2 }, lines),
+  }))
+end
+
+function LogFilter:event(event)
+  ui.event(self.panel, event)
+end
+
+function LogFilter:destroy()
+  ui.forget(self.panel)
+end
+
+-- what the test reads
+function LogFilter:saveState()
+  local shown = {}
+
+  for i, line in ipairs(self.shown) do
+    shown[i] = line.text
+  end
+
+  return { typed = self.typed, exact = self.exact, shown = shown, problem = self.problem, day = self.day, words = self.words,
+    durations = self.durations, hidden = self.hidden, numbers = self.numbers }
 end
 
 ecs.panel.registerType({
   name = "panel",
   title = "Log filter",
 
-  create = function(panel)
-    local state = { panel = panel, typed = "error|warn", exact = false }
-    filter(state)
+  create = LogFilter.create,
 
-    -- the day of the log, as 09.11.2026, and the words of its first message, split at runs of blanks
-    state.day = DATE:replaceFirst(LOG[1]:sub(1, 10), "$3.$2.$1")
-    state.words = BLANKS:split(LINE:match(LOG[1]).named.message)
+  draw = LogFilter.draw,
 
-    -- every duration in the log, and the log's numbers hidden: replace gives the new text and how many matches it replaced
-    state.durations = {}
+  event = LogFilter.event,
 
-    for _, match in ipairs(DURATION:matchAll(table.concat(LOG, "\n"))) do
-      state.durations[#state.durations + 1] = match.groups[1]
-    end
+  destroy = LogFilter.destroy,
 
-    state.hidden, state.numbers = assert(regex.compile("\\d")):replace(LOG[2], "#")
-    return state
-  end,
-
-  draw = function(state, surface)
-    local lines = {}
-
-    for _, line in ipairs(state.shown) do
-      lines[#lines + 1] = ui.text(line.text, { font = "mono", color = line.level == "ERROR" and "accent" or "text" })
-    end
-
-    ui.show(state.panel, surface, ui.column({ padding = 12, gap = 8 }, {
-      ui.text("The log of " .. state.day),
-      ui.row({ gap = 8 }, {
-        ui.field(state.typed, { id = "pattern", grow = 1, valid = state.problem == nil, onChange = function(text)
-          state.typed = text
-          filter(state)
-        end }),
-        ui.toggle(state.exact, { id = "exact", label = "Exact text", onChange = function(on)
-          state.exact = on
-          filter(state)
-        end }),
-      }),
-      ui.text(state.problem or ("%d of %d lines match"):format(#state.shown, #LOG), { color = state.problem and "accent" or "textDim", wrap = true }),
-      ui.scroll({ id = "lines", grow = 1, gap = 2 }, lines),
-    }))
-  end,
-
-  event = function(state, event)
-    ui.event(state.panel, event)
-  end,
-
-  destroy = function(state)
-    ui.forget(state.panel)
-  end,
-
-  -- what the test reads
-  saveState = function(state)
-    local shown = {}
-
-    for i, line in ipairs(state.shown) do
-      shown[i] = line.text
-    end
-
-    return { typed = state.typed, exact = state.exact, shown = shown, problem = state.problem, day = state.day, words = state.words,
-      durations = state.durations, hidden = state.hidden, numbers = state.numbers }
-  end,
+  saveState = LogFilter.saveState,
 })

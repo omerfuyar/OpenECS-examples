@@ -108,84 +108,96 @@ local function shadow(x, y, width, height)
   return ffi.string(points, ffi.sizeof(points)), ffi.string(colors, ffi.sizeof(colors)), ffi.string(indices, ffi.sizeof(indices))
 end
 
+-- each panel's state is an object of Shaded, whose functions are methods
+local Shaded = {}
+Shaded.__index = Shaded
+
+function Shaded.create()
+  return setmetatable({ turn = 0.6, tilt = 0.3, distance = 5.5, drawn = 0, dragging = nil, labelParts = 0 }, Shaded)
+end
+
+function Shaded:draw(surface, seconds)
+  self.drawn += 1
+
+  if not self.dragging then
+    self.turn += seconds * 0.7
+  end
+
+  local width, height = surface.width / surface.scale, surface.height / surface.scale
+  gpu.clear(surface, BACKGROUND)
+  gpu.mesh(surface, shadow(width / 2, height * 0.85, math.min(width, height) * 0.9, math.min(width, height) * 0.12))
+
+  -- the ring leans on its side, so it tumbles as it turns, then the drag's turn and tilt move it; the camera is in front of it, at its distance
+  if pipeline and vertexBuffer and indexBuffer then
+    local modelMatrix = cglm.rotateMake(self.tilt, X) * cglm.rotateMake(self.turn, Y) * cglm.rotateMake(math.rad(60), Z)
+    local camera = cglm.translateMake(cglm.vec3(0, 0, -self.distance))
+    -- a perspective that sees down -z from the camera, with depth from 0, near, to 1, far, as SDL's GPU API takes it
+    local viewProjection = cglm.perspective(math.rad(45), width / height, 0.1, 50) * camera
+    local matrices = modelMatrix:bytes() .. viewProjection:bytes()
+
+    gpu.draw(surface, pipeline, {
+      vertices = vertexBuffer,
+      indices = indexBuffer,
+      vertexUniforms = matrices,
+      fragmentUniforms = cglm.vec4(BASE[1], BASE[2], BASE[3], 1):bytes() .. cglm.vec4(0.45, -0.65, -0.6, 0):bytes() .. cglm.vec4(0, 0, self.distance, 1):bytes(),
+    })
+
+    -- the label starts a little to the right of its point, with its line's middle at the point's height
+    if labelPipeline then
+      local glyphs = labelAt(surface.scale)
+      local screen = cglm.vec4(surface.width, surface.height, 10 * surface.scale, -glyphs.height / 2)
+
+      for _, part in ipairs(glyphs.parts) do
+        gpu.draw(surface, labelPipeline, {
+          vertices = part.vertices,
+          indices = part.indices,
+          count = part.count,
+          atlas = part.atlas,
+          vertexUniforms = matrices .. LABEL_POINT:bytes() .. screen:bytes(),
+          fragmentUniforms = cglm.vec4(1, 1, 1, 1):bytes(),
+        })
+      end
+
+      self.labelParts = #glyphs.parts
+    end
+  end
+
+  -- shapes drawn after the model go over it
+  gpu.line(surface, width * 0.1, height - 12, width * 0.9, height - 12, 2, "accent")
+end
+
+-- a drag turns and tilts the model; the wheel moves it nearer or farther
+function Shaded:event(event)
+  if event.type == "pointerDown" and event.button == 1 then
+    self.dragging = { x = event.x, y = event.y }
+  elseif event.type == "pointerUp" then
+    self.dragging = nil
+  elseif event.type == "pointerMove" and self.dragging then
+    self.turn += (event.x - self.dragging.x) * 0.01
+    self.tilt = math.max(-1.5, math.min(1.5, self.tilt + (event.y - self.dragging.y) * 0.01))
+    self.dragging = { x = event.x, y = event.y }
+  elseif event.type == "wheel" then
+    self.distance = math.max(2, math.min(12, self.distance - event.scrollY * 0.5))
+  end
+end
+
+-- what the test checks: the model's size, how many frames it drew, where the camera is, and what gpu.compile gave
+function Shaded:saveState()
+  return { vertices = VERTICES, triangles = TRIANGLES, drawn = self.drawn, turn = self.turn, distance = self.distance, pipeline = pipeline ~= nil, labelParts = self.labelParts,
+    compiled = COMPILED, compileError = COMPILE_ERROR }
+end
+
 ecs.panel.registerType({
   name = "panel",
   title = "Shaded model",
   surface = "gpu",
   continuous = true,
 
-  create = function()
-    return { turn = 0.6, tilt = 0.3, distance = 5.5, drawn = 0, dragging = nil, labelParts = 0 }
-  end,
+  create = Shaded.create,
 
-  draw = function(state, surface, seconds)
-    state.drawn += 1
+  draw = Shaded.draw,
 
-    if not state.dragging then
-      state.turn += seconds * 0.7
-    end
+  event = Shaded.event,
 
-    local width, height = surface.width / surface.scale, surface.height / surface.scale
-    gpu.clear(surface, BACKGROUND)
-    gpu.mesh(surface, shadow(width / 2, height * 0.85, math.min(width, height) * 0.9, math.min(width, height) * 0.12))
-
-    -- the ring leans on its side, so it tumbles as it turns, then the drag's turn and tilt move it; the camera is in front of it, at its distance
-    if pipeline and vertexBuffer and indexBuffer then
-      local modelMatrix = cglm.rotateMake(state.tilt, X) * cglm.rotateMake(state.turn, Y) * cglm.rotateMake(math.rad(60), Z)
-      local camera = cglm.translateMake(cglm.vec3(0, 0, -state.distance))
-      -- a perspective that sees down -z from the camera, with depth from 0, near, to 1, far, as SDL's GPU API takes it
-      local viewProjection = cglm.perspective(math.rad(45), width / height, 0.1, 50) * camera
-      local matrices = modelMatrix:bytes() .. viewProjection:bytes()
-
-      gpu.draw(surface, pipeline, {
-        vertices = vertexBuffer,
-        indices = indexBuffer,
-        vertexUniforms = matrices,
-        fragmentUniforms = cglm.vec4(BASE[1], BASE[2], BASE[3], 1):bytes() .. cglm.vec4(0.45, -0.65, -0.6, 0):bytes() .. cglm.vec4(0, 0, state.distance, 1):bytes(),
-      })
-
-      -- the label starts a little to the right of its point, with its line's middle at the point's height
-      if labelPipeline then
-        local glyphs = labelAt(surface.scale)
-        local screen = cglm.vec4(surface.width, surface.height, 10 * surface.scale, -glyphs.height / 2)
-
-        for _, part in ipairs(glyphs.parts) do
-          gpu.draw(surface, labelPipeline, {
-            vertices = part.vertices,
-            indices = part.indices,
-            count = part.count,
-            atlas = part.atlas,
-            vertexUniforms = matrices .. LABEL_POINT:bytes() .. screen:bytes(),
-            fragmentUniforms = cglm.vec4(1, 1, 1, 1):bytes(),
-          })
-        end
-
-        state.labelParts = #glyphs.parts
-      end
-    end
-
-    -- shapes drawn after the model go over it
-    gpu.line(surface, width * 0.1, height - 12, width * 0.9, height - 12, 2, "accent")
-  end,
-
-  -- a drag turns and tilts the model; the wheel moves it nearer or farther
-  event = function(state, event)
-    if event.type == "pointerDown" and event.button == 1 then
-      state.dragging = { x = event.x, y = event.y }
-    elseif event.type == "pointerUp" then
-      state.dragging = nil
-    elseif event.type == "pointerMove" and state.dragging then
-      state.turn += (event.x - state.dragging.x) * 0.01
-      state.tilt = math.max(-1.5, math.min(1.5, state.tilt + (event.y - state.dragging.y) * 0.01))
-      state.dragging = { x = event.x, y = event.y }
-    elseif event.type == "wheel" then
-      state.distance = math.max(2, math.min(12, state.distance - event.scrollY * 0.5))
-    end
-  end,
-
-  -- what the test checks: the model's size, how many frames it drew, where the camera is, and what gpu.compile gave
-  saveState = function(state)
-    return { vertices = VERTICES, triangles = TRIANGLES, drawn = state.drawn, turn = state.turn, distance = state.distance, pipeline = pipeline ~= nil, labelParts = state.labelParts,
-      compiled = COMPILED, compileError = COMPILE_ERROR }
-  end,
+  saveState = Shaded.saveState,
 })

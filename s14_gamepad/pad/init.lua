@@ -119,74 +119,88 @@ local function drawPad(surface, font, pad, x, y, scale)
   end
 end
 
+-- each panel's state is an object of Pad, whose functions are methods
+local Pad = {}
+Pad.__index = Pad
+
+function Pad.create(panel)
+  local state = setmetatable({ panel = panel, presses = {} }, Pad)
+  panels[panel] = state
+  return state
+end
+
+function Pad:destroy()
+  panels[self.panel] = nil
+end
+
+function Pad:event(event)
+  if event.type == "keyDown" and event.key == "Space" and not virtual then
+    -- the virtual gamepad shows as any gamepad does: gamepad.added comes, and the panel opens it
+    virtual = assert(gamepad.attachVirtual("Keyboard"))
+  elseif virtual and (event.type == "keyDown" or event.type == "keyUp") then
+    local down = event.type == "keyDown"
+
+    if BUTTONS[event.key] then
+      virtual:press(BUTTONS[event.key], down)
+    elseif AXES[event.key] then
+      virtual:move(AXES[event.key][1], down and AXES[event.key][2] or 0)
+    end
+  end
+end
+
+function Pad:draw(surface)
+  surface:fill(0, 0, surface.width, surface.height, "background")
+  local font = draw.font("ui")
+  local width, height = surface.width / surface.scale, surface.height / surface.scale
+  local y = 12
+
+  if next(pads) == nil then
+    draw.text(surface, font, "No gamepad; press Space for a virtual one", 16, y, 18, "textDim")
+    y += 30
+  end
+
+  -- each gamepad gets an equal share of the height, with its name above its picture
+  local count = 0
+
+  for _ in pairs(pads) do
+    count += 1
+  end
+
+  local share = count > 0 and (height - y - 40) / count or 0
+
+  for _, pad in pairs(pads) do
+    draw.text(surface, font, pad:name(), 16, y, 18, "text")
+    local scale = math.max(0.1, math.min((width - 32) / 400, (share - 34) / 220))
+    drawPad(surface, font, pad, (width - 400 * scale) / 2, y + 28, scale)
+    y += share
+  end
+
+  draw.text(surface, font, "Last presses: " .. table.concat(self.presses, ", ", math.max(1, #self.presses - 5)), 16, height - 30, 18, "accent")
+end
+
+-- what the test reads
+function Pad:saveState()
+  local names, triggers = {}, {}
+
+  for _, pad in pairs(pads) do
+    names[#names + 1] = pad:name()
+    triggers[#triggers + 1] = { pad:axis("lefttrigger"), pad:axis("righttrigger") }
+  end
+
+  return { pads = names, presses = self.presses, triggers = triggers }
+end
+
 ecs.panel.registerType({
   name = "panel",
   title = "Gamepads",
 
-  create = function(panel)
-    local state = { panel = panel, presses = {} }
-    panels[panel] = state
-    return state
-  end,
+  create = Pad.create,
 
-  destroy = function(state)
-    panels[state.panel] = nil
-  end,
+  destroy = Pad.destroy,
 
-  event = function(_, event)
-    if event.type == "keyDown" and event.key == "Space" and not virtual then
-      -- the virtual gamepad shows as any gamepad does: gamepad.added comes, and the panel opens it
-      virtual = assert(gamepad.attachVirtual("Keyboard"))
-    elseif virtual and (event.type == "keyDown" or event.type == "keyUp") then
-      local down = event.type == "keyDown"
+  event = Pad.event,
 
-      if BUTTONS[event.key] then
-        virtual:press(BUTTONS[event.key], down)
-      elseif AXES[event.key] then
-        virtual:move(AXES[event.key][1], down and AXES[event.key][2] or 0)
-      end
-    end
-  end,
+  draw = Pad.draw,
 
-  draw = function(state, surface)
-    surface:fill(0, 0, surface.width, surface.height, "background")
-    local font = draw.font("ui")
-    local width, height = surface.width / surface.scale, surface.height / surface.scale
-    local y = 12
-
-    if next(pads) == nil then
-      draw.text(surface, font, "No gamepad; press Space for a virtual one", 16, y, 18, "textDim")
-      y += 30
-    end
-
-    -- each gamepad gets an equal share of the height, with its name above its picture
-    local count = 0
-
-    for _ in pairs(pads) do
-      count += 1
-    end
-
-    local share = count > 0 and (height - y - 40) / count or 0
-
-    for _, pad in pairs(pads) do
-      draw.text(surface, font, pad:name(), 16, y, 18, "text")
-      local scale = math.max(0.1, math.min((width - 32) / 400, (share - 34) / 220))
-      drawPad(surface, font, pad, (width - 400 * scale) / 2, y + 28, scale)
-      y += share
-    end
-
-    draw.text(surface, font, "Last presses: " .. table.concat(state.presses, ", ", math.max(1, #state.presses - 5)), 16, height - 30, 18, "accent")
-  end,
-
-  -- what the test reads
-  saveState = function(state)
-    local names, triggers = {}, {}
-
-    for _, pad in pairs(pads) do
-      names[#names + 1] = pad:name()
-      triggers[#triggers + 1] = { pad:axis("lefttrigger"), pad:axis("righttrigger") }
-    end
-
-    return { pads = names, presses = state.presses, triggers = triggers }
-  end,
+  saveState = Pad.saveState,
 })

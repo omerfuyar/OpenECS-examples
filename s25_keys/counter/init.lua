@@ -20,24 +20,38 @@ ecs.service.register({
   },
 })
 
+-- each panel's state is an object of Counter, whose functions are methods
+local Counter = {}
+Counter.__index = Counter
+
+function Counter.create(panel)
+  panels[panel] = true
+  return setmetatable({ panel = panel }, Counter)
+end
+
+function Counter:destroy()
+  ui.forget(self.panel)
+  panels[self.panel] = nil
+end
+
+function Counter:saveState()
+  return { count = count }
+end
+
+function Counter:draw(surface)
+  ui.show(self.panel, surface, ui.text(("Counted %d times"):format(count), { size = 20 }))
+end
+
+function Counter:event(event)
+  ui.event(self.panel, event)
+end
+
 ecs.panel.registerType({
   name = "panel",
   title = "Counter",
-  create = function(panel)
-    panels[panel] = true
-    return { panel = panel }
-  end,
-  destroy = function(state)
-    ui.forget(state.panel)
-    panels[state.panel] = nil
-  end,
-  saveState = function()
-    return { count = count }
-  end,
-  draw = function(state, surface)
-    ui.show(state.panel, surface, ui.text(("Counted %d times"):format(count), { size = 20 }))
-  end,
-  event = function(state, event)
-    ui.event(state.panel, event)
-  end,
+  create = Counter.create,
+  destroy = Counter.destroy,
+  saveState = Counter.saveState,
+  draw = Counter.draw,
+  event = Counter.event,
 })

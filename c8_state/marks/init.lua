@@ -11,51 +11,65 @@ local DOT = 8 -- in layout units
 
 local placed = 0 -- every dot placed, in every session; the plugin's own state
 
+-- each panel's state is an object of Marks, whose functions are methods
+local Marks = {}
+Marks.__index = Marks
+
+-- saved is the state saveState gave last time, or nil for a new panel
+function Marks.create(panel, saved, version)
+  local marks = setmetatable({ panel = panel, dots = {}, scale = 1 }, Marks)
+
+  if version == STATE_VERSION and saved then
+    marks.dots = saved.dots
+  end
+
+  return marks
+end
+
+function Marks:draw(surface)
+  self.scale = surface.scale
+  surface:fill(0, 0, surface.width, surface.height, "background")
+
+  for i = 1, #self.dots - 1, 2 do
+    draw.fill(surface, self.dots[i] - DOT / 2, self.dots[i + 1] - DOT / 2, DOT, DOT, "accent")
+  end
+end
+
+function Marks:event(event)
+  if event.type == "pointerDown" and event.button == 1 then
+    table.insert(self.dots, event.x / self.scale) -- dots are kept in layout units, so they stay put at any scale
+    table.insert(self.dots, event.y / self.scale)
+    placed += 1
+    self.panel.unsaved = true -- marks the tab; closing the panel then asks to save
+    self.panel:redraw()
+  end
+end
+
+-- gives what the session keeps: plain values only, such as numbers, strings and tables of them
+function Marks:saveState()
+  return { dots = self.dots }
+end
+
+-- saves the panel's unsaved work, when the user asks or closes it; the dots are already in the session, so it only clears the mark
+function Marks:save()
+  self.panel.unsaved = false
+  return true
+end
+
 ecs.panel.registerType({
   name = "panel",
   title = "Marks",
   stateVersion = STATE_VERSION,
 
-  -- saved is the state saveState gave last time, or nil for a new panel
-  create = function(panel, saved, version)
-    local marks = { panel = panel, dots = {}, scale = 1 }
+  create = Marks.create,
 
-    if version == STATE_VERSION and saved then
-      marks.dots = saved.dots
-    end
+  draw = Marks.draw,
 
-    return marks
-  end,
+  event = Marks.event,
 
-  draw = function(state, surface)
-    state.scale = surface.scale
-    surface:fill(0, 0, surface.width, surface.height, "background")
+  saveState = Marks.saveState,
 
-    for i = 1, #state.dots - 1, 2 do
-      draw.fill(surface, state.dots[i] - DOT / 2, state.dots[i + 1] - DOT / 2, DOT, DOT, "accent")
-    end
-  end,
-
-  event = function(state, event)
-    if event.type == "pointerDown" and event.button == 1 then
-      table.insert(state.dots, event.x / state.scale) -- dots are kept in layout units, so they stay put at any scale
-      table.insert(state.dots, event.y / state.scale)
-      placed += 1
-      state.panel.unsaved = true -- marks the tab; closing the panel then asks to save
-      state.panel:redraw()
-    end
-  end,
-
-  -- gives what the session keeps: plain values only, such as numbers, strings and tables of them
-  saveState = function(state)
-    return { dots = state.dots }
-  end,
-
-  -- saves the panel's unsaved work, when the user asks or closes it; the dots are already in the session, so it only clears the mark
-  save = function(state)
-    state.panel.unsaved = false
-    return true
-  end,
+  save = Marks.save,
 })
 
 -- state that belongs to no panel, but to the plugin; restoreState runs before the session's panels are made

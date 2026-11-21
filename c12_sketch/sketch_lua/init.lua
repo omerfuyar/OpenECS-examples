@@ -114,8 +114,12 @@ local function strokesToText(strokes)
   return table.concat(lines)
 end
 
+-- each panel's state is an object of Canvas, whose functions are methods
+local Canvas = {}
+Canvas.__index = Canvas
+
 -- reads strokes written by strokesToText, and adds them to a canvas; gives how many it read
-local function strokesFromText(canvas, text)
+function Canvas:strokesFromText(text)
   local added = 0
 
   for line in text:gmatch("[^\n]+") do
@@ -135,7 +139,7 @@ local function strokesFromText(canvas, text)
         stroke.points[#stroke.points + 1] = numbers[i + 1]
       end
 
-      table.insert(canvas.strokes, stroke)
+      table.insert(self.strokes, stroke)
       added += 1
     end
   end
@@ -176,39 +180,39 @@ local function settingColor()
 end
 
 -- shows the number of strokes in the canvas's title
-local function canvasTitle(canvas)
-  canvas.panel.title = ("Lua canvas (%d)"):format(#canvas.strokes)
+function Canvas:canvasTitle()
+  self.panel.title = ("Lua self (%d)"):format(#self.strokes)
 end
 
 -- marks a canvas changed: unsaved, retitled and redrawn
-local function canvasChanged(canvas)
-  canvas.unsaved = true
-  canvas.panel.unsaved = true
-  canvasTitle(canvas)
-  canvas.panel:redraw()
+function Canvas:canvasChanged()
+  self.unsaved = true
+  self.panel.unsaved = true
+  self:canvasTitle()
+  self.panel:redraw()
 end
 
 -- tells subscribers that a canvas has a new stroke
-local function emitStroke(canvas)
-  ecs.event.emit(name("strokeAdded"), { panel = canvas.panel.id, strokes = #canvas.strokes })
+function Canvas:emitStroke()
+  ecs.event.emit(name("strokeAdded"), { panel = self.panel.id, strokes = #self.strokes })
 end
 
 -- adds dropped strokes to a canvas: strokes or text in the format of copy, or the strokes of each dropped file
-local function dropStrokes(canvas, dataType, value)
+function Canvas:dropStrokes(dataType, value)
   local added = 0
 
   if dataType == "file-list" then
     for _, path in ipairs(value) do
-      added += strokesFromText(canvas, readFile(path) or "")
+      added += self:strokesFromText(readFile(path) or "")
     end
   else
-    added = strokesFromText(canvas, value)
+    added = self:strokesFromText(value)
   end
 
   ecs.log.info(("Dropped %d strokes."):format(added))
 
   if added > 0 then
-    canvasChanged(canvas)
+    self:canvasChanged()
   end
 end
 
@@ -245,6 +249,126 @@ ecs.setting.declare({
   "How often a canvas with unsaved strokes says so",
   default = 30.0
 })
+
+function Canvas.create(panel, saved, version)
+  local canvas = setmetatable({ panel = panel, strokes = {}, drawing = false, unsaved = false, width = 0, height = 0 }, Canvas)
+
+  -- strokes = { { size = 6, color = 0xFFECEFF4, points = { x, y, ... } }, ... }; older versions are not read
+  if version == STATE_VERSION and saved and saved.strokes then
+    for _, stroke in ipairs(saved.strokes) do
+      table.insert(canvas.strokes,
+        { size = stroke.size or 6, color = stroke.color or COLORS.white, points = stroke.points or {} })
+    end
+  end
+
+  canvases[panel] = canvas
+  canvas:canvasTitle()
+
+  -- a canvas takes strokes dragged from a canvas, text in their format, and files of it
+  panel:acceptDrops({ CLIPBOARD_TYPE, "text", "file-list" })
+
+  -- the plugin owns the timer, so destroy stops it
+  canvas.reminder = ecs.timer.start(math.max(1, ecs.setting.get(name("reminderSeconds")) or 30), true, function()
+    if canvas.unsaved then
+      ecs.log.info(panel.title .. " has unsaved strokes.")
+    end
+  end)
+
+  return canvas
+end
+
+function Canvas:destroy()
+  self.reminder:stop()
+  canvases[self.panel] = nil
+end
+
+function Canvas:draw(surface)
+  self.width, self.height = surface.width, surface.height
+  local strokes, painted = self.strokes, self.painted
+
+  -- the surface keeps the last picture, so while the strokes only grew, the draw paints from the last point it painted, and tells the core that part
+  if surface.kept and painted and painted.strokes == strokes and painted.count <= #strokes then
+    local stroke = strokes[painted.count]
+    local left, top, right, bottom = surface.width, surface.height, -1, -1
+
+    paint(surface.width, surface.height, strokes, function(x, y, count, color)
+      surface:fill(x, y, count, 1, hex(color))
+      left, top, right, bottom = math.min(left, x), math.min(top, y), math.max(right, x + count), math.max(bottom, y + 1)
+    end, math.max(painted.count, 1), stroke and math.max(painted.points - 1, 1) or 1)
+
+    if right < 0 then
+      surface:changed(0, 0, 0, 0) -- nothing new
+    else
+      surface:changed(left, top, right - left, bottom - top)
+    end
+  else
+    surface:fill(0, 0, surface.width, surface.height, hex(BACKGROUND))
+
+    paint(surface.width, surface.height, strokes, function(x, y, count, color)
+      surface:fill(x, y, count, 1, hex(color))
+    end)
+  end
+
+  -- the strokes and points painted; clearing the canvas gives it a new table of strokes, which paints it all again
+  local last = strokes[#strokes]
+  self.painted = { strokes = strokes, count = #strokes, points = last and #last.points or 0 }
+end
+
+function Canvas:event(event)
+  local panel = self.panel
+
+  if event.type == "pointerDown" and event.button == 1 and event.shift then
+    -- Shift and a press drag the canvas's strokes, in the text format of copy
+    if not panel:startDrag(CLIPBOARD_TYPE, strokesToText(self.strokes)) then
+      ecs.log.warn("Cannot drag the strokes.")
+    end
+  elseif event.type == "pointerDown" and event.button == 1 then
+    local brush = self.brush
+    table.insert(self.strokes,
+      { size = brush and brush.size or settingSize(), color = brush and brush.color or settingColor(), points = { event.x, event.y } })
+    self.drawing = true
+    panel:redraw()
+  elseif event.type == "pointerMove" and self.drawing then
+    local points = self.strokes[#self.strokes].points
+    points[#points + 1] = event.x
+    points[#points + 1] = event.y
+    panel:redraw()
+  elseif event.type == "pointerUp" and self.drawing then
+    self.drawing = false
+    self:canvasChanged()
+    self:emitStroke()
+  elseif event.type == "wheel" then
+    -- the wheel changes the setting, so every canvas and the settings window see the new size
+    local ok = ecs.setting.set(name("brushSize"),
+      clamp(settingSize() + (event.scrollY > 0 and 1 or -1), MIN_SIZE, MAX_SIZE))
+
+    if not ok then
+      ecs.log.warn("Cannot change the brush size.")
+    end
+  elseif event.type == "focused" or event.type == "unfocused" then
+    ecs.log.debug(("%s is %s."):format(panel.title, event.type))
+  elseif event.type == "shown" or event.type == "resized" then
+    ecs.log.debug(("%s is %s at %.0fx%.0f."):format(panel.title, event.type, event.width, event.height))
+  elseif event.type == "hidden" then
+    ecs.log.debug(panel.title .. " is hidden.")
+  elseif event.type == "drop" then
+    self:dropStrokes(event.dataType, event.value)
+  end
+end
+
+function Canvas:saveState()
+  return { strokes = self.strokes }
+end
+
+-- saves a canvas's unsaved work; its strokes are already in its saved state, so saving only counts it
+function Canvas:save()
+  self.unsaved = false
+  saves += 1
+  self.panel.unsaved = false
+  ecs.log.info(self.panel.title .. " is saved.")
+  return true
+end
+
 ecs.panel.registerType({
   name = "canvas",
   title = "Lua canvas",
@@ -252,182 +376,84 @@ ecs.panel.registerType({
   minWidth = 64,
   minHeight = 64,
 
-  create = function(panel, saved, version)
-    local canvas = { panel = panel, strokes = {}, drawing = false, unsaved = false, width = 0, height = 0 }
+  create = Canvas.create,
 
-    -- strokes = { { size = 6, color = 0xFFECEFF4, points = { x, y, ... } }, ... }; older versions are not read
-    if version == STATE_VERSION and saved and saved.strokes then
-      for _, stroke in ipairs(saved.strokes) do
-        table.insert(canvas.strokes,
-          { size = stroke.size or 6, color = stroke.color or COLORS.white, points = stroke.points or {} })
-      end
-    end
+  destroy = Canvas.destroy,
 
-    canvases[panel] = canvas
-    canvasTitle(canvas)
+  draw = Canvas.draw,
 
-    -- a canvas takes strokes dragged from a canvas, text in their format, and files of it
-    panel:acceptDrops({ CLIPBOARD_TYPE, "text", "file-list" })
+  event = Canvas.event,
 
-    -- the plugin owns the timer, so destroy stops it
-    canvas.reminder = ecs.timer.start(math.max(1, ecs.setting.get(name("reminderSeconds")) or 30), true, function()
-      if canvas.unsaved then
-        ecs.log.info(panel.title .. " has unsaved strokes.")
-      end
-    end)
+  saveState = Canvas.saveState,
 
-    return canvas
-  end,
-
-  destroy = function(state)
-    state.reminder:stop()
-    canvases[state.panel] = nil
-  end,
-
-  draw = function(state, surface)
-    state.width, state.height = surface.width, surface.height
-    local strokes, painted = state.strokes, state.painted
-
-    -- the surface keeps the last picture, so while the strokes only grew, the draw paints from the last point it painted, and tells the core that part
-    if surface.kept and painted and painted.strokes == strokes and painted.count <= #strokes then
-      local stroke = strokes[painted.count]
-      local left, top, right, bottom = surface.width, surface.height, -1, -1
-
-      paint(surface.width, surface.height, strokes, function(x, y, count, color)
-        surface:fill(x, y, count, 1, hex(color))
-        left, top, right, bottom = math.min(left, x), math.min(top, y), math.max(right, x + count), math.max(bottom, y + 1)
-      end, math.max(painted.count, 1), stroke and math.max(painted.points - 1, 1) or 1)
-
-      if right < 0 then
-        surface:changed(0, 0, 0, 0) -- nothing new
-      else
-        surface:changed(left, top, right - left, bottom - top)
-      end
-    else
-      surface:fill(0, 0, surface.width, surface.height, hex(BACKGROUND))
-
-      paint(surface.width, surface.height, strokes, function(x, y, count, color)
-        surface:fill(x, y, count, 1, hex(color))
-      end)
-    end
-
-    -- the strokes and points painted; clearing the canvas gives it a new table of strokes, which paints it all again
-    local last = strokes[#strokes]
-    state.painted = { strokes = strokes, count = #strokes, points = last and #last.points or 0 }
-  end,
-
-  event = function(state, event)
-    local panel = state.panel
-
-    if event.type == "pointerDown" and event.button == 1 and event.shift then
-      -- Shift and a press drag the canvas's strokes, in the text format of copy
-      if not panel:startDrag(CLIPBOARD_TYPE, strokesToText(state.strokes)) then
-        ecs.log.warn("Cannot drag the strokes.")
-      end
-    elseif event.type == "pointerDown" and event.button == 1 then
-      local brush = state.brush
-      table.insert(state.strokes,
-        { size = brush and brush.size or settingSize(), color = brush and brush.color or settingColor(), points = { event.x, event.y } })
-      state.drawing = true
-      panel:redraw()
-    elseif event.type == "pointerMove" and state.drawing then
-      local points = state.strokes[#state.strokes].points
-      points[#points + 1] = event.x
-      points[#points + 1] = event.y
-      panel:redraw()
-    elseif event.type == "pointerUp" and state.drawing then
-      state.drawing = false
-      canvasChanged(state)
-      emitStroke(state)
-    elseif event.type == "wheel" then
-      -- the wheel changes the setting, so every canvas and the settings window see the new size
-      local ok = ecs.setting.set(name("brushSize"),
-        clamp(settingSize() + (event.scrollY > 0 and 1 or -1), MIN_SIZE, MAX_SIZE))
-
-      if not ok then
-        ecs.log.warn("Cannot change the brush size.")
-      end
-    elseif event.type == "focused" or event.type == "unfocused" then
-      ecs.log.debug(("%s is %s."):format(panel.title, event.type))
-    elseif event.type == "shown" or event.type == "resized" then
-      ecs.log.debug(("%s is %s at %.0fx%.0f."):format(panel.title, event.type, event.width, event.height))
-    elseif event.type == "hidden" then
-      ecs.log.debug(panel.title .. " is hidden.")
-    elseif event.type == "drop" then
-      dropStrokes(state, event.dataType, event.value)
-    end
-  end,
-
-  saveState = function(state)
-    return { strokes = state.strokes }
-  end,
-
-  -- saves a canvas's unsaved work; its strokes are already in its saved state, so saving only counts it
-  save = function(state)
-    state.unsaved = false
-    saves += 1
-    state.panel.unsaved = false
-    ecs.log.info(state.panel.title .. " is saved.")
-    return true
-  end,
+  save = Canvas.save,
 })
 
 -- clock -----------------------------------------------------------------
 
 -- a dark face with twelve marks and a hand that turns once a minute; a continuous panel, so it is drawn every frame
+
+-- each panel's state is an object of Clock, whose functions are methods
+local Clock = {}
+Clock.__index = Clock
+
+function Clock.create(panel)
+  return setmetatable({ panel = panel, time = 0, shownSeconds = -1 }, Clock)
+end
+
+function Clock:draw(surface, seconds)
+  self.time += seconds
+  local width, height = surface.width, surface.height
+  surface:fill(0, 0, width, height, hex(BACKGROUND))
+
+  local cx, cy = width / 2, height / 2
+  local radius = math.min(cx, cy) * 0.8
+
+  -- the marks and the hand are dots along lines from the centre
+  for mark = 0, 11 do
+    local angle = mark * math.pi / 6
+    local x, y = math.floor(cx + math.sin(angle) * radius), math.floor(cy - math.cos(angle) * radius)
+
+    surface:fill(x - 2, y - 2, 5, 5, hex(COLORS.white))
+  end
+
+  local angle = (self.time % 60) / 60 * 2 * math.pi
+
+  for t = 0, radius - 1 do
+    surface:setPixel(math.floor(cx + math.sin(angle) * t), math.floor(cy - math.cos(angle) * t), hex(CLOCK_HAND))
+  end
+
+  -- the title changes once a second, not every frame
+  local whole = math.floor(self.time)
+
+  if whole ~= self.shownSeconds then
+    self.panel.title = ("Lua clock %d:%02d"):format(math.floor(whole / 60), whole % 60)
+    self.shownSeconds = whole
+  end
+end
+
 ecs.panel.registerType({
   name = "clock",
   title = "Lua clock",
   continuous = true,
 
-  create = function(panel)
-    return { panel = panel, time = 0, shownSeconds = -1 }
-  end,
+  create = Clock.create,
 
-  draw = function(state, surface, seconds)
-    state.time += seconds
-    local width, height = surface.width, surface.height
-    surface:fill(0, 0, width, height, hex(BACKGROUND))
-
-    local cx, cy = width / 2, height / 2
-    local radius = math.min(cx, cy) * 0.8
-
-    -- the marks and the hand are dots along lines from the centre
-    for mark = 0, 11 do
-      local angle = mark * math.pi / 6
-      local x, y = math.floor(cx + math.sin(angle) * radius), math.floor(cy - math.cos(angle) * radius)
-
-      surface:fill(x - 2, y - 2, 5, 5, hex(COLORS.white))
-    end
-
-    local angle = (state.time % 60) / 60 * 2 * math.pi
-
-    for t = 0, radius - 1 do
-      surface:setPixel(math.floor(cx + math.sin(angle) * t), math.floor(cy - math.cos(angle) * t), hex(CLOCK_HAND))
-    end
-
-    -- the title changes once a second, not every frame
-    local whole = math.floor(state.time)
-
-    if whole ~= state.shownSeconds then
-      state.panel.title = ("Lua clock %d:%02d"):format(math.floor(whole / 60), whole % 60)
-      state.shownSeconds = whole
-    end
-  end,
+  draw = Clock.draw,
 })
 
 -- export ----------------------------------------------------------------
 
 -- paints a canvas into a PPM image; Lua never runs on worker threads, so this runs on the main thread
-local function canvasPpm(canvas)
-  local width, height = canvas.width, canvas.height
+function Canvas:canvasPpm()
+  local width, height = self.width, self.height
   local pixels = {}
 
   for i = 1, width * height do
     pixels[i] = BACKGROUND
   end
 
-  paint(width, height, canvas.strokes, function(x, y, count, color)
+  paint(width, height, self.strokes, function(x, y, count, color)
     for i = y * width + x + 1, y * width + x + count do
       pixels[i] = color
     end
@@ -459,7 +485,7 @@ local function exportChosen(id, files)
   end
 
   -- the canvas is painted and written at once; sketch_c does both on a worker thread
-  local image = canvasPpm(canvas)
+  local image = canvas:canvasPpm()
   ecs.log.debug(("Canvas %d is painted; writing %s."):format(id, files[1]))
   local file = io.open(files[1], "wb")
   local written = file and file:write(image) and file:close()
@@ -498,7 +524,7 @@ function services.clear(panel)
   end
 
   canvas.strokes = {}
-  canvasChanged(canvas)
+  canvas:canvasChanged()
 end
 
 function services.export(panel)
@@ -535,11 +561,11 @@ function services.paste(panel)
   end
 
   local text = ecs.clipboard.getData(CLIPBOARD_TYPE) or ecs.clipboard.getText() or ""
-  local added = strokesFromText(canvas, text)
+  local added = canvas:strokesFromText(text)
   ecs.log.info(("Pasted %d strokes."):format(added))
 
   if added > 0 then
-    canvasChanged(canvas)
+    canvas:canvasChanged()
   end
 end
 
@@ -554,9 +580,9 @@ function services.open(path)
     return
   end
 
-  local added = strokesFromText(canvas, text)
+  local added = canvas:strokesFromText(text)
   ecs.log.info(("Opened %d strokes from '%s'."):format(added, path))
-  canvasTitle(canvas)
+  canvas:canvasTitle()
   canvas.panel:redraw()
 end
 
@@ -653,7 +679,7 @@ end
 -- gives a canvas as a PPM image
 function services.pixels(panel)
   local canvas = findCanvas(panel)
-  return canvas and canvas.width > 0 and canvasPpm(canvas) or ""
+  return canvas and canvas.width > 0 and canvas:canvasPpm() or ""
 end
 
 -- makes a brush, which a canvas can use instead of the settings' brush

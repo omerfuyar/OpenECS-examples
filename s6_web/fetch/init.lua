@@ -130,83 +130,95 @@ local timer = ecs.timer.start(0.05, true, function()
   end
 end)
 
+-- each panel's state is an object of Fetch, whose functions are methods
+local Fetch = {}
+Fetch.__index = Fetch
+
+function Fetch.create(panel)
+  panels[panel] = true
+  panel:setTextInput(true)
+  return setmetatable({ panel = panel, line = "" }, Fetch)
+end
+
+function Fetch:draw(surface)
+  surface:fill(0, 0, surface.width, surface.height, "background")
+  local _, height = draw.font("ui"):measure("Ag", SIZE, surface.scale)
+  local lines = math.max(1, math.floor(surface.height / surface.scale / height) - 2)
+  local first = math.max(1, #log - lines + 1)
+
+  -- the last lines of the log, then the URL being typed
+  for i = first, #log do
+    draw.text(surface, draw.font("ui"), log[i], 12, 12 + (i - first) * height, SIZE, "text")
+  end
+
+  draw.text(surface, draw.font("ui"), "URL: " .. self.line, 12, 12 + lines * height, SIZE, "accent")
+end
+
+function Fetch:event(event)
+  if event.type == "text" then
+    self.line = self.line .. event.text
+  elseif event.type == "keyDown" and event.key == "Backspace" then
+    self.line = self.line:sub(1, -2)
+  elseif event.type == "keyDown" and event.key == "Return" and socket and not self.line:find("^%a+://") then
+    -- a line that is not a URL is a message to the WebSocket connection; web sends it in the background, once the connection is open
+    socket.handle:send(self.line, true)
+    self.line = ""
+  elseif event.type == "keyDown" and event.key == "Return" and self.line:find("^wss?://") then
+    -- web.socket starts a connection and gives its handle at once; its self and its messages are asked for with its methods, as with net
+    if socket then
+      socket.handle:close()
+    end
+
+    local handle, reason = web.socket(self.line)
+    socket = handle and { handle = handle, url = self.line, open = false }
+    add(handle and "Connecting to " .. self.line or reason)
+    self.line = ""
+  elseif event.type == "keyDown" and event.key == "Return" and self.line ~= "" then
+    -- web.get starts a request and gives its handle at once; web.request takes a method, headers and a body too
+    -- web keeps the function, and calls it on the main thread once the request is done, even if the handle is dropped
+    -- web asks for a compressed answer and uses HTTP/2 when an HTTPS server offers it; the body comes unpacked
+    local url = self.line
+
+    local request, reason = web.get(url, function(done)
+      -- status is the HTTP status, or -1 if the request failed
+      local status = done:status()
+
+      if status > 0 then
+        add(("%d %s: %s"):format(status, done:header("Content-Type") or "?", done:body():match("[^\n]*")))
+      else
+        add("Failed: " .. done:error())
+      end
+
+      add("  for " .. url)
+    end)
+
+    if not request then
+      add(reason)
+    end
+
+    self.line = ""
+  else
+    return
+  end
+
+  self.panel:redraw()
+end
+
+function Fetch:destroy()
+  panels[self.panel] = nil
+end
+
 ecs.panel.registerType({
   name = "panel",
   title = "Fetch",
 
-  create = function(panel)
-    panels[panel] = true
-    panel:setTextInput(true)
-    return { panel = panel, line = "" }
-  end,
+  create = Fetch.create,
 
-  draw = function(state, surface)
-    surface:fill(0, 0, surface.width, surface.height, "background")
-    local _, height = draw.font("ui"):measure("Ag", SIZE, surface.scale)
-    local lines = math.max(1, math.floor(surface.height / surface.scale / height) - 2)
-    local first = math.max(1, #log - lines + 1)
+  draw = Fetch.draw,
 
-    -- the last lines of the log, then the URL being typed
-    for i = first, #log do
-      draw.text(surface, draw.font("ui"), log[i], 12, 12 + (i - first) * height, SIZE, "text")
-    end
+  event = Fetch.event,
 
-    draw.text(surface, draw.font("ui"), "URL: " .. state.line, 12, 12 + lines * height, SIZE, "accent")
-  end,
-
-  event = function(state, event)
-    if event.type == "text" then
-      state.line = state.line .. event.text
-    elseif event.type == "keyDown" and event.key == "Backspace" then
-      state.line = state.line:sub(1, -2)
-    elseif event.type == "keyDown" and event.key == "Return" and socket and not state.line:find("^%a+://") then
-      -- a line that is not a URL is a message to the WebSocket connection; web sends it in the background, once the connection is open
-      socket.handle:send(state.line, true)
-      state.line = ""
-    elseif event.type == "keyDown" and event.key == "Return" and state.line:find("^wss?://") then
-      -- web.socket starts a connection and gives its handle at once; its state and its messages are asked for with its methods, as with net
-      if socket then
-        socket.handle:close()
-      end
-
-      local handle, reason = web.socket(state.line)
-      socket = handle and { handle = handle, url = state.line, open = false }
-      add(handle and "Connecting to " .. state.line or reason)
-      state.line = ""
-    elseif event.type == "keyDown" and event.key == "Return" and state.line ~= "" then
-      -- web.get starts a request and gives its handle at once; web.request takes a method, headers and a body too
-      -- web keeps the function, and calls it on the main thread once the request is done, even if the handle is dropped
-      -- web asks for a compressed answer and uses HTTP/2 when an HTTPS server offers it; the body comes unpacked
-      local url = state.line
-
-      local request, reason = web.get(url, function(done)
-        -- status is the HTTP status, or -1 if the request failed
-        local status = done:status()
-
-        if status > 0 then
-          add(("%d %s: %s"):format(status, done:header("Content-Type") or "?", done:body():match("[^\n]*")))
-        else
-          add("Failed: " .. done:error())
-        end
-
-        add("  for " .. url)
-      end)
-
-      if not request then
-        add(reason)
-      end
-
-      state.line = ""
-    else
-      return
-    end
-
-    state.panel:redraw()
-  end,
-
-  destroy = function(state)
-    panels[state.panel] = nil
-  end,
+  destroy = Fetch.destroy,
 })
 
 -- the log is the plugin's saved state, so the test can read it; the timer stops before the program exits
