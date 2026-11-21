@@ -1,6 +1,7 @@
 -- Sketch in Lua: canvases to draw on with the mouse, and a clock. The sketch_c plugin does the same in C, so the two can be compared.
 
 local ecs = require("ecs")
+local ffi = require("ffi")
 
 local NAME = ecs.plugin.name
 
@@ -135,7 +136,7 @@ local function strokesFromText(canvas, text)
       end
 
       table.insert(canvas.strokes, stroke)
-      added = added + 1
+      added += 1
     end
   end
 
@@ -198,7 +199,7 @@ local function dropStrokes(canvas, dataType, value)
 
   if dataType == "file-list" then
     for _, path in ipairs(value) do
-      added = added + strokesFromText(canvas, readFile(path) or "")
+      added += strokesFromText(canvas, readFile(path) or "")
     end
   else
     added = strokesFromText(canvas, value)
@@ -364,7 +365,7 @@ ecs.panel.registerType({
   -- saves a canvas's unsaved work; its strokes are already in its saved state, so saving only counts it
   save = function(state)
     state.unsaved = false
-    saves = saves + 1
+    saves += 1
     state.panel.unsaved = false
     ecs.log.info(state.panel.title .. " is saved.")
     return true
@@ -384,7 +385,7 @@ ecs.panel.registerType({
   end,
 
   draw = function(state, surface, seconds)
-    state.time = state.time + seconds
+    state.time += seconds
     local width, height = surface.width, surface.height
     surface:fill(0, 0, width, height, hex(BACKGROUND))
 
@@ -409,7 +410,7 @@ ecs.panel.registerType({
     local whole = math.floor(state.time)
 
     if whole ~= state.shownSeconds then
-      state.panel.title = ("Lua clock %d:%02d"):format(whole // 60, whole % 60)
+      state.panel.title = ("Lua clock %d:%02d"):format(math.floor(whole / 60), whole % 60)
       state.shownSeconds = whole
     end
   end,
@@ -434,17 +435,16 @@ local function canvasPpm(canvas)
 
   local rows = { ("P6\n%d %d\n255\n"):format(width, height) }
 
-  for y = 0, height - 1 do
-    local bytes = {}
+  -- a row's bytes in an FFI array, which ffi.string gives as a string
+  local bytes = ffi.new("uint8_t[?]", width * 3)
 
-    for x = 1, width do
-      local color = pixels[y * width + x]
-      bytes[#bytes + 1] = (color >> 16) & 0xFF
-      bytes[#bytes + 1] = (color >> 8) & 0xFF
-      bytes[#bytes + 1] = color & 0xFF
+  for y = 0, height - 1 do
+    for x = 0, width - 1 do
+      local color = pixels[y * width + x + 1]
+      bytes[x * 3], bytes[x * 3 + 1], bytes[x * 3 + 2] = (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF
     end
 
-    rows[#rows + 1] = string.char(table.unpack(bytes))
+    rows[#rows + 1] = ffi.string(bytes, width * 3)
   end
 
   return table.concat(rows)
@@ -586,7 +586,7 @@ function services.closeOthers(panel)
   -- a closed canvas is destroyed after this call, so the table does not change while it is walked
   for other in pairs(canvases) do
     if other ~= panel and ecs.layout.close(other) then
-      closed = closed + 1
+      closed += 1
     end
   end
 
@@ -620,7 +620,7 @@ function services.eachCanvas(fn)
       fn(panel, #canvas.strokes)
     end
 
-    count = count + 1
+    count += 1
   end
 
   return count
@@ -633,7 +633,7 @@ function services.stats()
   -- the plugin's settings are counted from the list of every setting
   for _, setting in ipairs(ecs.setting.list() or {}) do
     if setting:sub(1, #NAME + 1) == NAME .. "." then
-      own = own + 1
+      own += 1
     end
   end
 
@@ -703,11 +703,11 @@ ecs.event.declare("strokeAdded", "A canvas has a new stroke: { panel = id, strok
 
 local function onEvent(event, value)
   if event == name("strokeAdded") then
-    total = total + 1
+    total += 1
   elseif event == "ecs.panelOpened" and value.type == name("canvas") then
-    openCanvases = openCanvases + 1
+    openCanvases += 1
   elseif event == "ecs.panelClosed" and value.type == name("canvas") then
-    openCanvases = openCanvases - 1
+    openCanvases -= 1
   elseif event == "ecs.workspaceSwitched" then
     ecs.log.debug(("Workspace %d, '%s', is shown."):format(value.workspace, ecs.workspace.getName(value.workspace)))
   end

@@ -49,7 +49,7 @@ ecs.panel.registerType({
 
     local function show(text, color)
       draw.text(surface, font, text, 16, y, 16, color)
-      y = y + 24
+      y += 24
     end
 
     show('The hashes of "abc":', "text")

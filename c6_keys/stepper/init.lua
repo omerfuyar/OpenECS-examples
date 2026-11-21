@@ -10,7 +10,7 @@ local function step(panel, amount)
   local stepper = steppers[panel]
 
   if stepper then
-    stepper.value = stepper.value + amount
+    stepper.value += amount
     panel.title = ("Stepper (%d)"):format(stepper.value)
     panel:redraw()
   end

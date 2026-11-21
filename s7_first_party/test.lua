@@ -27,11 +27,11 @@ local function count(test, type)
     local found = 0
 
     for _, panel in ipairs(node.panels or {}) do
-      found = found + (panel.type == type and 1 or 0)
+      found += (panel.type == type and 1 or 0)
     end
 
     for _, child in ipairs(node) do
-      found = found + search(child)
+      found += search(child)
     end
 
     return found

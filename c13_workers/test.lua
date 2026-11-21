@@ -38,7 +38,7 @@ return {
     local total = 0
 
     for _, chunks in pairs(state().done) do
-      total = total + chunks
+      total += chunks
     end
 
     test.match(total, 40, "the chunks of all the workers")

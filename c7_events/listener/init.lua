@@ -45,7 +45,7 @@ end)
 local renewing
 
 local function renew()
-  renewed = renewed + 1
+  renewed += 1
   renewing:unsubscribe()
   renewing = ecs.event.subscribe("ticker.tick", renew)
 end
@@ -54,7 +54,7 @@ renewing = ecs.event.subscribe("ticker.tick", renew)
 
 -- the core's events start with "ecs."; ecs.panelOpened's value names the panel and its type
 ecs.event.subscribe("ecs.panelOpened", function(_, value)
-  opened = opened + 1
+  opened += 1
   ecs.log.debug(("A %s opened."):format(value.type))
 end)
 

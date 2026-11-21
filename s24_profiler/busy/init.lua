@@ -24,7 +24,7 @@ ecs.panel.registerType({
     return { measured = profile ~= nil, busy = seconds.busy ~= nil, draw = seconds.draw ~= nil }
   end,
   draw = function(state, surface, seconds)
-    state.time = state.time + seconds
+    state.time += seconds
     local width, height = surface.width / surface.scale, surface.height / surface.scale
     draw.fill(surface, 0, 0, width, height, "background")
 

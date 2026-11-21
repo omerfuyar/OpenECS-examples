@@ -58,7 +58,7 @@ ecs.panel.registerType({
 
     for _, row in ipairs(state.rows) do
       draw.text(surface, font, ("%-8s %d"):format(row.name, row.count), 16, y, 18, "text")
-      y = y + 26
+      y += 26
     end
 
     draw.text(surface, font, ("%d fruits; Return adds one"):format(state.total), 16, y, 18, "textDim")

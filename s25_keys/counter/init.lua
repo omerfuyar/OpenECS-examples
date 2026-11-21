@@ -11,7 +11,7 @@ ecs.service.register({
     sig = "void()",
     doc = "Count one more",
     fn = function()
-      count = count + 1
+      count += 1
 
       for panel in pairs(panels) do
         panel:redraw()

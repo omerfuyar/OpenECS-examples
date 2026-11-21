@@ -108,7 +108,7 @@ local timer = ecs.timer.start(0.05, true, function()
 
     -- a request for a WebSocket on /echo turns the connection into one, whose frames go on in both directions; it starts with a greeting
     if received ~= "" and client.websocket then
-      client.pending = client.pending .. received
+      client.pending ..= received
       echo(client)
     elseif received ~= "" and not client.answered then
       local upgrade = received:match("^GET /echo ") and websocket.handshake(received)

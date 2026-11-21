@@ -2,6 +2,7 @@
 -- A panel type with continuous = true draws every frame while it shows, and its draw gets the seconds since the last one.
 
 local ecs = require("ecs")
+local ffi = require("ffi")
 local gltf = require("gltf")
 local draw = require("draw")
 local image = require("image")
@@ -13,20 +14,29 @@ local info = assert(model:describe())
 local primitive = info.meshes[1].primitives[1]
 local positions = model:attribute(1, 1, "POSITION")
 local indices = model:indices(1, 1)
-local points, edges = {}, {}
+local points = {}
+
+-- the FFI reads the bytes as C arrays: a pointer into a string is valid while the string is
+local xyz = ffi.cast("const float *", positions)
 
 for i = 0, primitive.vertices - 1 do
-  points[i + 1] = { string.unpack("<fff", positions, i * 12 + 1) }
+  points[i + 1] = { xyz[i * 3], xyz[i * 3 + 1], xyz[i * 3 + 2] }
 end
 
 -- each triangle's three edges, as pairs of point numbers from 0, which draw.lines takes as 32-bit integers
-for i = 0, primitive.indices - 1, 3 do
-  local a, b, c = string.unpack("<I4I4I4", indices, i * 4 + 1)
-  edges[#edges + 1] = string.pack("=I4I4I4I4I4I4", a, b, b, c, c, a)
+local function edgesOf(indexBytes, count)
+  local corners, edges = ffi.cast("const uint32_t *", indexBytes), ffi.new("uint32_t[?]", count * 2)
+
+  for i = 0, count - 1, 3 do
+    local a, b, c = corners[i], corners[i + 1], corners[i + 2]
+    edges[i * 2], edges[i * 2 + 1], edges[i * 2 + 2], edges[i * 2 + 3], edges[i * 2 + 4], edges[i * 2 + 5] = a, b, b, c, c, a
+  end
+
+  return ffi.string(edges, ffi.sizeof(edges))
 end
 
-local EDGES = table.concat(edges)
-local TRIANGLES = primitive.indices // 3
+local EDGES = edgesOf(indices, primitive.indices)
+local TRIANGLES = primitive.indices / 3
 
 -- the material's colour, as a text
 local r, g, b = table.unpack(info.materials[primitive.material].color)
@@ -44,8 +54,9 @@ local SPIN = badgeInfo.animations[1]
 
 -- the badge node's turn in degrees, its move to the right and its size, at a time of the animation
 local function badgeAt(seconds)
-  local m = { string.unpack("<ffffffffffffffff", badge:pose(1, seconds)) }
-  return math.deg(math.atan(m[2], m[1])), m[13], math.sqrt(m[1] * m[1] + m[2] * m[2] + m[3] * m[3])
+  local pose = badge:pose(1, seconds)
+  local m = ffi.cast("const float *", pose)
+  return math.deg(math.atan2(m[1], m[0])), m[12], math.sqrt(m[0] * m[0] + m[1] * m[1] + m[2] * m[2])
 end
 
 -- an arm whose skin bends it: its vertices follow two joints, the root and the tip, and its animation turns the tip a quarter turn in a second;
@@ -55,19 +66,13 @@ local armInfo = assert(arm:describe())
 local BEND = armInfo.animations[1]
 local ARM_SKIN = assert(armInfo.nodes[1].skin)
 local ARM_VERTICES = armInfo.meshes[1].primitives[1].vertices
-local armIndices = arm:indices(1, 1)
-local armEdges = {}
-
-for i = 0, armInfo.meshes[1].primitives[1].indices - 1, 3 do
-  local a, b, c = string.unpack("<I4I4I4", armIndices, i * 4 + 1)
-  armEdges[#armEdges + 1] = string.pack("=I4I4I4I4I4I4", a, b, b, c, c, a)
-end
-
-local ARM_EDGES = table.concat(armEdges)
+local ARM_EDGES = edgesOf(arm:indices(1, 1), armInfo.meshes[1].primitives[1].indices)
 
 -- a vertex of the arm, from 1, at a time of its animation
 local function armAt(vertex, seconds)
-  return { string.unpack("<fff", arm:skin(1, 1, ARM_SKIN, 1, seconds), (vertex - 1) * 12 + 1) }
+  local skinned = arm:skin(1, 1, ARM_SKIN, 1, seconds)
+  local xyz = ffi.cast("const float *", skinned) + (vertex - 1) * 3
+  return { xyz[0], xyz[1], xyz[2] }
 end
 
 ecs.panel.registerType({
@@ -80,24 +85,24 @@ ecs.panel.registerType({
   end,
 
   draw = function(state, surface, seconds)
-    state.angle = state.angle + seconds * 0.8
-    state.drawn = state.drawn + 1
+    state.angle += seconds * 0.8
+    state.drawn += 1
     surface:fill(0, 0, surface.width, surface.height, "#101418")
 
     -- each point turns around the vertical axis, leans towards the viewer, and is drawn with a little perspective, in layout units
     local cos, sin = math.cos(state.angle), math.sin(state.angle)
     local width, height = surface.width / surface.scale, surface.height / surface.scale
     local scale = math.min(width, height) * 0.3
-    local projected = {}
+    local projected = ffi.new("float[?]", #points * 2)
 
     for i, point in ipairs(points) do
       local x, y, z = point[1] * cos - point[3] * sin, point[2], point[1] * sin + point[3] * cos
       y, z = y * 0.94 - z * 0.34, y * 0.34 + z * 0.94
       local depth = 4 / (z + 5)
-      projected[i] = string.pack("=ff", width / 2 + x * scale * depth, height / 2 - y * scale * depth)
+      projected[i * 2 - 2], projected[i * 2 - 1] = width / 2 + x * scale * depth, height / 2 - y * scale * depth
     end
 
-    draw.lines(surface, table.concat(projected), EDGES, 1, COLOR)
+    draw.lines(surface, ffi.string(projected, ffi.sizeof(projected)), EDGES, 1, COLOR)
 
     -- the badge's texture near the top left corner, at four times its size, turned, moved and grown as its animation says; the animation goes round
     state.time = (state.time + seconds) % SPIN.duration
@@ -106,14 +111,14 @@ ecs.panel.registerType({
     -- the arm on the right, bending and straightening again: the animation's time goes there and back
     local bend = state.time % (2 * BEND.duration)
     local skinned = arm:skin(1, 1, ARM_SKIN, 1, bend <= BEND.duration and bend or 2 * BEND.duration - bend)
-    local armPoints = {}
+    local xyz = ffi.cast("const float *", skinned)
+    local armPoints = ffi.new("float[?]", ARM_VERTICES * 2)
 
     for i = 0, ARM_VERTICES - 1 do
-      local x, y = string.unpack("<ff", skinned, i * 12 + 1)
-      armPoints[i + 1] = string.pack("=ff", width - 160 + x * 70, height - 40 - y * 70)
+      armPoints[i * 2], armPoints[i * 2 + 1] = width - 160 + xyz[i * 3] * 70, height - 40 - xyz[i * 3 + 1] * 70
     end
 
-    draw.lines(surface, table.concat(armPoints), ARM_EDGES, 1, "#E0A040")
+    draw.lines(surface, ffi.string(armPoints, ffi.sizeof(armPoints)), ARM_EDGES, 1, "#E0A040")
     draw.imageTransformed(surface, TEXTURE, 100 + right * 60 - size / 2, 100 - size / 2, size, size, -turn, "#FFFFFF")
   end,
 

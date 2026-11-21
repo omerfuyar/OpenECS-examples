@@ -174,7 +174,7 @@ ecs.panel.registerType({
         id = "button",
         tooltip = "Counts the clicks in the panel's title",
         onClick = function()
-          state.clicks = state.clicks + 1
+          state.clicks += 1
           state.panel.title = ("Controls (%d)"):format(state.clicks)
         end,
       }),

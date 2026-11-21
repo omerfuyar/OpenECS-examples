@@ -14,7 +14,7 @@ local shown = 0
 
 -- a plugin may give an entry links of its own after its place, such as one to what raised the error
 local links = { { text = "Show", tooltip = "Show what raised the error", onClick = function()
-  shown = shown + 1
+  shown += 1
 end } }
 
 local function run()

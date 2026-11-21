@@ -3,6 +3,7 @@
 -- It also draws a title, in one of draw's fonts.
 
 local ecs = require("ecs")
+local ffi = require("ffi")
 local draw = require("draw")
 local gpu = require("gpu")
 
@@ -11,19 +12,19 @@ local TILES = { "#BF616A", "#A3BE8C", "#EBCB8B", "#5E81AC" }
 
 -- the light is a texture, made once from pixels: a soft yellow dot, ARGB with premultiplied alpha, as draw's images have
 local function dot(size)
-  local pixels = {}
+  local pixels = ffi.new("uint32_t[?]", size * size)
 
   for y = 0, size - 1 do
     for x = 0, size - 1 do
       local distance = math.sqrt((x + 0.5 - size / 2) ^ 2 + (y + 0.5 - size / 2) ^ 2) / (size / 2)
       local alpha = math.max(0, 1 - distance)
       local function channel(value) return math.floor(value * alpha + 0.5) end
-      pixels[#pixels + 1] = string.pack("<I4", (channel(255) << 24) | (channel(0xEB) << 16) | (channel(0xCB) << 8) | channel(0x8B))
+      pixels[y * size + x] = channel(255) << 24 | channel(0xEB) << 16 | channel(0xCB) << 8 | channel(0x8B)
     end
   end
 
   -- nil without a GPU renderer; the panel then draws nothing
-  return gpu.texture(size, size, table.concat(pixels))
+  return gpu.texture(size, size, ffi.string(pixels, ffi.sizeof(pixels)))
 end
 
 local light = dot(32)
@@ -40,7 +41,7 @@ ecs.panel.registerType({
   end,
 
   draw = function(state, surface, seconds)
-    state.seconds = state.seconds + seconds
+    state.seconds += seconds
 
     -- gpu draws into the surface as draw does into pixels; what it draws reaches the GPU when draw returns
     local width, height = surface.width / surface.scale, surface.height / surface.scale
