@@ -38,7 +38,7 @@ typedef struct FruitRow
 static const FruitRow FRUIT_ROWS[] = {{"Cherry", 4.5, 12, "4.5", "12"}, {"Apple", 1.2, 40, "1.2", "40"}, {"Banana", 0.8, 25, "0.8", "25"}};
 
 /// @brief The elements the test clicks, by id; their rectangles are saved, so the test finds them.
-static const char *const IDS[] = {"button", "tab", "sound", "volume", "size", "fruit", "count", "item:2", "name", "note", "tree:src",
+static const char *const IDS[] = {"button", "tab", "sound", "volume", "size", "fruit", "count", "item:2", "name", "note", "beside", "tree:src",
                                   "tree:main", "tree:lib", "tree:readme:star", "table:header", "table:1", "table:2", "table:title:name", "table:title:price", "about",
                                   "tint", "colors:heading", "tag:1", "tag:2", "tag:6", "file"};
 
@@ -309,6 +309,17 @@ static void ControlsDraw(void *data, ECSSurface *surface, f64 seconds)
 
             // text with wrap = true breaks into lines at the width of its column
             UI_TEXT(NOTE, .id = "note", .style = &UI_PLUGIN.styles.note, .wrap = true);
+
+            // in a row, wrapped text and columns share what the other children leave, and a growing column's text breaks at the width it grows to
+            UI_ROW(.gap = 8)
+            {
+                UI_TEXT("Keys", .wrap = true);
+
+                UI_COLUMN(.grow = 1)
+                {
+                    UI_TEXT(NOTE, .id = "beside", .style = &UI_PLUGIN.styles.note, .wrap = true);
+                }
+            }
         }
     }
 }
