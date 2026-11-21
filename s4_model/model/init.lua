@@ -32,7 +32,7 @@ local function edgesOf(indexBytes, count)
     edges[i * 2], edges[i * 2 + 1], edges[i * 2 + 2], edges[i * 2 + 3], edges[i * 2 + 4], edges[i * 2 + 5] = a, b, b, c, c, a
   end
 
-  return ffi.string(edges, ffi.sizeof(edges))
+  return edges
 end
 
 local EDGES = edgesOf(indices, primitive.indices)
@@ -101,7 +101,7 @@ function Model:draw(surface, seconds)
     projected[i * 2 - 2], projected[i * 2 - 1] = width / 2 + x * scale * depth, height / 2 - y * scale * depth
   end
 
-  draw.lines(surface, ffi.string(projected, ffi.sizeof(projected)), EDGES, 1, COLOR)
+  draw.lines(surface, projected, EDGES, 1, COLOR)
 
   -- the badge's texture near the top left corner, at four times its size, turned, moved and grown as its animation says; the animation goes round
   self.time = (self.time + seconds) % SPIN.duration
@@ -117,7 +117,7 @@ function Model:draw(surface, seconds)
     armPoints[i * 2], armPoints[i * 2 + 1] = width - 160 + xyz[i * 3] * 70, height - 40 - xyz[i * 3 + 1] * 70
   end
 
-  draw.lines(surface, ffi.string(armPoints, ffi.sizeof(armPoints)), ARM_EDGES, 1, "#E0A040")
+  draw.lines(surface, armPoints, ARM_EDGES, 1, "#E0A040")
   draw.imageTransformed(surface, TEXTURE, 100 + right * 60 - size / 2, 100 - size / 2, size, size, -turn, "#FFFFFF")
 end
 

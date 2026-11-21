@@ -24,7 +24,7 @@ local function dot(size)
   end
 
   -- nil without a GPU renderer; the panel then draws nothing
-  return gpu.texture(size, size, ffi.string(pixels, ffi.sizeof(pixels)))
+  return gpu.texture(size, size, pixels)
 end
 
 local light = dot(32)

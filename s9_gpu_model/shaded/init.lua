@@ -20,18 +20,21 @@ local info = assert(model:describe())
 local primitive = info.meshes[1].primitives[1]
 local VERTICES, TRIANGLES = primitive.vertices, primitive.indices / 3
 
--- each call of attribute or indices replaces the buffer of the last one, so each is copied before the next
+-- each call of attribute or indices replaces the buffer of the last one, so each is copied before the next; the FFI reads their floats
 local positions = model:attribute(1, 1, "POSITION")
 local normals = model:attribute(1, 1, "NORMAL")
-local vertices = {}
+local position, normal = ffi.cast("const float *", positions), ffi.cast("const float *", normals)
+local vertices = ffi.new("float[?]", VERTICES * 6)
 
 -- a vertex is its position and its normal, six floats, as the pipeline's attributes say
 for i = 0, VERTICES - 1 do
-  vertices[i + 1] = positions:sub(i * 12 + 1, i * 12 + 12) .. normals:sub(i * 12 + 1, i * 12 + 12)
+  for j = 0, 2 do
+    vertices[i * 6 + j], vertices[i * 6 + 3 + j] = position[i * 3 + j], normal[i * 3 + j]
+  end
 end
 
 -- nil without a GPU renderer; the panel then draws only its shapes
-local vertexBuffer = gpu.buffer("vertex", table.concat(vertices))
+local vertexBuffer = gpu.buffer("vertex", vertices)
 local indexBuffer = gpu.buffer("index", model:indices(1, 1))
 
 -- the shaders, in GLSL in the shaders folder: gpu compiles them to SPIR-V, which Vulkan's drivers take, and turns that into DXBC for Direct3D 12's;
@@ -105,7 +108,7 @@ local function shadow(x, y, width, height)
     indices[i * 3], indices[i * 3 + 1], indices[i * 3 + 2] = 0, i + 1, (i + 1) % SIDES + 1
   end
 
-  return ffi.string(points, ffi.sizeof(points)), ffi.string(colors, ffi.sizeof(colors)), ffi.string(indices, ffi.sizeof(indices))
+  return points, colors, indices
 end
 
 -- each panel's state is an object of Shaded, whose functions are methods
