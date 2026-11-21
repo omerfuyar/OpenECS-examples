@@ -32,7 +32,7 @@ return {
     test.click(at("start"))
     test.match(state().running, true, "the workers count")
     finish()
-    test.match(state(), { running = false, primes = 9592, chunks = 40 }, "the primes below 100000")
+    test.match(state(), { running = false, primes = 9592, chunks = 40, refused = true }, "the primes below 100000, and a function that is no message")
 
     -- the workers count each chunk once, all of them together
     local total = 0

@@ -1,6 +1,6 @@
 -- A worker's script. It runs on a thread of its own, in a Lua state of its own, so it shares no variables with the plugin's init.lua.
 -- Its require("ecs") holds only log, plugin and worker: ecs.worker.receive waits for a message from the plugin, and ecs.worker.send sends one back.
--- A message is a copy of nil, a boolean, a number, a text, or a table of them.
+-- A message is a copy, the bytes that LuaJIT's string.buffer encodes: nil, a boolean, a number, a text, or a table of them.
 
 local ecs = require("ecs")
 

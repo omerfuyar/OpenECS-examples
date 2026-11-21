@@ -83,6 +83,9 @@ local function start(counter)
     }))
 
     counter.workers[i] = worker
+
+    -- a function, a handle or a struct cannot be encoded as a message, so sending one is an error; a struct's fields go as a table
+    counter.refused = not pcall(worker.send, worker, print)
     give(worker)
   end
 end
@@ -154,7 +157,7 @@ end
 
 -- the counts are saved, so the test can read them
 function Primes:saveState()
-  return { limit = LIMITS[self.limit], running = self.running, primes = self.primes, chunks = self.chunks, done = self.done, rects = self.rects }
+  return { limit = LIMITS[self.limit], running = self.running, primes = self.primes, chunks = self.chunks, done = self.done, rects = self.rects, refused = self.refused }
 end
 
 ecs.panel.registerType({
