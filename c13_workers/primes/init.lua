@@ -33,13 +33,13 @@ local function start(counter)
   stop(counter)
 
   local limit = tonumber((LIMITS[counter.limit]:gsub(" ", "")))
-  local size = (limit - 2) // CHUNKS + 1
+  local size = math.floor((limit - 2) / CHUNKS) + 1
   local next, finished = 1, 0
   counter.primes, counter.chunks, counter.seconds, counter.done, counter.running = 0, 0, 0, {}, true
 
   -- the clock counts tenths of a second; a repeating timer skips the calls it missed, so it would fall behind if the main thread were busy
   counter.clock = ecs.timer.start(0.1, true, function()
-    counter.seconds = counter.seconds + 0.1
+    counter.seconds += 0.1
     counter.panel:redraw()
   end)
 
@@ -51,7 +51,7 @@ local function start(counter)
     end
 
     worker:send({ from = (next - 1) * size + 1, to = math.min(next * size, limit - 1) })
-    next = next + 1
+    next += 1
   end
 
   for i = 1, WORKERS do
@@ -63,8 +63,8 @@ local function start(counter)
 
       -- each message the worker sends comes here, on the main thread: a chunk's count
       message = function(message)
-        counter.primes = counter.primes + message.primes
-        counter.chunks = counter.chunks + 1
+        counter.primes += message.primes
+        counter.chunks += 1
         counter.done[i] = (counter.done[i] or 0) + 1
         give(worker)
         counter.panel:redraw()
@@ -73,7 +73,7 @@ local function start(counter)
       -- the script ended: ok is true and chunks is what it returned, or ok is false and chunks is the error
       done = function(ok, chunks)
         ecs.log.debug(("worker %d ended: %s, %s"):format(i, ok, chunks))
-        finished = finished + 1
+        finished += 1
 
         if finished == WORKERS then
           stop(counter)

@@ -130,7 +130,7 @@ ecs.panel.registerType({
 
   event = function(state, event)
     if event.type == "text" then
-      state.line = state.line .. event.text
+      state.line ..= event.text
     elseif event.type == "keyDown" and event.key == "Return" and state.line ~= "" then
       local datagram = state.line:match("^/udp (.+)")
 

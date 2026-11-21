@@ -34,7 +34,7 @@ return {
 
     -- a line that no longer fits wraps onto the next row instead of losing its end, and joins again when it fits;
     -- it fills most of a row now, however wide the window is
-    local long = string.rep("wrap me ", (state().columns - 12) // 8) .. "end"
+    local long = string.rep("wrap me ", math.floor((state().columns - 12) / 8)) .. "end"
     test.text("echo " .. long)
     test.key("Return")
 

@@ -156,14 +156,14 @@ ecs.panel.registerType({
 
     if next(pads) == nil then
       draw.text(surface, font, "No gamepad; press Space for a virtual one", 16, y, 18, "textDim")
-      y = y + 30
+      y += 30
     end
 
     -- each gamepad gets an equal share of the height, with its name above its picture
     local count = 0
 
     for _ in pairs(pads) do
-      count = count + 1
+      count += 1
     end
 
     local share = count > 0 and (height - y - 40) / count or 0
@@ -172,7 +172,7 @@ ecs.panel.registerType({
       draw.text(surface, font, pad:name(), 16, y, 18, "text")
       local scale = math.max(0.1, math.min((width - 32) / 400, (share - 34) / 220))
       drawPad(surface, font, pad, (width - 400 * scale) / 2, y + 28, scale)
-      y = y + share
+      y += share
     end
 
     draw.text(surface, font, "Last presses: " .. table.concat(state.presses, ", ", math.max(1, #state.presses - 5)), 16, height - 30, 18, "accent")

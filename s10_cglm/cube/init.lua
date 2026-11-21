@@ -4,6 +4,7 @@
 -- The functions about a struct are its methods too, and some are operators: m1 * m2 is cglm.mat4Mul(m1, m2), and q:mat4() is cglm.quatMat4(q).
 
 local ecs = require("ecs")
+local ffi = require("ffi")
 local cglm = require("cglm")
 local draw = require("draw")
 
@@ -14,7 +15,7 @@ for i = 0, 7 do
   CORNERS[i + 1] = cglm.vec3(i & 1 == 0 and -1 or 1, i & 2 == 0 and -1 or 1, i & 4 == 0 and -1 or 1)
 end
 
-local EDGES = string.pack("=" .. ("I4"):rep(24), 0, 1, 2, 3, 4, 5, 6, 7, 0, 2, 1, 3, 4, 6, 5, 7, 0, 4, 1, 5, 2, 6, 3, 7)
+local EDGES = ffi.string(ffi.new("uint32_t[24]", 0, 1, 2, 3, 4, 5, 6, 7, 0, 2, 1, 3, 4, 6, 5, 7, 0, 4, 1, 5, 2, 6, 3, 7), 24 * 4)
 
 local UP = cglm.vec3(0, 1, 0)
 
@@ -46,7 +47,7 @@ ecs.panel.registerType({
   end,
 
   draw = function(state, surface)
-    state.drawn = state.drawn + 1
+    state.drawn += 1
     local width, height = surface.width / surface.scale, surface.height / surface.scale
     draw.fill(surface, 0, 0, width, height, "#101418")
 
@@ -54,14 +55,14 @@ ecs.panel.registerType({
     local side = math.min(width, height)
     local left, top = (width - side) / 2, (height - side) / 2
     local matrix = matrixAt(state.turn)
-    local points = {}
+    local points = ffi.new("float[?]", #CORNERS * 2)
 
     for i, corner in ipairs(CORNERS) do
       local x, y = project(matrix, corner)
-      points[i] = string.pack("=ff", left + x * side, top + (1 - y) * side)
+      points[i * 2 - 2], points[i * 2 - 1] = left + x * side, top + (1 - y) * side
     end
 
-    draw.lines(surface, table.concat(points), EDGES, 2, "accent")
+    draw.lines(surface, ffi.string(points, ffi.sizeof(points)), EDGES, 2, "accent")
   end,
 
   -- a drag across turns the cube
@@ -71,7 +72,7 @@ ecs.panel.registerType({
     elseif event.type == "pointerUp" then
       state.dragging = nil
     elseif event.type == "pointerMove" and state.dragging then
-      state.turn = state.turn + (event.x - state.dragging) * 0.01
+      state.turn += (event.x - state.dragging) * 0.01
       state.dragging = event.x
       state.panel:redraw()
     end

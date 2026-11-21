@@ -5,6 +5,7 @@
 -- A spinner in the corner is an animated GIF file.
 
 local ecs = require("ecs")
+local ffi = require("ffi")
 local image = require("image")
 local draw = require("draw")
 local audio = require("audio")
@@ -19,14 +20,16 @@ local RATE = 48000
 
 local function tone(seconds, pitch)
   local stream = mixer.newStream(1, RATE)
-  local samples = {}
+  -- the samples are floats, made in an FFI array and given as its bytes
+  local count = math.floor(seconds * RATE)
+  local samples = ffi.new("float[?]", count)
 
-  for i = 1, math.floor(seconds * RATE) do
-    samples[i] = string.pack("f", 0.2 * math.sin(2 * math.pi * pitch * i / RATE))
+  for i = 0, count - 1 do
+    samples[i] = 0.2 * math.sin(2 * math.pi * pitch * (i + 1) / RATE)
   end
 
   -- queue adds samples to the end; a synthesizer would queue more from a timer while the sound's queued says little waits
-  stream:queue(table.concat(samples))
+  stream:queue(ffi.string(samples, ffi.sizeof(samples)))
   return stream
 end
 
@@ -167,7 +170,7 @@ ecs.panel.registerType({
 
     if event.type == "pointerDown" and px >= x and px <= x + w and py >= y and py <= y + h then
       if sound:play(0.8, false) > 0 then
-        state.plays = state.plays + 1
+        state.plays += 1
         state.panel.title = ("Media (%d)"):format(state.plays)
       end
     end

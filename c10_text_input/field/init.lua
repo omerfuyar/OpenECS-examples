@@ -35,7 +35,7 @@ ecs.panel.registerType({
 
   event = function(state, event)
     if event.type == "text" then
-      state.text = state.text .. event.text
+      state.text ..= event.text
     elseif event.type == "keyDown" and event.key == "Backspace" and #state.text > 0 then
       state.text = state.text:sub(1, utf8.offset(state.text, -1) - 1) -- drops the last character, which may be several bytes
     else

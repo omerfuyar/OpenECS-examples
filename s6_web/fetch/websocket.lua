@@ -6,18 +6,36 @@ local websocket = {}
 -- the text that the handshake joins to the client's key, which the RFC fixes
 local GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
--- SHA-1 of a text, as 20 bytes; the handshake proves it understood the request with it
+-- a number's last bytes, the most significant first
+local function bigEndian(number, count)
+  local bytes = {}
+
+  for i = count, 1, -1 do
+    bytes[i] = number % 256
+    number = math.floor(number / 256)
+  end
+
+  return string.char(table.unpack(bytes))
+end
+
+-- SHA-1 of a text, as 20 bytes; the handshake proves it understood the request with it.
+-- LuaJIT's bit operators work on 32 bits, as SHA-1 does: a result is a signed 32-bit number, and & 0xFFFFFFFF wraps a sum to 32 bits
 local function sha1(text)
   local function rotate(x, n)
-    return ((x << n) | (x >> (32 - n))) & 0xFFFFFFFF
+    return (x << n) | (x >> (32 - n))
   end
 
   -- the text, a 1 bit, zeros, and its length in bits, to a whole number of 64-byte blocks
-  local padded = text .. "\128" .. ("\0"):rep((55 - #text) % 64) .. string.pack(">I8", #text * 8)
+  local padded = text .. "\128" .. ("\0"):rep((55 - #text) % 64) .. bigEndian(#text * 8, 8)
   local h0, h1, h2, h3, h4 = 0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0
 
   for block = 1, #padded, 64 do
-    local w = { string.unpack(">" .. ("I4"):rep(16), padded, block) }
+    local w = {}
+
+    for i = 1, 16 do
+      local b1, b2, b3, b4 = padded:byte(block + i * 4 - 4, block + i * 4 - 1)
+      w[i] = b1 << 24 | b2 << 16 | b3 << 8 | b4
+    end
 
     for i = 17, 80 do
       w[i] = rotate(w[i - 3] ~ w[i - 8] ~ w[i - 14] ~ w[i - 16], 1)
@@ -44,7 +62,7 @@ local function sha1(text)
     h0, h1, h2, h3, h4 = (h0 + a) & 0xFFFFFFFF, (h1 + b) & 0xFFFFFFFF, (h2 + c) & 0xFFFFFFFF, (h3 + d) & 0xFFFFFFFF, (h4 + e) & 0xFFFFFFFF
   end
 
-  return string.pack(">I4I4I4I4I4", h0, h1, h2, h3, h4)
+  return bigEndian(h0 % 2 ^ 32, 4) .. bigEndian(h1 % 2 ^ 32, 4) .. bigEndian(h2 % 2 ^ 32, 4) .. bigEndian(h3 % 2 ^ 32, 4) .. bigEndian(h4 % 2 ^ 32, 4)
 end
 
 local ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
@@ -95,18 +113,23 @@ function websocket.decode(data)
       return nil
     end
 
-    length, at = string.unpack(">I2", data, 3), 5
+    local high, low = data:byte(3, 4)
+    length, at = high * 256 + low, 5
   elseif length == 127 then
     if #data < 10 then
       return nil
     end
 
-    length, at = string.unpack(">I8", data, 3), 11
+    length, at = 0, 11
+
+    for i = 3, 10 do
+      length = length * 256 + data:byte(i)
+    end
   end
 
   local masked = second & 128 ~= 0
   local mask = masked and data:sub(at, at + 3) or "\0\0\0\0"
-  at = at + (masked and 4 or 0)
+  at += (masked and 4 or 0)
 
   if #data < at + length - 1 then
     return nil
@@ -124,9 +147,9 @@ end
 -- a server's frame: a whole message, which a server does not mask
 function websocket.encode(opcode, payload)
   local length = #payload
-  local head = length < 126 and string.pack("BB", 128 | opcode, length)
-      or length < 65536 and string.pack(">BBI2", 128 | opcode, 126, length)
-      or string.pack(">BBI8", 128 | opcode, 127, length)
+  local head = length < 126 and string.char(128 | opcode, length)
+      or length < 65536 and string.char(128 | opcode, 126) .. bigEndian(length, 2)
+      or string.char(128 | opcode, 127) .. bigEndian(length, 8)
   return head .. payload
 end
 

@@ -86,7 +86,7 @@ ecs.panel.registerType({
 
   event = function(state, event)
     if event.type == "text" then
-      state.line = state.line .. event.text
+      state.line ..= event.text
     elseif event.type == "keyDown" and event.key == "Backspace" then
       state.line = state.line:sub(1, (utf8.offset(state.line, -1) or 1) - 1)
     elseif event.type == "keyDown" and event.key == "Return" then

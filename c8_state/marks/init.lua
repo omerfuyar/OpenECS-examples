@@ -40,7 +40,7 @@ ecs.panel.registerType({
     if event.type == "pointerDown" and event.button == 1 then
       table.insert(state.dots, event.x / state.scale) -- dots are kept in layout units, so they stay put at any scale
       table.insert(state.dots, event.y / state.scale)
-      placed = placed + 1
+      placed += 1
       state.panel.unsaved = true -- marks the tab; closing the panel then asks to save
       state.panel:redraw()
     end

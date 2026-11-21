@@ -55,7 +55,7 @@ local function send(state)
     buttons = { { id = "yes", label = "Yes" }, { id = "no", label = "No" } },
   })
 
-  state.sent = state.sent + 1
+  state.sent += 1
   note(id and ("sent notification " .. id) or ("not sent: " .. why))
   state.answered = id ~= nil or type(why) == "string"
 end
@@ -86,7 +86,7 @@ ecs.panel.registerType({
     draw.text(surface, font, "Return sends a notification", 16, y, 18, "text")
 
     for i = math.max(1, #lines - 8), #lines do
-      y = y + 26
+      y += 26
       draw.text(surface, font, lines[i], 16, y, 18, "textDim")
     end
   end,

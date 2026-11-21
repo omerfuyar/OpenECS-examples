@@ -70,7 +70,7 @@ ecs.panel.registerType({
 
     local function show(text, color)
       draw.text(surface, font, text, 16, y, 18, color)
-      y = y + 26
+      y += 26
     end
 
     show("sort gave: " .. table.concat(state.sorted, ", "), "text")

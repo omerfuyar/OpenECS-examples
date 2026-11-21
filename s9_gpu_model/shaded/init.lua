@@ -6,6 +6,7 @@
 -- Drag to turn the model, and turn the wheel to come nearer or go back; let go, and it turns on by itself.
 
 local ecs = require("ecs")
+local ffi = require("ffi")
 local draw = require("draw")
 local gltf = require("gltf")
 local gpu = require("gpu")
@@ -17,7 +18,7 @@ local BACKGROUND = "#101418"
 local model = gltf.load(ecs.plugin.folder .. "torus.gltf")
 local info = assert(model:describe())
 local primitive = info.meshes[1].primitives[1]
-local VERTICES, TRIANGLES = primitive.vertices, primitive.indices // 3
+local VERTICES, TRIANGLES = primitive.vertices, primitive.indices / 3
 
 -- each call of attribute or indices replaces the buffer of the last one, so each is copied before the next
 local positions = model:attribute(1, 1, "POSITION")
@@ -93,17 +94,18 @@ local X, Y, Z = cglm.vec3(1, 0, 0), cglm.vec3(0, 1, 0), cglm.vec3(0, 0, 1)
 
 -- the shadow under the model: a fan of triangles, dark in the middle and clear at its edge, which gpu's mesh blends
 local function shadow(x, y, width, height)
-  local points, colors, indices = { string.pack("=ff", x, y) }, { string.pack("=I4", 0x90000000) }, {}
   local SIDES = 32
+  -- the FFI's arrays start at zero, so the edge is clear and only the middle is dark
+  local points, colors, indices = ffi.new("float[?]", (SIDES + 1) * 2, x, y), ffi.new("uint32_t[?]", SIDES + 1), ffi.new("uint32_t[?]", SIDES * 3)
+  colors[0] = 0x90000000
 
   for i = 0, SIDES - 1 do
     local angle = i / SIDES * 2 * math.pi
-    points[#points + 1] = string.pack("=ff", x + math.cos(angle) * width / 2, y + math.sin(angle) * height / 2)
-    colors[#colors + 1] = string.pack("=I4", 0x00000000)
-    indices[#indices + 1] = string.pack("=I4I4I4", 0, i + 1, (i + 1) % SIDES + 1)
+    points[i * 2 + 2], points[i * 2 + 3] = x + math.cos(angle) * width / 2, y + math.sin(angle) * height / 2
+    indices[i * 3], indices[i * 3 + 1], indices[i * 3 + 2] = 0, i + 1, (i + 1) % SIDES + 1
   end
 
-  return table.concat(points), table.concat(colors), table.concat(indices)
+  return ffi.string(points, ffi.sizeof(points)), ffi.string(colors, ffi.sizeof(colors)), ffi.string(indices, ffi.sizeof(indices))
 end
 
 ecs.panel.registerType({
@@ -117,10 +119,10 @@ ecs.panel.registerType({
   end,
 
   draw = function(state, surface, seconds)
-    state.drawn = state.drawn + 1
+    state.drawn += 1
 
     if not state.dragging then
-      state.turn = state.turn + seconds * 0.7
+      state.turn += seconds * 0.7
     end
 
     local width, height = surface.width / surface.scale, surface.height / surface.scale
@@ -173,7 +175,7 @@ ecs.panel.registerType({
     elseif event.type == "pointerUp" then
       state.dragging = nil
     elseif event.type == "pointerMove" and state.dragging then
-      state.turn = state.turn + (event.x - state.dragging.x) * 0.01
+      state.turn += (event.x - state.dragging.x) * 0.01
       state.tilt = math.max(-1.5, math.min(1.5, state.tilt + (event.y - state.dragging.y) * 0.01))
       state.dragging = { x = event.x, y = event.y }
     elseif event.type == "wheel" then

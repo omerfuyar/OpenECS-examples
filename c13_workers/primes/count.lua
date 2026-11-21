@@ -41,10 +41,10 @@ while true do
 
   for n = job.from, job.to do
     if isPrime(n) then
-      primes = primes + 1
+      primes += 1
     end
   end
 
-  chunks = chunks + 1
+  chunks += 1
   ecs.worker.send({ primes = primes })
 end
