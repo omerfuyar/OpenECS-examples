@@ -1,4 +1,5 @@
-// A 2D vector, in C. A struct type is plain data with fixed fields: functions take and give it by value, and Lua gets it as a table of its fields.
+// A 2D vector, in C. A struct type is plain data with fixed fields: functions take and give it by value, and Lua gets it as
+// cdata laid out as this structure.
 // A handle is an object that a plugin owns and frees (example 5); a struct is a value that anyone can make, copy and keep.
 
 #include "OpenECS.h"

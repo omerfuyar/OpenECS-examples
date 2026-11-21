@@ -11,6 +11,7 @@ local draw = require("draw")
 local gltf = require("gltf")
 local gpu = require("gpu")
 local cglm = require("cglm")
+local buffer = require("string.buffer")
 
 local BACKGROUND = "#101418"
 
@@ -91,8 +92,19 @@ end
 -- the material's colour, the way the light goes, from the top left and from in front, and the camera's place, as the fragment shader's uniforms
 local BASE = info.materials[primitive.material].color
 
--- cglm's matrices are 16 floats column by column, as the shaders read them, and its vectors are floats too; bytes gives their floats as a string,
--- so the uniforms are the bytes of the matrices and vectors joined together
+-- cglm's matrices are 16 floats column by column, as the shaders read them, and its vectors are floats too; a struct is laid out as C lays it out,
+-- so the uniforms are the matrices and vectors one after another in a string.buffer; in gpu.draw's table, a struct alone would be its fields
+local function join(...)
+  local joined = buffer.new()
+
+  for i = 1, select("#", ...) do
+    local struct = select(i, ...)
+    joined:putcdata(struct, ffi.sizeof(struct) --[[@as integer]])
+  end
+
+  return joined
+end
+
 local X, Y, Z = cglm.vec3(1, 0, 0), cglm.vec3(0, 1, 0), cglm.vec3(0, 0, 1)
 
 -- the shadow under the model: a fan of triangles, dark in the middle and clear at its edge, which gpu's mesh blends
@@ -136,13 +148,12 @@ function Shaded:draw(surface, seconds)
     local camera = cglm.translateMake(cglm.vec3(0, 0, -self.distance))
     -- a perspective that sees down -z from the camera, with depth from 0, near, to 1, far, as SDL's GPU API takes it
     local viewProjection = cglm.perspective(math.rad(45), width / height, 0.1, 50) * camera
-    local matrices = modelMatrix:bytes() .. viewProjection:bytes()
 
     gpu.draw(surface, pipeline, {
       vertices = vertexBuffer,
       indices = indexBuffer,
-      vertexUniforms = matrices,
-      fragmentUniforms = cglm.vec4(BASE[1], BASE[2], BASE[3], 1):bytes() .. cglm.vec4(0.45, -0.65, -0.6, 0):bytes() .. cglm.vec4(0, 0, self.distance, 1):bytes(),
+      vertexUniforms = join(modelMatrix, viewProjection),
+      fragmentUniforms = join(cglm.vec4(BASE[1], BASE[2], BASE[3], 1), cglm.vec4(0.45, -0.65, -0.6, 0), cglm.vec4(0, 0, self.distance, 1)),
     })
 
     -- the label starts a little to the right of its point, with its line's middle at the point's height
@@ -156,8 +167,8 @@ function Shaded:draw(surface, seconds)
           indices = part.indices,
           count = part.count,
           atlas = part.atlas,
-          vertexUniforms = matrices .. LABEL_POINT:bytes() .. screen:bytes(),
-          fragmentUniforms = cglm.vec4(1, 1, 1, 1):bytes(),
+          vertexUniforms = join(modelMatrix, viewProjection, LABEL_POINT, screen),
+          fragmentUniforms = join(cglm.vec4(1, 1, 1, 1)),
         })
       end
 

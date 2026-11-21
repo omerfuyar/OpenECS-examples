@@ -5,7 +5,8 @@ local draw = require("draw")
 
 local STATE_VERSION = 1
 
--- a struct is a table of its fields, with its type's methods: a function gives one, and ecs.struct.new makes one from a table of the fields
+-- a struct is cdata of its type's own FFI type, laid out as C, with its type's methods and operators: a function gives one, and ecs.struct.new
+-- makes one from a table of the fields
 local function point(x, y)
   return ecs.struct.new("geometry.vec2", { x = x, y = y })
 end
