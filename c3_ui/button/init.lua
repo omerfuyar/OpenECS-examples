@@ -43,8 +43,13 @@ local function nodesOf(state)
   return NODES
 end
 
+-- the text that wraps, twice: alone in the column, and beside a label in a row
+local NOTE = "Tab gives the keys to the next control and Shift+Tab to the one before. Return or Space presses the control that has them, " ..
+  "Left and Right change a selector or a slider, and Escape takes the keys away. A field takes typing as soon as it has the keys. " ..
+  "In a field, Home and End move the cursor to its start and end, Shift with them selects, and Ctrl+C, Ctrl+X and Ctrl+V copy, cut and paste."
+
 -- the elements the test clicks, by id; their rectangles are saved, so the test finds them
-local IDS = { "button", "tab", "sound", "volume", "size", "fruit", "count", "item:2", "name", "note", "tree:src", "tree:main", "tree:readme:star",
+local IDS = { "button", "tab", "sound", "volume", "size", "fruit", "count", "item:2", "name", "note", "beside", "tree:src", "tree:main", "tree:readme:star",
   "tree:lib", "table:header", "table:1", "table:2", "table:title:name", "table:title:price", "graph", "about",
   "tint", "colors:heading", "tag:1", "tag:2", "tag:6", "file" }
 
@@ -299,11 +304,9 @@ ecs.panel.registerType({
       -- a field keeps what is typed while it has the keys; Left, Right, Home and End move its cursor, Shift with them selects, and Ctrl+C, Ctrl+X and Ctrl+V copy, cut and paste
       ui.row({ style = LABELED }, { ui.text("Name"), ui.field(state.name, { id = "name", grow = 1, placeholder = "Your name", onChange = set("name") }) }),
       -- text with wrap = true breaks into lines at the width of its column
-      ui.text(
-        "Tab gives the keys to the next control and Shift+Tab to the one before. Return or Space presses the control that has them, " ..
-        "Left and Right change a selector or a slider, and Escape takes the keys away. A field takes typing as soon as it has the keys. " ..
-        "In a field, Home and End move the cursor to its start and end, Shift with them selects, and Ctrl+C, Ctrl+X and Ctrl+V copy, cut and paste.",
-        { id = "note", style = STYLES.note, wrap = true }),
+      ui.text(NOTE, { id = "note", style = STYLES.note, wrap = true }),
+      -- in a row, wrapped text and columns share what the other children leave, and a growing column's text breaks at the width it grows to
+      ui.row({ gap = 8 }, { ui.text("Keys", { wrap = true }), ui.column({ grow = 1 }, { ui.text(NOTE, { id = "beside", style = STYLES.note, wrap = true }) }) }),
     }))
 
     -- the rectangles of the elements, in the panel's surface pixels; ui.rect gives nil for an element that is not shown, such as one on another tab

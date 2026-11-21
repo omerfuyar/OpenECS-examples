@@ -7,6 +7,10 @@ return {
   run = function(test)
     checks(test, 1, "Controls")
 
+    -- the note beside a label breaks at nearly the column's width, so it takes about as many lines as the note alone, not twice as many
+    local rects = test.session().workspaces[1].windows[1].panels[1].state.rects
+    test.match(rects.beside.height < rects.note.height * 1.5, true, "wrapped text in a growing column of a row")
+
     -- in Lua, the tree chooses many nodes: Ctrl adds a node to the chosen ones or takes it out, and Shift chooses the shown nodes from the first
     -- chosen one to the pressed one
     local function state()
