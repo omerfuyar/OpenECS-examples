@@ -26,10 +26,18 @@ local function run()
   console.add("main.lua:3: attempt to call a nil value", "error", links)
 end
 
--- empties the clipboard, so the test sees what the console's menu copies
-ecs.service.register({ forget = { sig = "void()", doc = "Empty the clipboard", fn = function()
-  ecs.clipboard.setText("")
-end } })
+-- empties the clipboard, so the test sees what the console's menu copies; many fills the console with more entries than it shows,
+-- of which it builds only those in view
+ecs.service.register({
+  forget = { sig = "void()", doc = "Empty the clipboard", fn = function()
+    ecs.clipboard.setText("")
+  end },
+  many = { sig = "void()", doc = "Add 500 entries", fn = function()
+    for i = 1, 500 do
+      console.add(("entry %d"):format(i), "info")
+    end
+  end },
+})
 
 ecs.panel.registerType({
   name = "panel",

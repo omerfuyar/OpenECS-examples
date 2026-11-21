@@ -110,5 +110,19 @@ return {
 
     test.click(log.x + log.width - 34, log.y + 21)
     test.match(state(), { entries = 0 }, "Clear empties the console")
+
+    -- a long console builds only the entries in view, and follows the last; Up chooses the entries above, which were not built, and
+    -- scrolls to each
+    test.call("runner.many")
+    test.wait(0.2)
+    test.match(test.panel(logId).state.shown, 500, "the long console's entries")
+    assert(test.panel(logId).state.built < 100, "a long console builds only the entries in view")
+    test.click(log.x + 400, log.y + log.height - 20)
+    test.match(test.panel(logId).state.chosen, "entry 500", "the long console follows its last entry")
+    for _ = 1, 30 do
+      test.key("Up")
+    end
+    test.match(test.panel(logId).state.chosen, "entry 470", "Up chooses entries that were not built")
+    assert(test.panel(logId).state.built < 100, "and the console still builds only the entries in view")
   end,
 }
