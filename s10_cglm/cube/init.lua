@@ -38,92 +38,104 @@ local function project(matrix, corner)
   return point.x, point.y
 end
 
+-- each panel's state is an object of Cube, whose functions are methods
+local Cube = {}
+Cube.__index = Cube
+
+function Cube.create(panel)
+  return setmetatable({ panel = panel, turn = 0.6, dragging = nil, drawn = 0 }, Cube)
+end
+
+function Cube:draw(surface)
+  self.drawn += 1
+  local width, height = surface.width / surface.scale, surface.height / surface.scale
+  draw.fill(surface, 0, 0, width, height, "#101418")
+
+  -- the square view in the middle of the panel, whose y goes down
+  local side = math.min(width, height)
+  local left, top = (width - side) / 2, (height - side) / 2
+  local matrix = matrixAt(self.turn)
+  local points = ffi.new("float[?]", #CORNERS * 2)
+
+  for i, corner in ipairs(CORNERS) do
+    local x, y = project(matrix, corner)
+    points[i * 2 - 2], points[i * 2 - 1] = left + x * side, top + (1 - y) * side
+  end
+
+  draw.lines(surface, ffi.string(points, ffi.sizeof(points)), EDGES, 2, "accent")
+end
+
+-- a drag across turns the cube
+function Cube:event(event)
+  if event.type == "pointerDown" and event.button == 1 then
+    self.dragging = event.x
+  elseif event.type == "pointerUp" then
+    self.dragging = nil
+  elseif event.type == "pointerMove" and self.dragging then
+    self.turn += (event.x - self.dragging) * 0.01
+    self.dragging = event.x
+    self.panel:redraw()
+  end
+end
+
+-- what the test checks: the turn, where the last corner is in the view, and results that cglm must give
+function Cube:saveState()
+  local x, y = project(matrixAt(self.turn), CORNERS[8])
+  local axis = cglm.vec3(1, 2, 3):normalize()
+  local point = cglm.vec3(4, -1, 2)
+
+  -- the largest difference between the fields of two structs of a type, or from 0 without a second
+  local function difference(a, b)
+    local largest = 0
+
+    for key, value in pairs(a) do
+      largest = math.max(largest, math.abs(value - (b and b[key] or 0)))
+    end
+
+    return largest
+  end
+
+  local matrix = matrixAt(self.turn)
+  local half = cglm.quatv(0, UP):slerp(cglm.quatv(1, UP), 0.5)
+  local double = cglm.scaleMake(cglm.vec3(2, 2, 2))
+
+  return {
+    turn = self.turn,
+    drawn = self.drawn,
+    corner = { x = x, y = y },
+    checks = {
+      -- a matrix times its inverse changes nothing, and a matrix without an inverse gives zeros
+      inverse = difference(matrix * matrix:inv(), cglm.mat4Identity()),
+      singular = difference(cglm.scaleMake(cglm.vec3(1, 0, 1)):inv()),
+      -- a quaternion turns as the matrix of the same axis and angle does
+      quaternion = difference(cglm.quatv(0.7, axis):mat4(), cglm.rotateMake(0.7, axis)),
+      rotatev = difference(cglm.quatv(0.7, axis):rotatev(point), cglm.rotateMake(0.7, axis):mulv3(point, 0)),
+      -- halfway between no turn and a turn of 1 is a turn of 0.5
+      slerp = difference(half, cglm.quatv(0.5, UP)),
+      -- the camera sees the cube's centre straight ahead, at its distance
+      camera = difference(CAMERA:mulv3(cglm.vec3(0, 0, 0), 1), cglm.vec3(0, 0, -math.sqrt(29))),
+      -- a translation moves a point, and translate moves before what its matrix does
+      translation = difference(cglm.translateMake(cglm.vec3(1, 2, 3)):mulv3(cglm.vec3(1, 1, 1), 1), cglm.vec3(2, 3, 4)),
+      translate = difference(double:translate(cglm.vec3(1, 2, 3)), double * cglm.translateMake(cglm.vec3(1, 2, 3))),
+      -- vectors add, subtract and scale with operators
+      sum = difference(cglm.vec3(1, 2, 3) + cglm.vec3(1, 1, 1) * 2 - cglm.vec3(0, 0, 1), cglm.vec3(3, 4, 4)),
+      cross = difference(cglm.vec3(1, 0, 0):cross(cglm.vec3(0, 1, 0)), cglm.vec3(0, 0, 1)),
+      -- Perlin noise is 0 at whole points
+      noise = math.abs(cglm.perlinVec3(cglm.vec3(1, 2, 3))),
+      length = cglm.vec3(3, 4, 0):norm(),
+    },
+  }
+end
+
 ecs.panel.registerType({
   name = "panel",
   title = "Cube",
 
-  create = function(panel)
-    return { panel = panel, turn = 0.6, dragging = nil, drawn = 0 }
-  end,
+  create = Cube.create,
 
-  draw = function(state, surface)
-    state.drawn += 1
-    local width, height = surface.width / surface.scale, surface.height / surface.scale
-    draw.fill(surface, 0, 0, width, height, "#101418")
+  draw = Cube.draw,
 
-    -- the square view in the middle of the panel, whose y goes down
-    local side = math.min(width, height)
-    local left, top = (width - side) / 2, (height - side) / 2
-    local matrix = matrixAt(state.turn)
-    local points = ffi.new("float[?]", #CORNERS * 2)
+  event = Cube.event,
 
-    for i, corner in ipairs(CORNERS) do
-      local x, y = project(matrix, corner)
-      points[i * 2 - 2], points[i * 2 - 1] = left + x * side, top + (1 - y) * side
-    end
-
-    draw.lines(surface, ffi.string(points, ffi.sizeof(points)), EDGES, 2, "accent")
-  end,
-
-  -- a drag across turns the cube
-  event = function(state, event)
-    if event.type == "pointerDown" and event.button == 1 then
-      state.dragging = event.x
-    elseif event.type == "pointerUp" then
-      state.dragging = nil
-    elseif event.type == "pointerMove" and state.dragging then
-      state.turn += (event.x - state.dragging) * 0.01
-      state.dragging = event.x
-      state.panel:redraw()
-    end
-  end,
-
-  -- what the test checks: the turn, where the last corner is in the view, and results that cglm must give
-  saveState = function(state)
-    local x, y = project(matrixAt(state.turn), CORNERS[8])
-    local axis = cglm.vec3(1, 2, 3):normalize()
-    local point = cglm.vec3(4, -1, 2)
-
-    -- the largest difference between the fields of two structs of a type, or from 0 without a second
-    local function difference(a, b)
-      local largest = 0
-
-      for key, value in pairs(a) do
-        largest = math.max(largest, math.abs(value - (b and b[key] or 0)))
-      end
-
-      return largest
-    end
-
-    local matrix = matrixAt(state.turn)
-    local half = cglm.quatv(0, UP):slerp(cglm.quatv(1, UP), 0.5)
-    local double = cglm.scaleMake(cglm.vec3(2, 2, 2))
-
-    return {
-      turn = state.turn,
-      drawn = state.drawn,
-      corner = { x = x, y = y },
-      checks = {
-        -- a matrix times its inverse changes nothing, and a matrix without an inverse gives zeros
-        inverse = difference(matrix * matrix:inv(), cglm.mat4Identity()),
-        singular = difference(cglm.scaleMake(cglm.vec3(1, 0, 1)):inv()),
-        -- a quaternion turns as the matrix of the same axis and angle does
-        quaternion = difference(cglm.quatv(0.7, axis):mat4(), cglm.rotateMake(0.7, axis)),
-        rotatev = difference(cglm.quatv(0.7, axis):rotatev(point), cglm.rotateMake(0.7, axis):mulv3(point, 0)),
-        -- halfway between no turn and a turn of 1 is a turn of 0.5
-        slerp = difference(half, cglm.quatv(0.5, UP)),
-        -- the camera sees the cube's centre straight ahead, at its distance
-        camera = difference(CAMERA:mulv3(cglm.vec3(0, 0, 0), 1), cglm.vec3(0, 0, -math.sqrt(29))),
-        -- a translation moves a point, and translate moves before what its matrix does
-        translation = difference(cglm.translateMake(cglm.vec3(1, 2, 3)):mulv3(cglm.vec3(1, 1, 1), 1), cglm.vec3(2, 3, 4)),
-        translate = difference(double:translate(cglm.vec3(1, 2, 3)), double * cglm.translateMake(cglm.vec3(1, 2, 3))),
-        -- vectors add, subtract and scale with operators
-        sum = difference(cglm.vec3(1, 2, 3) + cglm.vec3(1, 1, 1) * 2 - cglm.vec3(0, 0, 1), cglm.vec3(3, 4, 4)),
-        cross = difference(cglm.vec3(1, 0, 0):cross(cglm.vec3(0, 1, 0)), cglm.vec3(0, 0, 1)),
-        -- Perlin noise is 0 at whole points
-        noise = math.abs(cglm.perlinVec3(cglm.vec3(1, 2, 3))),
-        length = cglm.vec3(3, 4, 0):norm(),
-      },
-    }
-  end,
+  saveState = Cube.saveState,
 })

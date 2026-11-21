@@ -75,57 +75,67 @@ local function armAt(vertex, seconds)
   return { xyz[0], xyz[1], xyz[2] }
 end
 
+-- each panel's state is an object of Model, whose functions are methods
+local Model = {}
+Model.__index = Model
+
+function Model.create()
+  return setmetatable({ angle = 0, drawn = 0, time = 0 }, Model)
+end
+
+function Model:draw(surface, seconds)
+  self.angle += seconds * 0.8
+  self.drawn += 1
+  surface:fill(0, 0, surface.width, surface.height, "#101418")
+
+  -- each point turns around the vertical axis, leans towards the viewer, and is drawn with a little perspective, in layout units
+  local cos, sin = math.cos(self.angle), math.sin(self.angle)
+  local width, height = surface.width / surface.scale, surface.height / surface.scale
+  local scale = math.min(width, height) * 0.3
+  local projected = ffi.new("float[?]", #points * 2)
+
+  for i, point in ipairs(points) do
+    local x, y, z = point[1] * cos - point[3] * sin, point[2], point[1] * sin + point[3] * cos
+    y, z = y * 0.94 - z * 0.34, y * 0.34 + z * 0.94
+    local depth = 4 / (z + 5)
+    projected[i * 2 - 2], projected[i * 2 - 1] = width / 2 + x * scale * depth, height / 2 - y * scale * depth
+  end
+
+  draw.lines(surface, ffi.string(projected, ffi.sizeof(projected)), EDGES, 1, COLOR)
+
+  -- the badge's texture near the top left corner, at four times its size, turned, moved and grown as its animation says; the animation goes round
+  self.time = (self.time + seconds) % SPIN.duration
+  local turn, right, grow = badgeAt(self.time)
+  local size = TEXTURE_WIDTH * 4 * grow
+  -- the arm on the right, bending and straightening again: the animation's time goes there and back
+  local bend = self.time % (2 * BEND.duration)
+  local skinned = arm:skin(1, 1, ARM_SKIN, 1, bend <= BEND.duration and bend or 2 * BEND.duration - bend)
+  local xyz = ffi.cast("const float *", skinned)
+  local armPoints = ffi.new("float[?]", ARM_VERTICES * 2)
+
+  for i = 0, ARM_VERTICES - 1 do
+    armPoints[i * 2], armPoints[i * 2 + 1] = width - 160 + xyz[i * 3] * 70, height - 40 - xyz[i * 3 + 1] * 70
+  end
+
+  draw.lines(surface, ffi.string(armPoints, ffi.sizeof(armPoints)), ARM_EDGES, 1, "#E0A040")
+  draw.imageTransformed(surface, TEXTURE, 100 + right * 60 - size / 2, 100 - size / 2, size, size, -turn, "#FFFFFF")
+end
+
+-- how many frames it drew, so the test can see it draws every frame
+function Model:saveState()
+  return { drawn = self.drawn, triangles = TRIANGLES, vertices = primitive.vertices, texture = { mimeType = badgeImage.mimeType, file = badgeImage.file, width = TEXTURE_WIDTH, height = TEXTURE_HEIGHT },
+    spin = { name = SPIN.name, duration = SPIN.duration, early = { badgeAt(0.5) }, late = { badgeAt(2.5) }, middle = { badgeAt(2) } },
+    arm = { rest = armAt(6, 0), top = armAt(6, 1), middle = armAt(4, 1), joints = #armInfo.skins[ARM_SKIN].joints } }
+end
+
 ecs.panel.registerType({
   name = "panel",
   title = "Model",
   continuous = true,
 
-  create = function()
-    return { angle = 0, drawn = 0, time = 0 }
-  end,
+  create = Model.create,
 
-  draw = function(state, surface, seconds)
-    state.angle += seconds * 0.8
-    state.drawn += 1
-    surface:fill(0, 0, surface.width, surface.height, "#101418")
+  draw = Model.draw,
 
-    -- each point turns around the vertical axis, leans towards the viewer, and is drawn with a little perspective, in layout units
-    local cos, sin = math.cos(state.angle), math.sin(state.angle)
-    local width, height = surface.width / surface.scale, surface.height / surface.scale
-    local scale = math.min(width, height) * 0.3
-    local projected = ffi.new("float[?]", #points * 2)
-
-    for i, point in ipairs(points) do
-      local x, y, z = point[1] * cos - point[3] * sin, point[2], point[1] * sin + point[3] * cos
-      y, z = y * 0.94 - z * 0.34, y * 0.34 + z * 0.94
-      local depth = 4 / (z + 5)
-      projected[i * 2 - 2], projected[i * 2 - 1] = width / 2 + x * scale * depth, height / 2 - y * scale * depth
-    end
-
-    draw.lines(surface, ffi.string(projected, ffi.sizeof(projected)), EDGES, 1, COLOR)
-
-    -- the badge's texture near the top left corner, at four times its size, turned, moved and grown as its animation says; the animation goes round
-    state.time = (state.time + seconds) % SPIN.duration
-    local turn, right, grow = badgeAt(state.time)
-    local size = TEXTURE_WIDTH * 4 * grow
-    -- the arm on the right, bending and straightening again: the animation's time goes there and back
-    local bend = state.time % (2 * BEND.duration)
-    local skinned = arm:skin(1, 1, ARM_SKIN, 1, bend <= BEND.duration and bend or 2 * BEND.duration - bend)
-    local xyz = ffi.cast("const float *", skinned)
-    local armPoints = ffi.new("float[?]", ARM_VERTICES * 2)
-
-    for i = 0, ARM_VERTICES - 1 do
-      armPoints[i * 2], armPoints[i * 2 + 1] = width - 160 + xyz[i * 3] * 70, height - 40 - xyz[i * 3 + 1] * 70
-    end
-
-    draw.lines(surface, ffi.string(armPoints, ffi.sizeof(armPoints)), ARM_EDGES, 1, "#E0A040")
-    draw.imageTransformed(surface, TEXTURE, 100 + right * 60 - size / 2, 100 - size / 2, size, size, -turn, "#FFFFFF")
-  end,
-
-  -- how many frames it drew, so the test can see it draws every frame
-  saveState = function(state)
-    return { drawn = state.drawn, triangles = TRIANGLES, vertices = primitive.vertices, texture = { mimeType = badgeImage.mimeType, file = badgeImage.file, width = TEXTURE_WIDTH, height = TEXTURE_HEIGHT },
-      spin = { name = SPIN.name, duration = SPIN.duration, early = { badgeAt(0.5) }, late = { badgeAt(2.5) }, middle = { badgeAt(2) } },
-      arm = { rest = armAt(6, 0), top = armAt(6, 1), middle = armAt(4, 1), joints = #armInfo.skins[ARM_SKIN].joints } }
-  end,
+  saveState = Model.saveState,
 })

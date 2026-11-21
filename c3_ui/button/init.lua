@@ -37,9 +37,13 @@ local NODES = {
   { id = "readme", label = "README.md" },
 }
 
+-- each panel's state is an object of Controls, whose functions are methods
+local Controls = {}
+Controls.__index = Controls
+
 -- the tree's nodes: a node's marks are short texts at the end of its row, on or off, and README.md has a star, which the panel keeps
-local function nodesOf(state)
-  NODES[2].marks = { { id = "star", text = "Star", on = state.starred == true, tooltip = "A click stars the file, or takes the star off" } }
+function Controls:nodesOf()
+  NODES[2].marks = { { id = "star", text = "Star", on = self.starred == true, tooltip = "A click stars the file, or takes the star off" } }
   return NODES
 end
 
@@ -54,7 +58,7 @@ local IDS = { "button", "tab", "sound", "volume", "size", "fruit", "count", "ite
   "tint", "colors:heading", "tag:1", "tag:2", "tag:6", "file" }
 
 -- the rows of the Table tab, in the order the panel sorts them
-local function sorted(controls)
+function Controls:sorted()
   local rows = {}
 
   for i, row in ipairs(FRUIT_ROWS) do
@@ -62,21 +66,21 @@ local function sorted(controls)
   end
 
   table.sort(rows, function(a, b)
-    if controls.ascending then
-      return a[controls.sort] < b[controls.sort]
+    if self.ascending then
+      return a[self.sort] < b[self.sort]
     end
 
-    return a[controls.sort] > b[controls.sort]
+    return a[self.sort] > b[self.sort]
   end)
 
   return rows
 end
 
 -- the stock of each row, in the table's order, for the graph
-local function stock(controls)
+function Controls:stock()
   local values = {}
 
-  for i, row in ipairs(sorted(controls)) do
+  for i, row in ipairs(self:sorted()) do
     values[i] = row.stock
   end
 
@@ -122,245 +126,255 @@ local function copy(value)
   return result
 end
 
+function Controls.create(panel)
+  local controls = setmetatable(copy(START), Controls)
+  controls.panel = panel
+  -- the panel takes the tree's nodes that are dragged onto it, as data of the core's drag and drop
+  panel:acceptDrops({ "example.node" })
+  return controls
+end
+
+-- draw runs only when the panel needs drawing; a panel type that draws every frame says continuous = true
+-- ui lays out and draws the elements that draw describes each time, so the panel keeps only its own state
+function Controls:draw(surface)
+  -- each callback changes the panel's self; ui then asks the core to draw the panel again
+  local function set(key)
+    return function(value)
+      self[key] = value
+    end
+  end
+
+  local items, tags = {}, {}
+
+  for i, text in ipairs(TAGS) do
+    tags[i] = ui.button(text, { id = "tag:" .. i })
+  end
+
+  for i, text in ipairs(ITEMS) do
+    items[i] = ui.text(text, { id = "item:" .. i })
+  end
+
+  -- a right click that no other element takes reaches the root's onMenu, which opens a menu there, in layout units as ui.menu takes them
+  local function menu(x, y)
+    ui.menu(self.panel, x, y, {
+      { label = "Add a click", onClick = function() self.clicks = self.clicks + 1 end },
+      { line = true },
+      { label = "Reset the clicks", enabled = self.clicks > 0, onClick = function() self.clicks = 0 end },
+      -- an entry with entries is a submenu, which opens in place of the menu, below a row that goes back
+      { label = "More", entries = {
+        { label = "Add ten clicks", onClick = function() self.clicks = self.clicks + 10 end },
+      } },
+    })
+  end
+
+  ui.show(self.panel, surface, ui.column({ style = STYLES.view, onMenu = menu }, {
+    ui.text(("Clicked %d times"):format(self.clicks), { style = STYLES.title }),
+    -- a tooltip shows when the pointer rests on its element
+    ui.button("Click me", {
+      id = "button",
+      tooltip = "Counts the clicks in the panel's title",
+      onClick = function()
+        self.clicks += 1
+        self.panel.title = ("Controls (%d)"):format(self.clicks)
+      end,
+    }),
+    ui.separator(),
+    -- tabs choose what shows below them; the panel keeps the chosen one and describes only its elements
+    ui.tabs(self.tab, TABS, { id = "tab", onSelect = set("tab") }),
+    -- a table lines its cells up below its columns' titles; a click on a title sorts by that column, and a second one reverses the order
+    TABS[self.tab] == "Table" and ui.column({ gap = 8 }, {
+    ui.table(COLUMNS, self:sorted(),
+      {
+        id = "table",
+        height = 110,
+        grow = 0,
+        stretch = true,
+        border = "tabShown",
+        sort = self.sort,
+        ascending = self.ascending,
+        selected = self.row,
+        onSelect = set("row"),
+        onSort = function(column)
+          self.ascending = column ~= self.sort or not self.ascending
+          self.sort, self.row = column, nil
+        end
+      }),
+      -- a graph draws a bar for each number, in the rows' order, as high as its share of the highest; a line marks a value across it
+      ui.graph(self:stock(), { id = "graph", height = 40, colors = { GRAPH_COLOR }, lines = { { value = 20, color = LINE_COLOR } } }),
+    }) or
+    -- a tree shows its open nodes' children below them; the panel keeps which nodes are open, and the chosen one
+    TABS[self.tab] == "About" and ui.column({ gap = 8 }, {
+      -- a text of spans mixes styles; a click on a span with a link gives the link to onLink
+      ui.text({ "The controls of ", { text = "ui", bold = true }, ", each changing the panel's self: ", { text = "ui's design", link = "https://github.com/omerfuyar/OpenECS-std/blob/dev/DESIGN.md" } },
+        { id = "about", color = "textDim", onLink = set("link") }),
+      ui.tree(self:nodesOf(),
+        {
+          id = "tree",
+          height = 110,
+          grow = 0,
+          border = "tabShown",
+          open = self.open,
+          -- the tree chooses many nodes: selected is the list of the chosen ones, and the first is where Up and Down move from;
+          -- a press with Ctrl adds a node or takes it out, and one with Shift chooses the shown nodes from the first chosen one to it
+          selected = self.nodes,
+          onSelect = function(id, how, between)
+            if how == "toggle" then
+              local kept = {}
+
+              for _, other in ipairs(self.nodes) do
+                if other ~= id then
+                  kept[#kept + 1] = other
+                end
+              end
+
+              if #kept == #self.nodes then
+                kept[#kept + 1] = id
+              end
+
+              self.nodes = kept
+            elseif how == "range" then
+              self.nodes = between
+            else
+              self.nodes = { id }
+            end
+
+            self.node = self.nodes[1]
+          end,
+          onToggle = function(id, open)
+            self.open[id] = open or nil
+          end,
+          -- a click on a mark gives its node, the mark and its new self, and does not choose the node
+          onMark = function(_, _, on)
+            self.starred = on
+          end,
+          -- a right click on a node chooses it, unless it is chosen, and gives its id, as a menu about it would take it
+          onMenu = function(id)
+            self.menuNode = id
+          end,
+          -- a press on a node and a move of the pointer drag what onDrag gives, as data of the core's drag and drop
+          onDrag = function(id)
+            return "example.node", id
+          end,
+          -- a node dropped on the tree gives the node it landed on, and where: before it, into it, or after it, by where on its row
+          onDrop = function(id, where, _, value)
+            self.dropped = { node = value, where = where, on = id }
+          end,
+        }),
+      -- a row with wrap = true puts the children that do not fit the rest of a line on the next line, as a toolbar does in a narrow panel;
+      -- this one is in a narrow column, so its buttons take two lines
+      ui.column({ width = 160 }, { ui.row({ wrap = true, gap = 4 }, tags) }),
+    }) or ui.group({ title = "Options", gap = 8 }, {
+      ui.toggle(self.sound, { id = "sound", label = "Sound", onChange = set("sound") }),
+      ui.toggle(self.dark, { id = "dark", label = "Dark", look = "switch", onChange = set("dark") }),
+      ui.row({ style = LABELED },
+        { ui.text("Volume"), ui.slider(self.volume,
+          -- onChange would get each value of a drag; onSubmit gets the one that its release ends on, which a tool keeps as one change,
+          -- and the slider shows the dragged value until then
+          { id = "volume", step = 0.1, grow = 1, onSubmit = function(value)
+            self.volume, self.kept = value, value
+          end }) }),
+      ui.row({ style = LABELED },
+        { ui.text("Size"), ui.selector(self.size, SIZES, { id = "size", onSelect = set("size") }) }),
+      ui.row({ style = LABELED },
+        { ui.text("Fruit"), ui.dropdown(self.fruit, FRUITS, { id = "fruit", onSelect = set("fruit") }) }),
+      -- a number field takes a number from min to max: Return gives what is typed to onSubmit, and Up and Down change it by step;
+      -- onChange would get the number at each edit
+      ui.row({ style = LABELED },
+        { ui.text("Count"), ui.number(self.count,
+          { id = "count", min = 0, max = 10, step = 1, grow = 1, onSubmit = set("count") }) }),
+      -- a section's heading shows and hides what is below it, at a click; the panel keeps whether it is open
+      -- a colour element is a swatch, which a click opens in a picker; onChange gets the colour a press in the picker ends on
+      ui.section("Colour", { id = "colors", open = self.colors, onToggle = set("colors") }, {
+        ui.row({ style = LABELED }, { ui.text("Tint"), ui.color(self.tint, { id = "tint", onChange = set("tint") }) }),
+      }),
+    }),
+    ui.list(
+      {
+        id = "list",
+        height = 90,
+        grow = 0,
+        border = "tabShown",
+        selected = self.selected,
+        onSelect = set(
+          "selected")
+      },
+      items),
+    -- a path is a field with a button that opens the system's file dialog; the chosen file goes to onSubmit, as a typed path does at Return
+    ui.row({ style = LABELED }, { ui.text("File"), ui.path(self.file, { id = "file", grow = 1, pattern = "lua", onSubmit = set("file") }) }),
+    -- a field keeps what is typed while it has the keys; Left, Right, Home and End move its cursor, Shift with them selects, and Ctrl+C, Ctrl+X and Ctrl+V copy, cut and paste
+    ui.row({ style = LABELED }, { ui.text("Name"), ui.field(self.name, { id = "name", grow = 1, placeholder = "Your name", onChange = set("name") }) }),
+    -- text with wrap = true breaks into lines at the width of its column
+    ui.text(NOTE, { id = "note", style = STYLES.note, wrap = true }),
+    -- in a row, wrapped text and columns share what the other children leave, and a growing column's text breaks at the width it grows to
+    ui.row({ gap = 8 }, { ui.text("Keys", { wrap = true }), ui.column({ grow = 1 }, { ui.text(NOTE, { id = "beside", style = STYLES.note, wrap = true }) }) }),
+  }))
+
+  -- the rectangles of the elements, in the panel's surface pixels; ui.rect gives nil for an element that is not shown, such as one on another tab
+  for _, id in ipairs(IDS) do
+    local rect = ui.rect(self.panel, id)
+    self.rects[id] = rect and {
+      x = rect.x * surface.scale,
+      y = rect.y * surface.scale,
+      width = rect.width * surface.scale,
+      height = rect.height * surface.scale,
+    }
+  end
+end
+
+-- the panel's events go to ui, which calls the callbacks of the elements they reach; Up and Down choose a list's or the tree's next item and
+-- the one before, and Right and Left open and close the tree's chosen node
+function Controls:event(event)
+  ui.event(self.panel, event)
+end
+
+function Controls:destroy()
+  ui.forget(self.panel)
+end
+
+-- the values and the rectangles are saved, so the test can read them
+function Controls:saveState()
+  return {
+    clicks = self.clicks,
+    sound = self.sound,
+    volume = self.volume,
+    kept = self.kept,
+    dropped = self.dropped,
+    size = SIZES[self.size],
+    fruit = FRUITS[self.fruit],
+    count = self.count,
+    tab = TABS[self.tab],
+    tip = ui.tooltip(self.panel),
+    inspected = ui.inspected(self.panel),
+    selected = self.selected,
+    name = self.name,
+    file = self.file,
+    node = self.node,
+    nodes = self.nodes,
+    menuNode = self.menuNode,
+    starred = self.starred == true,
+    open = self.open,
+    sort = self.sort,
+    ascending = self.ascending,
+    row = self.row,
+    first = TABS[self.tab] == "Table" and self:sorted()[1].name or nil,
+    link = self.link,
+    tint = self.tint,
+    colors = self.colors,
+    rects = self.rects
+  }
+end
+
 ecs.panel.registerType({
   name = "panel",
   title = "Controls",
 
-  create = function(panel)
-    local controls = copy(START)
-    controls.panel = panel
-    -- the panel takes the tree's nodes that are dragged onto it, as data of the core's drag and drop
-    panel:acceptDrops({ "example.node" })
-    return controls
-  end,
+  create = Controls.create,
 
-  -- draw runs only when the panel needs drawing; a panel type that draws every frame says continuous = true
-  -- ui lays out and draws the elements that draw describes each time, so the panel keeps only its own state
-  draw = function(state, surface)
-    -- each callback changes the panel's state; ui then asks the core to draw the panel again
-    local function set(key)
-      return function(value)
-        state[key] = value
-      end
-    end
+  draw = Controls.draw,
 
-    local items, tags = {}, {}
+  event = Controls.event,
 
-    for i, text in ipairs(TAGS) do
-      tags[i] = ui.button(text, { id = "tag:" .. i })
-    end
+  destroy = Controls.destroy,
 
-    for i, text in ipairs(ITEMS) do
-      items[i] = ui.text(text, { id = "item:" .. i })
-    end
-
-    -- a right click that no other element takes reaches the root's onMenu, which opens a menu there, in layout units as ui.menu takes them
-    local function menu(x, y)
-      ui.menu(state.panel, x, y, {
-        { label = "Add a click", onClick = function() state.clicks = state.clicks + 1 end },
-        { line = true },
-        { label = "Reset the clicks", enabled = state.clicks > 0, onClick = function() state.clicks = 0 end },
-        -- an entry with entries is a submenu, which opens in place of the menu, below a row that goes back
-        { label = "More", entries = {
-          { label = "Add ten clicks", onClick = function() state.clicks = state.clicks + 10 end },
-        } },
-      })
-    end
-
-    ui.show(state.panel, surface, ui.column({ style = STYLES.view, onMenu = menu }, {
-      ui.text(("Clicked %d times"):format(state.clicks), { style = STYLES.title }),
-      -- a tooltip shows when the pointer rests on its element
-      ui.button("Click me", {
-        id = "button",
-        tooltip = "Counts the clicks in the panel's title",
-        onClick = function()
-          state.clicks += 1
-          state.panel.title = ("Controls (%d)"):format(state.clicks)
-        end,
-      }),
-      ui.separator(),
-      -- tabs choose what shows below them; the panel keeps the chosen one and describes only its elements
-      ui.tabs(state.tab, TABS, { id = "tab", onSelect = set("tab") }),
-      -- a table lines its cells up below its columns' titles; a click on a title sorts by that column, and a second one reverses the order
-      TABS[state.tab] == "Table" and ui.column({ gap = 8 }, {
-      ui.table(COLUMNS, sorted(state),
-        {
-          id = "table",
-          height = 110,
-          grow = 0,
-          stretch = true,
-          border = "tabShown",
-          sort = state.sort,
-          ascending = state.ascending,
-          selected = state.row,
-          onSelect = set("row"),
-          onSort = function(column)
-            state.ascending = column ~= state.sort or not state.ascending
-            state.sort, state.row = column, nil
-          end
-        }),
-        -- a graph draws a bar for each number, in the rows' order, as high as its share of the highest; a line marks a value across it
-        ui.graph(stock(state), { id = "graph", height = 40, colors = { GRAPH_COLOR }, lines = { { value = 20, color = LINE_COLOR } } }),
-      }) or
-      -- a tree shows its open nodes' children below them; the panel keeps which nodes are open, and the chosen one
-      TABS[state.tab] == "About" and ui.column({ gap = 8 }, {
-        -- a text of spans mixes styles; a click on a span with a link gives the link to onLink
-        ui.text({ "The controls of ", { text = "ui", bold = true }, ", each changing the panel's state: ", { text = "ui's design", link = "https://github.com/omerfuyar/OpenECS-std/blob/dev/DESIGN.md" } },
-          { id = "about", color = "textDim", onLink = set("link") }),
-        ui.tree(nodesOf(state),
-          {
-            id = "tree",
-            height = 110,
-            grow = 0,
-            border = "tabShown",
-            open = state.open,
-            -- the tree chooses many nodes: selected is the list of the chosen ones, and the first is where Up and Down move from;
-            -- a press with Ctrl adds a node or takes it out, and one with Shift chooses the shown nodes from the first chosen one to it
-            selected = state.nodes,
-            onSelect = function(id, how, between)
-              if how == "toggle" then
-                local kept = {}
-
-                for _, other in ipairs(state.nodes) do
-                  if other ~= id then
-                    kept[#kept + 1] = other
-                  end
-                end
-
-                if #kept == #state.nodes then
-                  kept[#kept + 1] = id
-                end
-
-                state.nodes = kept
-              elseif how == "range" then
-                state.nodes = between
-              else
-                state.nodes = { id }
-              end
-
-              state.node = state.nodes[1]
-            end,
-            onToggle = function(id, open)
-              state.open[id] = open or nil
-            end,
-            -- a click on a mark gives its node, the mark and its new state, and does not choose the node
-            onMark = function(_, _, on)
-              state.starred = on
-            end,
-            -- a right click on a node chooses it, unless it is chosen, and gives its id, as a menu about it would take it
-            onMenu = function(id)
-              state.menuNode = id
-            end,
-            -- a press on a node and a move of the pointer drag what onDrag gives, as data of the core's drag and drop
-            onDrag = function(id)
-              return "example.node", id
-            end,
-            -- a node dropped on the tree gives the node it landed on, and where: before it, into it, or after it, by where on its row
-            onDrop = function(id, where, _, value)
-              state.dropped = { node = value, where = where, on = id }
-            end,
-          }),
-        -- a row with wrap = true puts the children that do not fit the rest of a line on the next line, as a toolbar does in a narrow panel;
-        -- this one is in a narrow column, so its buttons take two lines
-        ui.column({ width = 160 }, { ui.row({ wrap = true, gap = 4 }, tags) }),
-      }) or ui.group({ title = "Options", gap = 8 }, {
-        ui.toggle(state.sound, { id = "sound", label = "Sound", onChange = set("sound") }),
-        ui.toggle(state.dark, { id = "dark", label = "Dark", look = "switch", onChange = set("dark") }),
-        ui.row({ style = LABELED },
-          { ui.text("Volume"), ui.slider(state.volume,
-            -- onChange would get each value of a drag; onSubmit gets the one that its release ends on, which a tool keeps as one change,
-            -- and the slider shows the dragged value until then
-            { id = "volume", step = 0.1, grow = 1, onSubmit = function(value)
-              state.volume, state.kept = value, value
-            end }) }),
-        ui.row({ style = LABELED },
-          { ui.text("Size"), ui.selector(state.size, SIZES, { id = "size", onSelect = set("size") }) }),
-        ui.row({ style = LABELED },
-          { ui.text("Fruit"), ui.dropdown(state.fruit, FRUITS, { id = "fruit", onSelect = set("fruit") }) }),
-        -- a number field takes a number from min to max: Return gives what is typed to onSubmit, and Up and Down change it by step;
-        -- onChange would get the number at each edit
-        ui.row({ style = LABELED },
-          { ui.text("Count"), ui.number(state.count,
-            { id = "count", min = 0, max = 10, step = 1, grow = 1, onSubmit = set("count") }) }),
-        -- a section's heading shows and hides what is below it, at a click; the panel keeps whether it is open
-        -- a colour element is a swatch, which a click opens in a picker; onChange gets the colour a press in the picker ends on
-        ui.section("Colour", { id = "colors", open = state.colors, onToggle = set("colors") }, {
-          ui.row({ style = LABELED }, { ui.text("Tint"), ui.color(state.tint, { id = "tint", onChange = set("tint") }) }),
-        }),
-      }),
-      ui.list(
-        {
-          id = "list",
-          height = 90,
-          grow = 0,
-          border = "tabShown",
-          selected = state.selected,
-          onSelect = set(
-            "selected")
-        },
-        items),
-      -- a path is a field with a button that opens the system's file dialog; the chosen file goes to onSubmit, as a typed path does at Return
-      ui.row({ style = LABELED }, { ui.text("File"), ui.path(state.file, { id = "file", grow = 1, pattern = "lua", onSubmit = set("file") }) }),
-      -- a field keeps what is typed while it has the keys; Left, Right, Home and End move its cursor, Shift with them selects, and Ctrl+C, Ctrl+X and Ctrl+V copy, cut and paste
-      ui.row({ style = LABELED }, { ui.text("Name"), ui.field(state.name, { id = "name", grow = 1, placeholder = "Your name", onChange = set("name") }) }),
-      -- text with wrap = true breaks into lines at the width of its column
-      ui.text(NOTE, { id = "note", style = STYLES.note, wrap = true }),
-      -- in a row, wrapped text and columns share what the other children leave, and a growing column's text breaks at the width it grows to
-      ui.row({ gap = 8 }, { ui.text("Keys", { wrap = true }), ui.column({ grow = 1 }, { ui.text(NOTE, { id = "beside", style = STYLES.note, wrap = true }) }) }),
-    }))
-
-    -- the rectangles of the elements, in the panel's surface pixels; ui.rect gives nil for an element that is not shown, such as one on another tab
-    for _, id in ipairs(IDS) do
-      local rect = ui.rect(state.panel, id)
-      state.rects[id] = rect and {
-        x = rect.x * surface.scale,
-        y = rect.y * surface.scale,
-        width = rect.width * surface.scale,
-        height = rect.height * surface.scale,
-      }
-    end
-  end,
-
-  -- the panel's events go to ui, which calls the callbacks of the elements they reach; Up and Down choose a list's or the tree's next item and
-  -- the one before, and Right and Left open and close the tree's chosen node
-  event = function(state, event)
-    ui.event(state.panel, event)
-  end,
-
-  destroy = function(state)
-    ui.forget(state.panel)
-  end,
-
-  -- the values and the rectangles are saved, so the test can read them
-  saveState = function(state)
-    return {
-      clicks = state.clicks,
-      sound = state.sound,
-      volume = state.volume,
-      kept = state.kept,
-      dropped = state.dropped,
-      size = SIZES[state.size],
-      fruit = FRUITS[state.fruit],
-      count = state.count,
-      tab = TABS[state.tab],
-      tip = ui.tooltip(state.panel),
-      inspected = ui.inspected(state.panel),
-      selected = state.selected,
-      name = state.name,
-      file = state.file,
-      node = state.node,
-      nodes = state.nodes,
-      menuNode = state.menuNode,
-      starred = state.starred == true,
-      open = state.open,
-      sort = state.sort,
-      ascending = state.ascending,
-      row = state.row,
-      first = TABS[state.tab] == "Table" and sorted(state)[1].name or nil,
-      link = state.link,
-      tint = state.tint,
-      colors = state.colors,
-      rects = state.rects
-    }
-  end,
+  saveState = Controls.saveState,
 })

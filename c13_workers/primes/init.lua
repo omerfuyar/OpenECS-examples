@@ -87,73 +87,87 @@ local function start(counter)
   end
 end
 
+-- each panel's state is an object of Primes, whose functions are methods
+local Primes = {}
+Primes.__index = Primes
+
+function Primes.create(panel)
+  return setmetatable({ panel = panel, limit = 2, running = false, primes = 0, chunks = 0, seconds = 0, done = {}, workers = {}, rects = {} }, Primes)
+end
+
+function Primes:draw(surface)
+  -- a bar shows a share of the chunks: the first one all the workers' together, and the others each worker's own
+  local function bar(label, done)
+    return ui.row({ gap = 8, align = "center" }, {
+      ui.text(label, { width = 70 }),
+      ui.row({ width = BAR, height = 12, background = "tabRow" }, {
+        ui.row({ width = BAR * done / CHUNKS, height = 12, background = "accent" }),
+      }),
+      ui.text(("%d chunks"):format(done), { style = STYLES.note }),
+    })
+  end
+
+  local bars = { bar("All", self.chunks) }
+
+  for i = 1, WORKERS do
+    bars[i + 1] = bar(("Worker %d"):format(i), self.done[i] or 0)
+  end
+
+  local status = self.running and ("Counting: %d of %d chunks, %.1f s"):format(self.chunks, CHUNKS, self.seconds)
+      or self.chunks == CHUNKS and ("%d primes below %s, in about %.1f s"):format(self.primes, LIMITS[self.limit], self.seconds)
+      or "Press Start to count the primes."
+
+  ui.show(self.panel, surface, ui.column({ style = STYLES.view }, {
+    ui.text("Four workers count the primes, each on a thread of its own. Drag the panel or open its menu while they count: it stays free.", { wrap = true }),
+    ui.row({ gap = 8, align = "center" }, {
+      ui.text("Below"),
+      ui.selector(self.limit, LIMITS, { id = "limit", onSelect = function(limit) self.limit = limit end }),
+    }),
+    ui.row({ gap = 8 }, {
+      ui.button("Start", { id = "start", onClick = function() start(self) end }),
+      ui.button("Stop", { id = "stop", onClick = function() stop(self) end }),
+    }),
+    ui.column({ gap = 6 }, bars),
+    ui.text(status, { size = 16 }),
+  }))
+
+  -- the rectangles of the elements, in the panel's surface pixels
+  for _, id in ipairs(IDS) do
+    local rect = ui.rect(self.panel, id)
+    self.rects[id] = rect and {
+      x = rect.x * surface.scale,
+      y = rect.y * surface.scale,
+      width = rect.width * surface.scale,
+      height = rect.height * surface.scale,
+    }
+  end
+end
+
+function Primes:event(event)
+  ui.event(self.panel, event)
+end
+
+function Primes:destroy()
+  stop(self)
+  ui.forget(self.panel)
+end
+
+-- the counts are saved, so the test can read them
+function Primes:saveState()
+  return { limit = LIMITS[self.limit], running = self.running, primes = self.primes, chunks = self.chunks, done = self.done, rects = self.rects }
+end
+
 ecs.panel.registerType({
   name = "panel",
   title = "Workers",
 
-  create = function(panel)
-    return { panel = panel, limit = 2, running = false, primes = 0, chunks = 0, seconds = 0, done = {}, workers = {}, rects = {} }
-  end,
+  create = Primes.create,
 
-  draw = function(state, surface)
-    -- a bar shows a share of the chunks: the first one all the workers' together, and the others each worker's own
-    local function bar(label, done)
-      return ui.row({ gap = 8, align = "center" }, {
-        ui.text(label, { width = 70 }),
-        ui.row({ width = BAR, height = 12, background = "tabRow" }, {
-          ui.row({ width = BAR * done / CHUNKS, height = 12, background = "accent" }),
-        }),
-        ui.text(("%d chunks"):format(done), { style = STYLES.note }),
-      })
-    end
+  draw = Primes.draw,
 
-    local bars = { bar("All", state.chunks) }
+  event = Primes.event,
 
-    for i = 1, WORKERS do
-      bars[i + 1] = bar(("Worker %d"):format(i), state.done[i] or 0)
-    end
+  destroy = Primes.destroy,
 
-    local status = state.running and ("Counting: %d of %d chunks, %.1f s"):format(state.chunks, CHUNKS, state.seconds)
-        or state.chunks == CHUNKS and ("%d primes below %s, in about %.1f s"):format(state.primes, LIMITS[state.limit], state.seconds)
-        or "Press Start to count the primes."
-
-    ui.show(state.panel, surface, ui.column({ style = STYLES.view }, {
-      ui.text("Four workers count the primes, each on a thread of its own. Drag the panel or open its menu while they count: it stays free.", { wrap = true }),
-      ui.row({ gap = 8, align = "center" }, {
-        ui.text("Below"),
-        ui.selector(state.limit, LIMITS, { id = "limit", onSelect = function(limit) state.limit = limit end }),
-      }),
-      ui.row({ gap = 8 }, {
-        ui.button("Start", { id = "start", onClick = function() start(state) end }),
-        ui.button("Stop", { id = "stop", onClick = function() stop(state) end }),
-      }),
-      ui.column({ gap = 6 }, bars),
-      ui.text(status, { size = 16 }),
-    }))
-
-    -- the rectangles of the elements, in the panel's surface pixels
-    for _, id in ipairs(IDS) do
-      local rect = ui.rect(state.panel, id)
-      state.rects[id] = rect and {
-        x = rect.x * surface.scale,
-        y = rect.y * surface.scale,
-        width = rect.width * surface.scale,
-        height = rect.height * surface.scale,
-      }
-    end
-  end,
-
-  event = function(state, event)
-    ui.event(state.panel, event)
-  end,
-
-  destroy = function(state)
-    stop(state)
-    ui.forget(state.panel)
-  end,
-
-  -- the counts are saved, so the test can read them
-  saveState = function(state)
-    return { limit = LIMITS[state.limit], running = state.running, primes = state.primes, chunks = state.chunks, done = state.done, rects = state.rects }
-  end,
+  saveState = Primes.saveState,
 })

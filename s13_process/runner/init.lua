@@ -22,72 +22,84 @@ local function lines(text, into)
   return into
 end
 
+-- each panel's state is an object of Runner, whose functions are methods
+local Runner = {}
+Runner.__index = Runner
+
 -- takes what the started program wrote since the last time; once it exited, the timer stops
-local function poll(state)
-  lines(state.program:read(), state.lines)
-  lines(state.program:readErrors(), state.errors)
-  local exited, code = state.program:exited()
+function Runner:poll()
+  lines(self.program:read(), self.lines)
+  lines(self.program:readErrors(), self.errors)
+  local exited, code = self.program:exited()
 
   -- what it wrote before it exited may still wait, so it is read once more
   if exited then
-    lines(state.program:read(), state.lines)
-    lines(state.program:readErrors(), state.errors)
-    state.code = code
-    state.timer:stop()
+    lines(self.program:read(), self.lines)
+    lines(self.program:readErrors(), self.errors)
+    self.code = code
+    self.timer:stop()
   end
 
-  state.panel:redraw()
+  self.panel:redraw()
+end
+
+function Runner.create(panel)
+  local state = setmetatable({ panel = panel, lines = {}, errors = {} }, Runner)
+
+  -- run gives a program its input, which sort reads to the end, and waits for its output
+  state.sorted = lines(process.run(shell("sort"), "", "b\na\n"), {})
+
+  -- start gives a handle of the program; its methods read, write, kill it and tell whether it exited
+  local program, problem = process.start(shell("echo one && echo two && echo three 1>&2"), "")
+  state.program = assert(program, problem)
+  state.timer = ecs.timer.start(0.05, true, function()
+    state:poll()
+  end)
+
+  return state
+end
+
+-- a program whose handle is gone is killed, so none is left behind
+function Runner:destroy()
+  self.timer:stop()
+end
+
+function Runner:draw(surface)
+  surface:fill(0, 0, surface.width, surface.height, "background")
+  local font, y = draw.font("ui"), 16
+
+  local function show(text, color)
+    draw.text(surface, font, text, 16, y, 18, color)
+    y += 26
+  end
+
+  show("sort gave: " .. table.concat(self.sorted, ", "), "text")
+
+  for _, line in ipairs(self.lines) do
+    show(line, "text")
+  end
+
+  for _, line in ipairs(self.errors) do
+    show(line, "accent")
+  end
+
+  show(self.code and ("exited with " .. self.code) or "running", "textDim")
+end
+
+-- what the test reads
+function Runner:saveState()
+  return { sorted = self.sorted, lines = self.lines, errors = self.errors, code = self.code }
 end
 
 ecs.panel.registerType({
   name = "panel",
   title = "Runner",
 
-  create = function(panel)
-    local state = { panel = panel, lines = {}, errors = {} }
+  create = Runner.create,
 
-    -- run gives a program its input, which sort reads to the end, and waits for its output
-    state.sorted = lines(process.run(shell("sort"), "", "b\na\n"), {})
+  destroy = Runner.destroy,
 
-    -- start gives a handle of the program; its methods read, write, kill it and tell whether it exited
-    local program, problem = process.start(shell("echo one && echo two && echo three 1>&2"), "")
-    state.program = assert(program, problem)
-    state.timer = ecs.timer.start(0.05, true, function()
-      poll(state)
-    end)
+  draw = Runner.draw,
 
-    return state
-  end,
-
-  -- a program whose handle is gone is killed, so none is left behind
-  destroy = function(state)
-    state.timer:stop()
-  end,
-
-  draw = function(state, surface)
-    surface:fill(0, 0, surface.width, surface.height, "background")
-    local font, y = draw.font("ui"), 16
-
-    local function show(text, color)
-      draw.text(surface, font, text, 16, y, 18, color)
-      y += 26
-    end
-
-    show("sort gave: " .. table.concat(state.sorted, ", "), "text")
-
-    for _, line in ipairs(state.lines) do
-      show(line, "text")
-    end
-
-    for _, line in ipairs(state.errors) do
-      show(line, "accent")
-    end
-
-    show(state.code and ("exited with " .. state.code) or "running", "textDim")
-  end,
-
-  -- what the test reads
-  saveState = function(state)
-    return { sorted = state.sorted, lines = state.lines, errors = state.errors, code = state.code }
-  end,
+  saveState = Runner.saveState,
 })

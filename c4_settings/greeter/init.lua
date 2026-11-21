@@ -38,44 +38,58 @@ ecs.event.subscribe("ecs.settingChanged", function(_, value)
   end
 end)
 
+-- each panel's state is an object of Greeter, whose functions are methods
+local Greeter = {}
+Greeter.__index = Greeter
+
+function Greeter.create(panel)
+  local greeting = setmetatable({ panel = panel }, Greeter)
+  greetings[panel] = greeting
+  panel.title = title()
+  return greeting
+end
+
+function Greeter:destroy()
+  greetings[self.panel] = nil
+end
+
+-- the settings that changed are part of the panel's state, so the test can see them
+function Greeter:saveState()
+  return { heard = heard }
+end
+
+-- get gives the value in effect
+function Greeter:draw(surface)
+  surface:fill(0, 0, surface.width, surface.height, ecs.setting.get("greeter.background"))
+  draw.text(surface, draw.font("ui"), "Hello, " .. ecs.setting.get("greeter.name") .. "!", 24, 24, ecs.setting.get("greeter.size"), COLORS[ecs.setting.get("greeter.color")])
+end
+
+function Greeter:event(event)
+  if event.type == "wheel" then
+    -- set writes the value into the user's settings file, the highest layer; changed runs afterwards, not during this call
+    local size = ecs.setting.get("greeter.size") + (event.scrollY > 0 and 2 or -2)
+    ecs.setting.set("greeter.size", math.max(8, math.min(96, size)))
+  elseif event.type == "pointerDown" and event.button == 3 then
+    -- set with nil takes the user's value away, so the value below it applies again: the preset's, a theme's or the default
+    ecs.setting.set("greeter.size", nil)
+  elseif event.type == "pointerDown" then
+    -- explain tells which layer a value comes from: "default", "preset" or "user"
+    local explanation = assert(ecs.setting.explain("greeter.name"))
+    ecs.log.info(("greeter.name is '%s', from the %s layer."):format(explanation.value, explanation.layer))
+  end
+end
+
 ecs.panel.registerType({
   name = "panel",
   title = "Greeting",
 
-  create = function(panel)
-    local greeting = { panel = panel }
-    greetings[panel] = greeting
-    panel.title = title()
-    return greeting
-  end,
+  create = Greeter.create,
 
-  destroy = function(state)
-    greetings[state.panel] = nil
-  end,
+  destroy = Greeter.destroy,
 
-  -- the settings that changed are part of the panel's state, so the test can see them
-  saveState = function()
-    return { heard = heard }
-  end,
+  saveState = Greeter.saveState,
 
-  -- get gives the value in effect
-  draw = function(_, surface)
-    surface:fill(0, 0, surface.width, surface.height, ecs.setting.get("greeter.background"))
-    draw.text(surface, draw.font("ui"), "Hello, " .. ecs.setting.get("greeter.name") .. "!", 24, 24, ecs.setting.get("greeter.size"), COLORS[ecs.setting.get("greeter.color")])
-  end,
+  draw = Greeter.draw,
 
-  event = function(_, event)
-    if event.type == "wheel" then
-      -- set writes the value into the user's settings file, the highest layer; changed runs afterwards, not during this call
-      local size = ecs.setting.get("greeter.size") + (event.scrollY > 0 and 2 or -2)
-      ecs.setting.set("greeter.size", math.max(8, math.min(96, size)))
-    elseif event.type == "pointerDown" and event.button == 3 then
-      -- set with nil takes the user's value away, so the value below it applies again: the preset's, a theme's or the default
-      ecs.setting.set("greeter.size", nil)
-    elseif event.type == "pointerDown" then
-      -- explain tells which layer a value comes from: "default", "preset" or "user"
-      local explanation = assert(ecs.setting.explain("greeter.name"))
-      ecs.log.info(("greeter.name is '%s', from the %s layer."):format(explanation.value, explanation.layer))
-    end
-  end,
+  event = Greeter.event,
 })

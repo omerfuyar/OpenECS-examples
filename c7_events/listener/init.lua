@@ -6,8 +6,12 @@ local listeners = {} -- every open listener, by its panel
 local opened = 0
 local renewed = 0 -- the ticks that the subscription below heard, which it renews at each
 
-local function show(listener)
-  listener.panel.title = ("Ticks %d, panels %d%s"):format(listener.ticks, opened, listener.greeted and ", greeted" or "")
+-- each panel's state is an object of Listener, whose functions are methods
+local Listener = {}
+Listener.__index = Listener
+
+function Listener:show()
+  self.panel.title = ("Ticks %d, panels %d%s"):format(self.ticks, opened, self.greeted and ", greeted" or "")
 end
 
 -- an event's value is data, and handles and bytes too: this one names a panel by its handle, carries bytes with a zero among them,
@@ -28,7 +32,7 @@ ecs.event.subscribe("listener.opened", function(_, value)
   -- even when nothing else keeps it, so the note's value is still there
   if listener and value.mark == "\0\255" and value.note:text() == "hello" then
     listener.greeted = true
-    show(listener)
+    listener:show()
   end
 end)
 
@@ -36,7 +40,7 @@ end)
 ecs.event.subscribe("ticker.tick", function(_, ticks)
   for _, listener in pairs(listeners) do
     listener.ticks = ticks
-    show(listener)
+    listener:show()
   end
 end)
 
@@ -58,29 +62,37 @@ ecs.event.subscribe("ecs.panelOpened", function(_, value)
   ecs.log.debug(("A %s opened."):format(value.type))
 end)
 
+function Listener.create(panel)
+  local listener = setmetatable({ panel = panel, ticks = 0 }, Listener)
+  listeners[panel] = listener
+  ecs.event.emit("listener.opened", { panel = panel, mark = "\0\255", note = ecs.handle.new("note", "hello") })
+
+  -- nothing but the event keeps the note now, and a collection before the delivery does not take it
+  collectgarbage()
+  return listener
+end
+
+function Listener:destroy()
+  listeners[self.panel] = nil
+end
+
+function Listener:saveState()
+  return { ticks = self.ticks, renewed = renewed }
+end
+
+function Listener:draw(surface)
+  surface:fill(0, 0, surface.width, surface.height, "#3B4252")
+end
+
 ecs.panel.registerType({
   name = "panel",
   title = "Listener",
 
-  create = function(panel)
-    local listener = { panel = panel, ticks = 0 }
-    listeners[panel] = listener
-    ecs.event.emit("listener.opened", { panel = panel, mark = "\0\255", note = ecs.handle.new("note", "hello") })
+  create = Listener.create,
 
-    -- nothing but the event keeps the note now, and a collection before the delivery does not take it
-    collectgarbage()
-    return listener
-  end,
+  destroy = Listener.destroy,
 
-  destroy = function(state)
-    listeners[state.panel] = nil
-  end,
+  saveState = Listener.saveState,
 
-  saveState = function(state)
-    return { ticks = state.ticks, renewed = renewed }
-  end,
-
-  draw = function(_, surface)
-    surface:fill(0, 0, surface.width, surface.height, "#3B4252")
-  end,
+  draw = Listener.draw,
 })

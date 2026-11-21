@@ -37,13 +37,48 @@ local function read(format, text)
   return parse[format:lower()].read(text)
 end
 
-local function convert(state)
+-- each panel's state is an object of Formats, whose functions are methods
+local Formats = {}
+Formats.__index = Formats
+
+function Formats:convert()
   -- a function that fails gives nothing and why
-  local text, problem = write(state.format, samples[state.format])
-  local data = text and read(state.format, text)
-  state.text = text or problem
-  state.same = data ~= nil and write(state.format, data) == text
-  state.panel.title = state.format
+  local text, problem = write(self.format, samples[self.format])
+  local data = text and read(self.format, text)
+  self.text = text or problem
+  self.same = data ~= nil and write(self.format, data) == text
+  self.panel.title = self.format
+end
+
+function Formats.create(panel, saved)
+  local state = setmetatable({ panel = panel, format = saved and samples[saved.format] and saved.format or "Json" }, Formats)
+  state:convert()
+
+  -- a text that cannot be read gives nothing and why, with where it is
+  local _, problem = parse.json.read('{ "name": "Paint", }}')
+  state.problem = problem
+  return state
+end
+
+function Formats:draw(surface)
+  -- a text keeps its own lines; wrap also breaks them at spaces to fit the column, and a scroll shows what does not fit
+  ui.show(self.panel, surface, ui.scroll({ id = "text", padding = 12, gap = 8 }, {
+    ui.text(self.text, { wrap = true }),
+    ui.text(self.same and "It reads back the same." or "It does not read back the same."),
+    ui.text("A broken JSON text: " .. self.problem, { wrap = true }),
+  }))
+end
+
+function Formats:event(event)
+  ui.event(self.panel, event)
+end
+
+function Formats:destroy()
+  ui.forget(self.panel)
+end
+
+function Formats:saveState()
+  return { format = self.format, text = self.text, same = self.same, problem = self.problem }
 end
 
 ecs.panel.registerType({
@@ -51,34 +86,13 @@ ecs.panel.registerType({
   title = "Formats",
   stateVersion = 1,
 
-  create = function(panel, saved)
-    local state = { panel = panel, format = saved and samples[saved.format] and saved.format or "Json" }
-    convert(state)
+  create = Formats.create,
 
-    -- a text that cannot be read gives nothing and why, with where it is
-    local _, problem = parse.json.read('{ "name": "Paint", }}')
-    state.problem = problem
-    return state
-  end,
+  draw = Formats.draw,
 
-  draw = function(state, surface)
-    -- a text keeps its own lines; wrap also breaks them at spaces to fit the column, and a scroll shows what does not fit
-    ui.show(state.panel, surface, ui.scroll({ id = "text", padding = 12, gap = 8 }, {
-      ui.text(state.text, { wrap = true }),
-      ui.text(state.same and "It reads back the same." or "It does not read back the same."),
-      ui.text("A broken JSON text: " .. state.problem, { wrap = true }),
-    }))
-  end,
+  event = Formats.event,
 
-  event = function(state, event)
-    ui.event(state.panel, event)
-  end,
+  destroy = Formats.destroy,
 
-  destroy = function(state)
-    ui.forget(state.panel)
-  end,
-
-  saveState = function(state)
-    return { format = state.format, text = state.text, same = state.same, problem = state.problem }
-  end,
+  saveState = Formats.saveState,
 })

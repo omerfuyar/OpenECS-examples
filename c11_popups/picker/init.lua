@@ -63,28 +63,40 @@ local function openMenu(picker, x, y)
   picker.menu = menu
 end
 
+-- each panel's state is an object of Picker, whose functions are methods
+local Picker = {}
+Picker.__index = Picker
+
+function Picker.create(panel, saved)
+  return setmetatable({ panel = panel, color = saved and saved.color or "#4C566A", scale = 1 }, Picker)
+end
+
+function Picker:draw(surface)
+  self.scale = surface.scale
+  surface:fill(0, 0, surface.width, surface.height, self.color)
+  draw.text(surface, draw.font("ui"), "Right-click to choose a colour", 24, 24, 18, "text")
+end
+
+function Picker:event(event)
+  if event.type == "pointerDown" and event.button == 3 then
+    openMenu(self, event.x, event.y)
+  end
+end
+
+function Picker:saveState()
+  return { color = self.color }
+end
+
 ecs.panel.registerType({
   name = "panel",
   title = "Picker",
   stateVersion = 1,
 
-  create = function(panel, saved)
-    return { panel = panel, color = saved and saved.color or "#4C566A", scale = 1 }
-  end,
+  create = Picker.create,
 
-  draw = function(state, surface)
-    state.scale = surface.scale
-    surface:fill(0, 0, surface.width, surface.height, state.color)
-    draw.text(surface, draw.font("ui"), "Right-click to choose a colour", 24, 24, 18, "text")
-  end,
+  draw = Picker.draw,
 
-  event = function(state, event)
-    if event.type == "pointerDown" and event.button == 3 then
-      openMenu(state, event.x, event.y)
-    end
-  end,
+  event = Picker.event,
 
-  saveState = function(state)
-    return { color = state.color }
-  end,
+  saveState = Picker.saveState,
 })

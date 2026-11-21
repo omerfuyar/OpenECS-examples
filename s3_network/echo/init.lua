@@ -105,55 +105,67 @@ local timer = ecs.timer.start(0.05, true, function()
   end
 end)
 
+-- each panel's state is an object of Echo, whose functions are methods
+local Echo = {}
+Echo.__index = Echo
+
+function Echo.create(panel)
+  panels[panel] = true
+  panel:setTextInput(true)
+  return setmetatable({ panel = panel, line = "" }, Echo)
+end
+
+function Echo:draw(surface)
+  surface:fill(0, 0, surface.width, surface.height, "background")
+  local _, height = draw.font("ui"):measure("Ag", SIZE, surface.scale)
+  local lines = math.max(1, math.floor(surface.height / surface.scale / height) - 2)
+
+  -- the last lines of the log, then the line being typed
+  for i = math.max(1, #log - lines + 1), #log do
+    draw.text(surface, draw.font("ui"), log[i], 12, 12 + (i - math.max(1, #log - lines + 1)) * height, SIZE, "text")
+  end
+
+  draw.text(surface, draw.font("ui"), "> " .. self.line, 12, 12 + lines * height, SIZE, "accent")
+end
+
+function Echo:event(event)
+  if event.type == "text" then
+    self.line ..= event.text
+  elseif event.type == "keyDown" and event.key == "Return" and self.line ~= "" then
+    local datagram = self.line:match("^/udp (.+)")
+
+    -- sendTo queues a datagram, which may be lost on the way; send queues data and gives false while the client is not connected yet
+    if datagram then
+      add(udpClient and udpClient:sendTo("127.0.0.1", PORT, datagram) and "> udp " .. datagram or "Cannot send by UDP")
+    elseif client:status() == 1 and client:send(self.line) then
+      add("> " .. self.line)
+    else
+      add("Not connected yet")
+    end
+
+    self.line = ""
+  else
+    return
+  end
+
+  self.panel:redraw()
+end
+
+function Echo:destroy()
+  panels[self.panel] = nil
+end
+
 ecs.panel.registerType({
   name = "panel",
   title = "Echo",
 
-  create = function(panel)
-    panels[panel] = true
-    panel:setTextInput(true)
-    return { panel = panel, line = "" }
-  end,
+  create = Echo.create,
 
-  draw = function(state, surface)
-    surface:fill(0, 0, surface.width, surface.height, "background")
-    local _, height = draw.font("ui"):measure("Ag", SIZE, surface.scale)
-    local lines = math.max(1, math.floor(surface.height / surface.scale / height) - 2)
+  draw = Echo.draw,
 
-    -- the last lines of the log, then the line being typed
-    for i = math.max(1, #log - lines + 1), #log do
-      draw.text(surface, draw.font("ui"), log[i], 12, 12 + (i - math.max(1, #log - lines + 1)) * height, SIZE, "text")
-    end
+  event = Echo.event,
 
-    draw.text(surface, draw.font("ui"), "> " .. state.line, 12, 12 + lines * height, SIZE, "accent")
-  end,
-
-  event = function(state, event)
-    if event.type == "text" then
-      state.line ..= event.text
-    elseif event.type == "keyDown" and event.key == "Return" and state.line ~= "" then
-      local datagram = state.line:match("^/udp (.+)")
-
-      -- sendTo queues a datagram, which may be lost on the way; send queues data and gives false while the client is not connected yet
-      if datagram then
-        add(udpClient and udpClient:sendTo("127.0.0.1", PORT, datagram) and "> udp " .. datagram or "Cannot send by UDP")
-      elseif client:status() == 1 and client:send(state.line) then
-        add("> " .. state.line)
-      else
-        add("Not connected yet")
-      end
-
-      state.line = ""
-    else
-      return
-    end
-
-    state.panel:redraw()
-  end,
-
-  destroy = function(state)
-    panels[state.panel] = nil
-  end,
+  destroy = Echo.destroy,
 })
 
 -- the log is the plugin's saved state, so the test can read it; the timer stops before the program exits

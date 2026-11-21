@@ -7,11 +7,46 @@ local draw = require("draw") -- the functions of a plugin the manifest depends o
 
 local MARGIN, SIZE = 16, 20 -- in layout units
 
+-- each panel's state is an object of Field, whose functions are methods
+local Field = {}
+Field.__index = Field
+
 -- tells the core where the cursor is, in surface pixels, so an input method's window shows beside it
-local function placeCursor(field)
+function Field:placeCursor()
   -- text is measured at the scale of the surface it is drawn into, as a font's glyphs do not grow evenly with its size
-  local width, height = draw.font("ui"):measure(field.text, SIZE, field.scale)
-  field.panel:setTextInput(true, (MARGIN + width) * field.scale, MARGIN * field.scale, 2 * field.scale, height * field.scale)
+  local width, height = draw.font("ui"):measure(self.text, SIZE, self.scale)
+  self.panel:setTextInput(true, (MARGIN + width) * self.scale, MARGIN * self.scale, 2 * self.scale, height * self.scale)
+end
+
+function Field.create(panel, saved)
+  local field = setmetatable({ panel = panel, text = saved and saved.text or "", scale = 1 }, Field)
+  field:placeCursor() -- the panel gets text events only while it has the focus and accepts text
+  return field
+end
+
+function Field:draw(surface)
+  self.scale = surface.scale
+  surface:fill(0, 0, surface.width, surface.height, "background")
+  local width = draw.text(surface, draw.font("ui"), self.text, MARGIN, MARGIN, SIZE, "text")
+  local _, height = draw.font("ui"):measure(self.text, SIZE, surface.scale)
+  draw.fill(surface, MARGIN + width, MARGIN, 2, height, "accent") -- the cursor
+end
+
+function Field:event(event)
+  if event.type == "text" then
+    self.text ..= event.text
+  elseif event.type == "keyDown" and event.key == "Backspace" and #self.text > 0 then
+    self.text = self.text:sub(1, utf8.offset(self.text, -1) - 1) -- drops the last character, which may be several bytes
+  else
+    return
+  end
+
+  self:placeCursor()
+  self.panel:redraw()
+end
+
+function Field:saveState()
+  return { text = self.text }
 end
 
 ecs.panel.registerType({
@@ -19,34 +54,11 @@ ecs.panel.registerType({
   title = "Field",
   stateVersion = 1,
 
-  create = function(panel, saved)
-    local field = { panel = panel, text = saved and saved.text or "", scale = 1 }
-    placeCursor(field) -- the panel gets text events only while it has the focus and accepts text
-    return field
-  end,
+  create = Field.create,
 
-  draw = function(state, surface)
-    state.scale = surface.scale
-    surface:fill(0, 0, surface.width, surface.height, "background")
-    local width = draw.text(surface, draw.font("ui"), state.text, MARGIN, MARGIN, SIZE, "text")
-    local _, height = draw.font("ui"):measure(state.text, SIZE, surface.scale)
-    draw.fill(surface, MARGIN + width, MARGIN, 2, height, "accent") -- the cursor
-  end,
+  draw = Field.draw,
 
-  event = function(state, event)
-    if event.type == "text" then
-      state.text ..= event.text
-    elseif event.type == "keyDown" and event.key == "Backspace" and #state.text > 0 then
-      state.text = state.text:sub(1, utf8.offset(state.text, -1) - 1) -- drops the last character, which may be several bytes
-    else
-      return
-    end
+  event = Field.event,
 
-    placeCursor(state)
-    state.panel:redraw()
-  end,
-
-  saveState = function(state)
-    return { text = state.text }
-  end,
+  saveState = Field.saveState,
 })

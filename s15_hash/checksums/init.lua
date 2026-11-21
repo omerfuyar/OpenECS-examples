@@ -22,48 +22,58 @@ local function hashFile(path, algorithm)
   return hasher:digest()
 end
 
+-- each panel's state is an object of Checksums, whose functions are methods
+local Checksums = {}
+Checksums.__index = Checksums
+
+function Checksums.create()
+  local state = setmetatable({ text = {} }, Checksums)
+
+  -- each hash is hexadecimal text, as tools such as sha256sum write it
+  for _, algorithm in ipairs(ALGORITHMS) do
+    state.text[algorithm] = hash.of(algorithm, "abc")
+  end
+
+  -- the same file, whole and in parts, gives the same hash
+  local path = ecs.plugin.folder .. "init.lua"
+  local file = assert(io.open(path, "rb"))
+  state.whole = hash.of("sha256", file:read("a"))
+  file:close()
+  state.parts = hashFile(path, "sha256")
+  return state
+end
+
+function Checksums:draw(surface)
+  surface:fill(0, 0, surface.width, surface.height, "background")
+  local font, y = draw.font("ui"), 16
+
+  local function show(text, color)
+    draw.text(surface, font, text, 16, y, 16, color)
+    y += 24
+  end
+
+  show('The hashes of "abc":', "text")
+
+  for _, algorithm in ipairs(ALGORITHMS) do
+    show(("%-7s %s"):format(algorithm, self.text[algorithm]), "textDim")
+  end
+
+  show("init.lua's SHA-256, whole:    " .. self.whole, "text")
+  show("init.lua's SHA-256, in parts: " .. self.parts, self.whole == self.parts and "text" or "accent")
+end
+
+-- what the test reads
+function Checksums:saveState()
+  return { text = self.text, same = self.whole == self.parts }
+end
+
 ecs.panel.registerType({
   name = "panel",
   title = "Hashes",
 
-  create = function()
-    local state = { text = {} }
+  create = Checksums.create,
 
-    -- each hash is hexadecimal text, as tools such as sha256sum write it
-    for _, algorithm in ipairs(ALGORITHMS) do
-      state.text[algorithm] = hash.of(algorithm, "abc")
-    end
+  draw = Checksums.draw,
 
-    -- the same file, whole and in parts, gives the same hash
-    local path = ecs.plugin.folder .. "init.lua"
-    local file = assert(io.open(path, "rb"))
-    state.whole = hash.of("sha256", file:read("a"))
-    file:close()
-    state.parts = hashFile(path, "sha256")
-    return state
-  end,
-
-  draw = function(state, surface)
-    surface:fill(0, 0, surface.width, surface.height, "background")
-    local font, y = draw.font("ui"), 16
-
-    local function show(text, color)
-      draw.text(surface, font, text, 16, y, 16, color)
-      y += 24
-    end
-
-    show('The hashes of "abc":', "text")
-
-    for _, algorithm in ipairs(ALGORITHMS) do
-      show(("%-7s %s"):format(algorithm, state.text[algorithm]), "textDim")
-    end
-
-    show("init.lua's SHA-256, whole:    " .. state.whole, "text")
-    show("init.lua's SHA-256, in parts: " .. state.parts, state.whole == state.parts and "text" or "accent")
-  end,
-
-  -- what the test reads
-  saveState = function(state)
-    return { text = state.text, same = state.whole == state.parts }
-  end,
+  saveState = Checksums.saveState,
 })

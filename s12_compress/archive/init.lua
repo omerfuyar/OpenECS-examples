@@ -16,10 +16,14 @@ local function readFile(path)
   return text
 end
 
-local function pack(state)
+-- each panel's state is an object of Archive, whose functions are methods
+local Archive = {}
+Archive.__index = Archive
+
+function Archive:pack()
   local text = readFile(ecs.plugin.folder .. "init.lua")
-  state.lines = { ("init.lua: %d bytes"):format(#text) }
-  state.same = {}
+  self.lines = { ("init.lua: %d bytes"):format(#text) }
+  self.same = {}
 
   for _, format in ipairs(FORMATS) do
     -- each format is a namespace of compress, with its pack and unpack: compress.gzip.pack, and so on
@@ -28,12 +32,12 @@ local function pack(state)
 
     -- compress.unpack tells gzip, zlib and zstd by their first bytes; deflate has no header, so its own unpack is called
     local unpacked = format == "deflate" and compress.deflate.unpack(packed) or compress.unpack(packed)
-    state.same[format] = unpacked == text
-    table.insert(state.lines, ("%s: %d bytes"):format(format, #packed))
+    self.same[format] = unpacked == text
+    table.insert(self.lines, ("%s: %d bytes"):format(format, #packed))
   end
 end
 
-local function archive(state)
+function Archive:archive()
   -- the archive goes beside the plugin's files; a name that ends with .ignore stays out of git
   local path = ecs.plugin.folder .. "archive.ignore"
   local files = {}
@@ -44,18 +48,18 @@ local function archive(state)
 
   -- a function that fails gives false or nothing, and why
   local written, problem = compress.zip.write(path, files, 9)
-  state.entries = written and compress.zip.list(path) or {}
-  state.problem = problem
+  self.entries = written and compress.zip.list(path) or {}
+  self.problem = problem
 
   -- a file comes back unpacked, checked against the checksum the archive keeps
-  state.readBack = compress.zip.read(path, "archive/manifest.lua") == readFile(ecs.plugin.folder .. "manifest.lua")
+  self.readBack = compress.zip.read(path, "archive/manifest.lua") == readFile(ecs.plugin.folder .. "manifest.lua")
 
-  for _, entry in ipairs(state.entries) do
-    table.insert(state.lines, ("%s in the archive: %d bytes, packed to %d"):format(entry.name, entry.size, entry.packedSize))
+  for _, entry in ipairs(self.entries) do
+    table.insert(self.lines, ("%s in the archive: %d bytes, packed to %d"):format(entry.name, entry.size, entry.packedSize))
   end
 end
 
-local function tarball(state)
+function Archive:tarball()
   -- a tar archive is made in memory, so gzip packs it into a .tar.gz; a name that ends with / is a folder,
   -- and a long name, up to 255 bytes, is split at a slash, as the ustar format keeps it
   local long = "archive/" .. ("deep/"):rep(24) .. "manifest.lua"
@@ -65,53 +69,63 @@ local function tarball(state)
     { name = long, data = readFile(ecs.plugin.folder .. "manifest.lua") },
   }
   local packed = assert(compress.gzip.pack(assert(compress.tar.pack(files)), 0))
-  state.tarPath = ecs.plugin.folder .. "archive.tar.gz.ignore"
-  local file = assert(io.open(state.tarPath, "wb"))
+  self.tarPath = ecs.plugin.folder .. "archive.tar.gz.ignore"
+  local file = assert(io.open(self.tarPath, "wb"))
   file:write(packed)
   file:close()
 
   -- tar.unpack gives the same tables back
   local back = assert(compress.tar.unpack(assert(compress.gzip.unpack(packed))))
-  state.tar = { long = long, names = {}, same = #back == #files }
+  self.tar = { long = long, names = {}, same = #back == #files }
   for i, entry in ipairs(back) do
-    state.tar.names[i] = entry.name
-    state.tar.same = state.tar.same and entry.name == files[i].name and entry.data == (files[i].data or "") and entry.executable == (files[i].executable or false)
+    self.tar.names[i] = entry.name
+    self.tar.same = self.tar.same and entry.name == files[i].name and entry.data == (files[i].data or "") and entry.executable == (files[i].executable or false)
   end
-  table.insert(state.lines, ("a .tar.gz of %d entries: %d bytes"):format(#back, #packed))
+  table.insert(self.lines, ("a .tar.gz of %d entries: %d bytes"):format(#back, #packed))
+end
+
+function Archive.create(panel)
+  local state = setmetatable({ panel = panel }, Archive)
+  state:pack()
+  state:archive()
+  state:tarball()
+  return state
+end
+
+function Archive:draw(surface)
+  local rows = {}
+
+  for _, line in ipairs(self.lines) do
+    rows[#rows + 1] = ui.text(line)
+  end
+
+  rows[#rows + 1] = ui.text(self.problem or "Every format unpacks to the same text.")
+  ui.show(self.panel, surface, ui.column({ padding = 12, gap = 8 }, rows))
+end
+
+function Archive:event(event)
+  ui.event(self.panel, event)
+end
+
+function Archive:destroy()
+  ui.forget(self.panel)
+end
+
+function Archive:saveState()
+  return { same = self.same, entries = self.entries, readBack = self.readBack, problem = self.problem, tar = self.tar, tarPath = self.tarPath }
 end
 
 ecs.panel.registerType({
   name = "panel",
   title = "Archive",
 
-  create = function(panel)
-    local state = { panel = panel }
-    pack(state)
-    archive(state)
-    tarball(state)
-    return state
-  end,
+  create = Archive.create,
 
-  draw = function(state, surface)
-    local rows = {}
+  draw = Archive.draw,
 
-    for _, line in ipairs(state.lines) do
-      rows[#rows + 1] = ui.text(line)
-    end
+  event = Archive.event,
 
-    rows[#rows + 1] = ui.text(state.problem or "Every format unpacks to the same text.")
-    ui.show(state.panel, surface, ui.column({ padding = 12, gap = 8 }, rows))
-  end,
+  destroy = Archive.destroy,
 
-  event = function(state, event)
-    ui.event(state.panel, event)
-  end,
-
-  destroy = function(state)
-    ui.forget(state.panel)
-  end,
-
-  saveState = function(state)
-    return { same = state.same, entries = state.entries, readBack = state.readBack, problem = state.problem, tar = state.tar, tarPath = state.tarPath }
-  end,
+  saveState = Archive.saveState,
 })

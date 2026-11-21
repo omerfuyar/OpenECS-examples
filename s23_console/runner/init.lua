@@ -39,25 +39,39 @@ ecs.service.register({
   end },
 })
 
+-- each panel's state is an object of Runner, whose functions are methods
+local Runner = {}
+Runner.__index = Runner
+
+function Runner.create(panel)
+  return setmetatable({ panel = panel }, Runner)
+end
+
+function Runner:draw(surface)
+  ui.show(self.panel, surface, ui.row({ padding = 8 }, { ui.button("Run", { id = "run", onClick = run }) }))
+end
+
+function Runner:event(event)
+  ui.event(self.panel, event)
+end
+
+-- the console's entries, the folder and the clipboard, for the test
+function Runner:saveState()
+  local entries = console.entries()
+  return { entries = #entries, count = entries[#entries] and entries[#entries].count or 0, shown = shown, folder = ecs.plugin.folder,
+    clipboard = ecs.clipboard.getText() }
+end
+
+function Runner:destroy()
+  ui.forget(self.panel)
+end
+
 ecs.panel.registerType({
   name = "panel",
   title = "Runner",
-  create = function(panel)
-    return { panel = panel }
-  end,
-  draw = function(state, surface)
-    ui.show(state.panel, surface, ui.row({ padding = 8 }, { ui.button("Run", { id = "run", onClick = run }) }))
-  end,
-  event = function(state, event)
-    ui.event(state.panel, event)
-  end,
-  -- the console's entries, the folder and the clipboard, for the test
-  saveState = function()
-    local entries = console.entries()
-    return { entries = #entries, count = entries[#entries] and entries[#entries].count or 0, shown = shown, folder = ecs.plugin.folder,
-      clipboard = ecs.clipboard.getText() }
-  end,
-  destroy = function(state)
-    ui.forget(state.panel)
-  end,
+  create = Runner.create,
+  draw = Runner.draw,
+  event = Runner.event,
+  saveState = Runner.saveState,
+  destroy = Runner.destroy,
 })
