@@ -1,5 +1,5 @@
 -- the core measures where the time goes while the setting ecs.profile is on; the profiler's Measure switch sets it, and its tables
--- show each plugin's own time: busy's calls into draw count as draw's, not busy's
+-- show each plugin's own time: busy's calls into draw count as draw's, not busy's. LuaJIT's samples find busy's Lua function wave
 return {
   preset = "preset.lua",
   run = function(test)
@@ -20,7 +20,7 @@ return {
     test.click(view.x + 40, view.y + 75)
     test.match(test.setting("ecs.profile"), true, "Measure turns ecs.profile on")
     test.wait(1.7)
-    test.match(test.panel(busy).state, { measured = true, busy = true, draw = true }, "busy and draw each have their own time")
+    test.match(test.panel(busy).state, { measured = true, busy = true, draw = true, wave = true }, "busy and draw each have their own time, and wave is busy's")
 
     -- Pause keeps the numbers, and the tabs choose the table; the panel saves both. A click gives Pause the keys, and Tab goes on past Copy
     -- report to the tabs, where Right chooses the next one
