@@ -43,6 +43,15 @@ return function(test, number, title)
   test.match(state().volume, 1.0, "the slider")
   test.match(state().kept, 1.0, "the slider's release")
 
+  -- while the left button drags the knob, a click of the middle button leaves the drag to the left one: the knob follows the pointer out of the
+  -- panel, and only the left button's release ends the drag
+  test.press(x, y)
+  test.click(x, y, 2)
+  test.move(panel.x - 20, y)
+  test.match(state().kept, 1.0, "the slider kept while its drag goes on")
+  test.release(panel.x - 20, y)
+  test.match({ state().volume, state().kept }, { 0.0, 0.0 }, "the slider dragged while another button is clicked")
+
   test.click(at("size", 5 / 6))
   test.match(state().size, "L", "the selector")
 
