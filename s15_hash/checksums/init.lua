@@ -4,6 +4,8 @@
 local ecs = require("ecs")
 local draw = require("draw")
 local hash = require("hash")
+local ffi = require("ffi")
+local buffer = require("string.buffer")
 
 local ALGORITHMS = { "crc32", "md5", "sha1", "sha256", "sha512", "xxh64", "xxh3", "xxh128" }
 
@@ -33,6 +35,10 @@ function Checksums.create()
   for _, algorithm in ipairs(ALGORITHMS) do
     state.text[algorithm] = hash.of(algorithm, "abc")
   end
+
+  -- data may also be a string.buffer or an FFI array, which C reads without a copy; the same bytes give the same hash
+  local bytes = ffi.new("uint8_t[3]", 97, 98, 99)
+  state.buffers = hash.of("sha256", buffer.new():put("abc")) == state.text.sha256 and hash.of("sha256", bytes) == state.text.sha256
 
   -- the same file, whole and in parts, gives the same hash
   local path = ecs.plugin.folder .. "init.lua"
@@ -64,7 +70,7 @@ end
 
 -- what the test reads
 function Checksums:saveState()
-  return { text = self.text, same = self.whole == self.parts }
+  return { text = self.text, same = self.whole == self.parts, buffers = self.buffers }
 end
 
 ecs.panel.registerType({

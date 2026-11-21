@@ -20,7 +20,7 @@ local RATE = 48000
 
 local function tone(seconds, pitch)
   local stream = mixer.newStream(1, RATE)
-  -- the samples are floats, made in an FFI array and given as its bytes
+  -- the samples are floats in an FFI array, whose bytes C reads without a copy
   local count = math.floor(seconds * RATE)
   local samples = ffi.new("float[?]", count)
 
@@ -29,7 +29,7 @@ local function tone(seconds, pitch)
   end
 
   -- queue adds samples to the end; a synthesizer would queue more from a timer while the sound's queued says little waits
-  stream:queue(ffi.string(samples, ffi.sizeof(samples)))
+  stream:queue(samples)
   return stream
 end
 

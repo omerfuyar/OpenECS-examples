@@ -1,4 +1,5 @@
--- the hashes of "abc" are the ones that sha256sum, md5sum and xxhsum give, and a file hashed in parts gives what it gives whole
+-- the hashes of "abc" are the ones that sha256sum, md5sum and xxhsum give, as a string.buffer and an FFI array too, and a file hashed in parts gives what
+-- it gives whole
 return {
   preset = "preset.lua",
   run = function(test)
@@ -14,6 +15,7 @@ return {
         xxh128 = "06b05ab6733a618578af5f94892f3950",
       },
       same = true,
+      buffers = true,
     }, "the hashes")
   end,
 }

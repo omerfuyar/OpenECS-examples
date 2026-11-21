@@ -15,7 +15,7 @@ for i = 0, 7 do
   CORNERS[i + 1] = cglm.vec3(i & 1 == 0 and -1 or 1, i & 2 == 0 and -1 or 1, i & 4 == 0 and -1 or 1)
 end
 
-local EDGES = ffi.string(ffi.new("uint32_t[24]", 0, 1, 2, 3, 4, 5, 6, 7, 0, 2, 1, 3, 4, 6, 5, 7, 0, 4, 1, 5, 2, 6, 3, 7), 24 * 4)
+local EDGES = ffi.new("uint32_t[24]", 0, 1, 2, 3, 4, 5, 6, 7, 0, 2, 1, 3, 4, 6, 5, 7, 0, 4, 1, 5, 2, 6, 3, 7)
 
 local UP = cglm.vec3(0, 1, 0)
 
@@ -62,7 +62,7 @@ function Cube:draw(surface)
     points[i * 2 - 2], points[i * 2 - 1] = left + x * side, top + (1 - y) * side
   end
 
-  draw.lines(surface, ffi.string(points, ffi.sizeof(points)), EDGES, 2, "accent")
+  draw.lines(surface, points, EDGES, 2, "accent")
 end
 
 -- a drag across turns the cube

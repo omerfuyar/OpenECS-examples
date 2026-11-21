@@ -1,7 +1,7 @@
 -- Sketch in Lua: canvases to draw on with the mouse, and a clock. The sketch_c plugin does the same in C, so the two can be compared.
 
 local ecs = require("ecs")
-local ffi = require("ffi")
+local buffer = require("string.buffer")
 
 local NAME = ecs.plugin.name
 
@@ -459,21 +459,21 @@ function Canvas:canvasPpm()
     end
   end)
 
-  local rows = { ("P6\n%d %d\n255\n"):format(width, height) }
-
-  -- a row's bytes in an FFI array, which ffi.string gives as a string
-  local bytes = ffi.new("uint8_t[?]", width * 3)
+  -- the image grows in a string.buffer: reserve gives room for a row's bytes, as an FFI pointer, and commit adds what was written there
+  local ppm = buffer.new():putf("P6\n%d %d\n255\n", width, height)
 
   for y = 0, height - 1 do
+    local bytes = ppm:reserve(width * 3)
+
     for x = 0, width - 1 do
       local color = pixels[y * width + x + 1]
       bytes[x * 3], bytes[x * 3 + 1], bytes[x * 3 + 2] = (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF
     end
 
-    rows[#rows + 1] = ffi.string(bytes, width * 3)
+    ppm:commit(width * 3)
   end
 
-  return table.concat(rows)
+  return ppm
 end
 
 local function exportChosen(id, files)
