@@ -47,7 +47,9 @@ function Help:draw(surface)
   end
 
   -- a scroll shows the column of what the file holds, and scrolls what does not fit
-  ui.showDescription(self.panel, surface, { type = "scroll", props = { id = "help", padding = 16 }, children = { DESCRIPTION --[[@as ui.Description]] } })
+  -- markdown gives ui's descriptions, which its types name markdown.Description
+  ---@diagnostic disable-next-line: assign-type-mismatch
+  ui.showDescription(self.panel, surface, { type = "scroll", props = { id = "help", padding = 16 }, children = { DESCRIPTION } })
 end
 
 function Help:event(event)
