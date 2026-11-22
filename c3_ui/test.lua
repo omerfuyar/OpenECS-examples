@@ -113,5 +113,29 @@ return {
     state = test.session().workspaces[1].windows[1].panels[1].state
     test.match(state.inspected, { type = "button", id = "button" }, "the inspected element")
     test.call("ui.inspect")
+
+    -- a list that only scrolled moves its pixels, and ui draws only what they do not show: the items that came into view, its border's
+    -- top and bottom, and its scroll bar. Another tab and back draws the list whole, which shows the same pixels
+    local tab = state.rects.tab
+    test.click(panel.x + tab.x + tab.width * 0.02, panel.y + tab.y + tab.height / 2)
+    test.key("Left")
+    test.key("Left")
+    local list = test.session().workspaces[1].windows[1].panels[1].state.rects.list
+    local folder = debug.getinfo(1, "S").source:match("^@(.*[/\\])")
+    local function picture(name)
+      local path = folder .. name
+      test.screenshot(path)
+      local file = assert(io.open(path, "rb"))
+      local bytes = file:read("a")
+      file:close()
+      os.remove(path)
+      return bytes
+    end
+
+    test.wheel(panel.x + list.x + list.width / 2, panel.y + list.y + list.height / 2, -1)
+    local moved = picture("scrolled.png")
+    test.key("Right")
+    test.key("Left")
+    test.match(picture("whole.png") == moved, true, "a scrolled list's moved pixels")
   end,
 }
