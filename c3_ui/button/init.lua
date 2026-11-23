@@ -15,7 +15,7 @@ local STYLES = ui.styles()
 local FRUITS = { "Apple", "Banana", "Cherry" }
 local SIZES = { "S", "M", "L" }
 local TABS = { "Options", "About", "Table" }
-local ITEMS = { "First item", "Second item", "Third item" }
+local ITEMS = { "First item", "Second item", "Third item", "Fourth item", "Fifth item", "Sixth item" }
 local TAGS = { "Lua", "C", "SDL", "Clay", "libffi", "stb" }
 
 -- the Table tab's columns and rows; the panel sorts the rows, and the table shows them in its order
@@ -55,7 +55,7 @@ local NOTE = "Tab gives the keys to the next control and Shift+Tab to the one be
 -- the elements the test clicks, by id; their rectangles are saved, so the test finds them
 local IDS = { "button", "tab", "sound", "volume", "size", "fruit", "count", "item:2", "name", "note", "beside", "tree:src", "tree:main", "tree:readme:star",
   "tree:lib", "table:header", "table:1", "table:2", "table:title:name", "table:title:price", "graph", "about",
-  "tint", "colors:heading", "tag:1", "tag:2", "tag:6", "file" }
+  "tint", "colors:heading", "tag:1", "tag:2", "tag:6", "file", "list" }
 
 -- the rows of the Table tab, in the order the panel sorts them
 function Controls:sorted()
