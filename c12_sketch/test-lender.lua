@@ -4,10 +4,10 @@ return {
   run = function(test)
     test.call("lender.lend")
 
-    -- using the freed handle is a misuse, which disables the lender; the test takes it, so it does not fail on it
+    -- using the freed handle is a misuse, which names the function and disables the lender; the test takes it, so it does not fail on it
     local freed = test.session().pluginState.lender.state.freed
     local misuses = test.misuses()
-    assert(freed and freed:find("the object of this handle is gone", 1, true), freed)
+    assert(freed and freed:find("to 'sketch_c.useBrush' (the object of this handle is gone)", 1, true), freed)
     test.match(#misuses, 1, "the misuse of the freed handle")
 
     local rect = test.rect(1)
