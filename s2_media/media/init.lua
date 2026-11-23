@@ -103,9 +103,14 @@ function Media:draw(surface)
   -- a smooth edge has pixels that the frame covers only in part, so their colour is between the frame's and the background's
   local seen = {}
 
-  -- the corner's edge crosses the diagonal from the corner about 5 units in, before the picture starts at 8
+  -- the corner's curved edge crosses the square of 8 units at the corner, before the picture starts; a square, as one line of pixels may
+  -- pass over the edge where the frame starts between pixels
+  local left, top = math.floor(x * surface.scale), math.floor(y * surface.scale)
+
   for i = 0, math.floor(7 * surface.scale) do
-    seen[surface:getPixel(math.floor(x * surface.scale) + i, math.floor(y * surface.scale) + i)] = true
+    for j = 0, math.floor(7 * surface.scale) do
+      seen[surface:getPixel(left + i, top + j)] = true
+    end
   end
 
   seen["#202020FF"], seen["#3A3F4BFF"] = nil, nil
