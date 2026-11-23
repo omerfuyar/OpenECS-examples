@@ -636,7 +636,7 @@ static void SketchCanvasPress(SketchCanvas *canvas, const ECSPanelEvent *event)
         return;
     }
 
-    if (event->modifiers & ECSModifier_Shift)
+    if ((event->modifiers & (u32)ECSModifier_Shift) != 0)
     {
         SketchDragStrokes(canvas);
         return;
@@ -834,8 +834,9 @@ static void SketchClockDraw(void *data, ECSSurface *surface, f64 seconds)
 
     f32 angle = (f32)(fmod(state->time, 60.0) / 60.0 * 2.0 * 3.14159265);
 
-    for (f32 distance = 0.0f; distance < radius; distance += 1.0f)
+    for (i32 step = 0; (f32)step < radius; step++)
     {
+        f32 distance = (f32)step;
         i32 pixelX = (i32)(centerX + sinf(angle) * distance);
         i32 pixelY = (i32)(centerY - cosf(angle) * distance);
 
@@ -882,7 +883,7 @@ static bool SketchWritePpm(const char *path, const u32 *pixels, i32 width, i32 h
 
     for (usz i = 0; i < (usz)width * (usz)height; i++)
     {
-        u8 rgb[3] = {(u8)(pixels[i] >> 16), (u8)(pixels[i] >> 8), (u8)pixels[i]};
+        u8 rgb[3] = {(u8)(pixels[i] >> 16U), (u8)(pixels[i] >> 8U), (u8)pixels[i]};
         fwrite(rgb, 1, sizeof(rgb), file);
     }
 
@@ -1278,8 +1279,8 @@ static SHUSlice SketchPixels(ECSPanel panel)
 
     for (usz i = 0; i < count; i++)
     {
-        buffer[headerLength + i * 3] = (u8)(pixels[i] >> 16);
-        buffer[headerLength + i * 3 + 1] = (u8)(pixels[i] >> 8);
+        buffer[headerLength + i * 3] = (u8)(pixels[i] >> 16U);
+        buffer[headerLength + i * 3 + 1] = (u8)(pixels[i] >> 8U);
         buffer[headerLength + i * 3 + 2] = (u8)pixels[i];
     }
 
@@ -1314,6 +1315,13 @@ static void *SketchNewBrush(i32 size, const char *color)
 static void SketchBrushDestroy(void *object)
 {
     SketchReleaseBrush(object);
+}
+
+/// @brief Frees a brush now, before Lua lets go of its handle: the handle becomes invalid, so using it raises an error, and a canvas that uses
+/// the brush keeps it. A Lua plugin's handle has no such function; it lives until Lua lets go of it.
+static void SketchFreeBrush(void *brush)
+{
+    ECSHandle_Free(SKETCH.plugin, "brush", brush);
 }
 
 static void SketchUseBrush(void *brushHandle, ECSPanel panel)
@@ -1495,6 +1503,7 @@ SHUResult ECSPlugin_Init(ECSPlugin plugin)
         {"pixels", (ECSFunction)SketchPixels, "buffer(handle<ecs.panel>)", "Gives a canvas as a PPM image"},
         {"brush", (ECSFunction)SketchNewBrush, "handle<sketch_c.brush>(int, string)", "Makes a brush of a size and a colour"},
         {"useBrush", (ECSFunction)SketchUseBrush, "void(handle<sketch_c.brush>, handle<ecs.panel>)", "Makes a canvas draw with a brush"},
+        {"freeBrush", (ECSFunction)SketchFreeBrush, "void(handle<sketch_c.brush>)", "Frees a brush now; its handle becomes invalid, and a canvas that uses it keeps it"},
     };
 
     for (usz i = 0; i < sizeof(services) / sizeof(*services); i++)
