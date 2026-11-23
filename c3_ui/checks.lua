@@ -197,17 +197,28 @@ return function(test, number, title)
   test.click(at("tree:lib"))
   test.match(state().node, "lib", "the chosen node")
 
-  -- Right opens the chosen node, then chooses its first child; Left on a node without children chooses its parent, then closes it
+  -- Left and Right go through the parts of the chosen node's row, its arrow and its marks, and Space presses the part: Right reaches lib's
+  -- arrow and Space opens the node; the ring keeps its place in the row as Up and Down choose other nodes
   test.key("Right")
-  test.match(state().open, { src = true, lib = true }, "the node opened with Right")
-  test.key("Right")
-  test.match(state().node, "util", "the first child, after Right on an open node")
-  test.key("Left")
-  test.match(state().node, "lib", "the parent")
-  test.key("Left")
-  test.match(state().open, { src = true }, "the node closed with Left")
+  test.key("Space")
+  test.match(state().open, { src = true, lib = true }, "the node opened with Space on its arrow")
+  test.key("Down")
+  test.match(state().node, "util", "the first child")
+  test.key("Up")
+  test.key("Space")
+  test.match(state().open, { src = true }, "the node closed with Space on its arrow")
   test.key("Down")
   test.match(state().node, "readme", "the node below the closed one")
+
+  -- README.md has no arrow, so its first part is its mark, which Space turns on; Left goes back to the node itself, where Space does nothing
+  test.key("Space")
+  test.match(state().starred, true, "Space on the mark")
+  test.key("Left")
+  test.key("Space")
+  test.match(state().starred, true, "Space on the node itself")
+  test.key("Right")
+  test.key("Space")
+  test.match(state().starred, false, "Space on the mark again")
 
   -- README.md's mark, at the end of its row, turns on and off with a click, and keeps the chosen node
   test.click(at("tree:main"))
