@@ -1,5 +1,5 @@
 -- the listener hears the ticker's ticks, also with a subscription it renews at each, counts its own panel opening, and hears its own event,
--- which carries a handle and bytes
+-- which carries a handle and bytes, and the event after it, whose handler frees a handle
 return {
   preset = "preset.lua",
   run = function(test)
@@ -13,5 +13,8 @@ return {
     -- the subscription that renews itself at each tick heard each tick once
     local state = test.panel(1).state
     test.match(state.renewed, state.ticks, "the ticks that the renewed subscription heard")
+
+    -- a handler that collects a handle after an earlier event was delivered leaves that event's freed value alone
+    test.match(state.noted, 1, "the event after the one with a handle")
   end,
 }
