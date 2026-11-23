@@ -1,4 +1,4 @@
--- Tests of an example run in Debug builds: OpenECS --test examples/c1_hello/test.lua
+-- Every build runs the tests of the examples: OpenECS --test examples/c1_hello/test.lua
 return {
   preset = "preset.lua", -- relative to this file
   run = function(test)

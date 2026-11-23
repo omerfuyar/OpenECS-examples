@@ -36,6 +36,17 @@ ecs.event.subscribe("listener.opened", function(_, value)
   end
 end)
 
+-- a handler may free handles while events wait: here a note that nothing keeps, collected after the event before it was delivered
+ecs.event.declare("noted", "A listener opened, after listener.opened")
+local noted = 0
+
+ecs.event.subscribe("listener.noted", function()
+  local _ = ecs.handle.new("note", "gone")
+  _ = nil
+  collectgarbage()
+  noted += 1
+end)
+
 -- subscribe after the plugin that declares the event has loaded; the subscription lasts until it is cancelled
 ecs.event.subscribe("ticker.tick", function(_, ticks)
   for _, listener in pairs(listeners) do
@@ -67,6 +78,8 @@ function Listener.create(panel)
   listeners[panel] = listener
   ecs.event.emit("listener.opened", { panel = panel, mark = "\0\255", note = ecs.handle.new("note", "hello") })
 
+  ecs.event.emit("listener.noted")
+
   -- nothing but the event keeps the note now, and a collection before the delivery does not take it
   collectgarbage()
   return listener
@@ -77,7 +90,7 @@ function Listener:destroy()
 end
 
 function Listener:saveState()
-  return { ticks = self.ticks, renewed = renewed }
+  return { ticks = self.ticks, renewed = renewed, noted = noted }
 end
 
 function Listener:draw(surface)

@@ -39,6 +39,8 @@ return {
     os.remove(folder .. "banana.txt")
     os.remove(folder .. "dropped.txt")
     os.remove(folder .. "dropped 2.txt")
+    os.remove(folder .. "box/inside.txt")
+    os.remove(folder .. "box")
     test.wait(0.3)
 
     -- the panel's rows, below the selector of the tree and the grid: the folder's files by name
@@ -142,6 +144,8 @@ return {
     os.remove(folder .. "dropped.txt")
     os.remove(folder .. "dropped 2.txt")
     os.remove(outside)
+    -- the panel lists the folder again when fs's watch tells it of the change
+    test.wait(0.5)
 
     -- Show in Files chooses the opened note in the files panel, without the tool's choose; a locked panel stays where it is
     local files = idOf("files.tree")
@@ -164,5 +168,40 @@ return {
     test.click(x, y)
     test.call("files.lock")
     test.match(test.panel(files).state, { locked = false }, "and unlocks")
+
+    -- a folder made after the panel opened is watched too: a file that another program writes into it shows when the folder opens
+    local function selected()
+      return test.panel(files).state.selected
+    end
+    test.click(panel.x + 60, panel.y + panel.height - 20, 3)
+    test.key("Return")
+    test.wait()
+    test.text("box")
+    test.key("Return")
+    x, y = row(1)
+    assert(waitFor(function()
+      test.click(x, y)
+      return selected() == "box"
+    end), "New folder makes a folder, first in the tree")
+    test.key("Right")
+    file = assert(io.open(folder .. "box/inside.txt", "wb"))
+    file:write("Inside.\n")
+    file:close()
+    x, y = row(2)
+    assert(waitFor(function()
+      test.click(x, y)
+      return selected() == "box/inside.txt"
+    end), "the new folder is watched")
+    os.remove(folder .. "box/inside.txt")
+    x, y = row(1)
+    test.click(x, y, 3)
+    test.key("Up")
+    test.key("Return")
+    test.match(test.dialog(), { title = "Delete box" }, "Delete asks about the folder")
+    test.key("Return")
+    assert(waitFor(function()
+      test.click(x, y)
+      return selected() == "apples.txt"
+    end), "the folder is deleted")
   end,
 }

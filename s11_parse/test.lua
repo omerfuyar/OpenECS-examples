@@ -13,6 +13,7 @@ return {
             .. '    "tools": [\n        "brush",\n        "eraser"\n    ]\n}',
           -- the trailing comma is allowed; the second } is not
           problem = "JSON, at line 1, column 21: unexpected content after document",
+          deep = "JSON: lists and objects nest deeper than 512",
         },
       },
       { state = { format = "Toml", same = true, text = 'dark = true\nname = "Paint"\nscale = 1.5\ntools = ["brush", "eraser"]\n\n[size]\nheight = 600\nwidth = 800\n' } },

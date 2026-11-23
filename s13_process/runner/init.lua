@@ -49,6 +49,9 @@ function Runner.create(panel)
   -- run gives a program its input, which sort reads to the end, and waits for its output
   state.sorted = lines(process.run(shell("sort"), "", "b\na\n"), {})
 
+  -- a large input goes while the output is read, as the program's input pipe takes only part of it at a time
+  state.counted = #lines(process.run(shell("sort"), "", ("line\n"):rep(200000)), {})
+
   -- start gives a handle of the program; its methods read, write, kill it and tell whether it exited
   local program, problem = process.start(shell("echo one && echo two && echo three 1>&2"), "")
   state.program = assert(program, problem)
@@ -88,7 +91,7 @@ end
 
 -- what the test reads
 function Runner:saveState()
-  return { sorted = self.sorted, lines = self.lines, errors = self.errors, code = self.code }
+  return { sorted = self.sorted, counted = self.counted, lines = self.lines, errors = self.errors, code = self.code }
 end
 
 ecs.panel.registerType({

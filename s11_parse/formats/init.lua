@@ -57,6 +57,10 @@ function Formats.create(panel, saved)
   -- a text that cannot be read gives nothing and why, with where it is
   local _, problem = parse.json.read('{ "name": "Paint", }}')
   state.problem = problem
+
+  -- lists and tables nest at most 512 deep, so a text nested deeper fails too
+  local _, deep = parse.json.read(("["):rep(100000) .. ("]"):rep(100000))
+  state.deep = deep
   return state
 end
 
@@ -78,7 +82,7 @@ function Formats:destroy()
 end
 
 function Formats:saveState()
-  return { format = self.format, text = self.text, same = self.same, problem = self.problem }
+  return { format = self.format, text = self.text, same = self.same, problem = self.problem, deep = self.deep }
 end
 
 ecs.panel.registerType({

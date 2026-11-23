@@ -15,6 +15,6 @@ return {
       test.wait(0.05)
     end
 
-    test.match(state(), { sorted = { "a", "b" }, lines = { "one", "two" }, errors = { "three" }, code = 0 }, "what the programs wrote")
+    test.match(state(), { sorted = { "a", "b" }, counted = 200000, lines = { "one", "two" }, errors = { "three" }, code = 0 }, "what the programs wrote")
   end,
 }

@@ -19,7 +19,7 @@ static const UiProps LABELED = {.gap = 8};
 static const char *const FRUITS[] = {"Apple", "Banana", "Cherry", nullptr};
 static const char *const SIZES[] = {"S", "M", "L", nullptr};
 static const char *const TABS[] = {"Options", "About", "Table", nullptr};
-static const char *const ITEMS[] = {"First item", "Second item", "Third item", "Fourth item", "Fifth item", "Sixth item"};
+#define ITEM_COUNT 40
 static const char *const TAGS[] = {"Lua", "C", "SDL", "Clay", "libffi", "stb"};
 static const char *const TAG_IDS[] = {"tag:1", "tag:2", "tag:3", "tag:4", "tag:5", "tag:6"};
 
@@ -283,13 +283,20 @@ static void ControlsDraw(void *data, ECSSurface *surface, f64 seconds)
                 DescribeOptions(state);
             }
 
-            UI_LIST(&state->selected, .id = "list", .height = 90, .grow = UI_FIXED, .border = "tabShown")
+            // a long list describes only the items in view and near it, which ui's range gives; the list gets count, its number of items, and first
+            i32 first = 0;
+            i32 last = 0;
+            UI_PLUGIN.functions.range(state->panel, "list", ITEM_COUNT, &first, &last);
+
+            UI_LIST(&state->selected, .id = "list", .count = ITEM_COUNT, .first = first, .height = 90, .grow = UI_FIXED, .border = "tabShown")
             {
-                for (usz i = 0; i < COUNT(ITEMS); i++)
+                for (i32 i = first; i <= last; i++)
                 {
                     char id[16];
-                    snprintf(id, sizeof(id), "item:%zu", i + 1);
-                    UI_TEXT(ITEMS[i], .id = id);
+                    char text[16];
+                    snprintf(id, sizeof(id), "item:%d", (int)i);
+                    snprintf(text, sizeof(text), "Item %d", (int)i);
+                    UI_TEXT(text, .id = id);
                 }
             }
 
