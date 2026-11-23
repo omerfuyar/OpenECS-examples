@@ -21,9 +21,9 @@ return {
     test.key("Return")
     test.match(test.panel(1), { title = "Help: https://github.com/omerfuyar/OpenECS", state = { link = "https://github.com/omerfuyar/OpenECS" } }, "the link of Return")
 
-    -- each link of a text is a stop of Tab: the next Tab stays in the text, on its second link
-    test.key("Tab")
-    test.key("Return")
+    -- a text is one stop of Tab: Right moves the ring to its second link, and Space gives it, as Return does
+    test.key("Right")
+    test.key("Space")
     test.match(test.panel(1).state.link, "https://github.com/omerfuyar/OpenECS-std", "the second link")
   end,
 }
