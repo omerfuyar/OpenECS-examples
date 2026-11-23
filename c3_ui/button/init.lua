@@ -15,7 +15,7 @@ local STYLES = ui.styles()
 local FRUITS = { "Apple", "Banana", "Cherry" }
 local SIZES = { "S", "M", "L" }
 local TABS = { "Options", "About", "Table" }
-local ITEMS = { "First item", "Second item", "Third item", "Fourth item", "Fifth item", "Sixth item" }
+const ITEM_COUNT = 40
 local TAGS = { "Lua", "C", "SDL", "Clay", "libffi", "stb" }
 
 -- the Table tab's columns and rows; the panel sorts the rows, and the table shows them in its order
@@ -150,8 +150,11 @@ function Controls:draw(surface)
     tags[i] = ui.button(text, { id = "tag:" .. i })
   end
 
-  for i, text in ipairs(ITEMS) do
-    items[i] = ui.text(text, { id = "item:" .. i })
+  -- a long list builds only the items in view and near it, which ui.range gives; the list gets count, its number of items, and first
+  local first, last = ui.range(self.panel, "list", ITEM_COUNT)
+
+  for i = first, last do
+    items[#items + 1] = ui.text(("Item %d"):format(i), { id = "item:" .. i })
   end
 
   -- a right click that no other element takes reaches the root's onMenu, which opens a menu there, in layout units as ui.menu takes them
@@ -291,6 +294,8 @@ function Controls:draw(surface)
     ui.list(
       {
         id = "list",
+        count = ITEM_COUNT,
+        first = first,
         height = 90,
         grow = 0,
         border = "tabShown",
