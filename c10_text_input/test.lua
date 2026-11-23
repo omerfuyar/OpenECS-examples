@@ -2,6 +2,10 @@
 return {
   preset = "preset.lua",
   run = function(test)
+    local hint = test.session().workspaces[1].windows[1].panels[1].state
+    -- each of its three words and two blanks is measured in whole pixels, so they may differ by a pixel each
+    test.match(math.abs(hint.hintByWords - hint.hint) < 5, true, "the italic hint measured word by word, as wide as measured whole")
+
     test.text("Hello, wörld")
     test.key("Backspace")
     test.key("Backspace")
