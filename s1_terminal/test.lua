@@ -26,6 +26,9 @@ return {
     test.match(state().cells, { "h", "i", " ", " ", " ", " " }, "the cells of bold text")
     test.match(state().styles, { "bold", "bold", "", "", "", "" }, "the bold style")
 
+    -- a full row keeps the cursor on its last column, inside the grid
+    test.match(state().edge, { 3, 0 }, "the cursor of a full row")
+
     -- Ctrl and + makes the font larger, so fewer columns fit; Ctrl and - makes it smaller, and Ctrl+0 sets it back
     local columns = state().columns
     test.key("Ctrl+=")
