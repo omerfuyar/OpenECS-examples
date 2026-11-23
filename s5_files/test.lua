@@ -39,6 +39,8 @@ return {
     os.remove(folder .. "banana.txt")
     os.remove(folder .. "dropped.txt")
     os.remove(folder .. "dropped 2.txt")
+    os.remove(folder .. "box/inside.txt")
+    os.remove(folder .. "box")
     test.wait(0.3)
 
     -- the panel's rows, below the selector of the tree and the grid: the folder's files by name
@@ -142,6 +144,8 @@ return {
     os.remove(folder .. "dropped.txt")
     os.remove(folder .. "dropped 2.txt")
     os.remove(outside)
+    -- the panel lists the folder again when fs's watch tells it of the change
+    test.wait(0.5)
 
     -- Show in Files chooses the opened note in the files panel, without the tool's choose; a locked panel stays where it is
     local files = idOf("files.tree")
