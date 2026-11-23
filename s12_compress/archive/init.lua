@@ -84,11 +84,32 @@ function Archive:tarball()
   table.insert(self.lines, ("a .tar.gz of %d entries: %d bytes"):format(#back, #packed))
 end
 
+function Archive:extract()
+  -- extract writes every entry of an archive into a folder, under its name
+  local folder = ecs.plugin.folder .. "extracted.ignore/"
+  local done, problem = compress.zip.extract(ecs.plugin.folder .. "archive.ignore", folder)
+  self.extracted = done and readFile(folder .. "archive/manifest.lua") == readFile(ecs.plugin.folder .. "manifest.lua") or problem
+
+  -- an entry whose name goes up with .. or is absolute would write outside the folder, so extract refuses the archive
+  self.refused = {}
+
+  for _, name in ipairs({ "../outside.txt", "/outside.txt" }) do
+    local path = ecs.plugin.folder .. "unsafe.ignore"
+    assert(compress.zip.write(path, { { name = name, data = "outside" } }, 0))
+    local _, why = compress.zip.extract(path, folder)
+    self.refused[#self.refused + 1] = why
+  end
+
+  -- data that no format packed cannot be unpacked
+  self.garbage = select(2, compress.unpack("these bytes were never packed"))
+end
+
 function Archive.create(panel)
   local state = setmetatable({ panel = panel }, Archive)
   state:pack()
   state:archive()
   state:tarball()
+  state:extract()
   return state
 end
 
@@ -112,7 +133,8 @@ function Archive:destroy()
 end
 
 function Archive:saveState()
-  return { same = self.same, entries = self.entries, readBack = self.readBack, problem = self.problem, tar = self.tar, tarPath = self.tarPath }
+  return { same = self.same, entries = self.entries, readBack = self.readBack, problem = self.problem, tar = self.tar, tarPath = self.tarPath,
+    extracted = self.extracted, refused = self.refused, garbage = self.garbage }
 end
 
 ecs.panel.registerType({

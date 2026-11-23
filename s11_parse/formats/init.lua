@@ -61,6 +61,15 @@ function Formats.create(panel, saved)
   -- lists and tables nest at most 512 deep, so a text nested deeper fails too
   local _, deep = parse.json.read(("["):rep(100000) .. ("]"):rep(100000))
   state.deep = deep
+
+  -- each format fails on its own broken text, and says where: a TOML value left out, an INI section that is not closed, a .env value
+  -- whose quote is not closed, and a CSV field whose quote is not closed
+  state.broken = {
+    Toml = select(2, parse.toml.read("name = \n")),
+    Ini = select(2, parse.ini.read("[size\nwidth = 800\n")),
+    Env = select(2, parse.env.read('NAME="Paint\n')),
+    Csv = select(2, parse.csv.read('tool,key\n"brush,B\n', "")),
+  }
   return state
 end
 
@@ -82,7 +91,7 @@ function Formats:destroy()
 end
 
 function Formats:saveState()
-  return { format = self.format, text = self.text, same = self.same, problem = self.problem, deep = self.deep }
+  return { format = self.format, text = self.text, same = self.same, problem = self.problem, deep = self.deep, broken = self.broken }
 end
 
 ecs.panel.registerType({

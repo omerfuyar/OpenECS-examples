@@ -14,6 +14,12 @@ return {
           -- the trailing comma is allowed; the second } is not
           problem = "JSON, at line 1, column 21: unexpected content after document",
           deep = "JSON: lists and objects nest deeper than 512",
+          broken = {
+            Toml = "TOML: (line 1) missing value",
+            Ini = "INI, at line 1: a section's line ends with ]",
+            Env = ".env, at line 1: the value's quote is not closed",
+            Csv = "CSV, at line 2: the field's quote is not closed",
+          },
         },
       },
       { state = { format = "Toml", same = true, text = 'dark = true\nname = "Paint"\nscale = 1.5\ntools = ["brush", "eraser"]\n\n[size]\nheight = 600\nwidth = 800\n' } },
