@@ -26,8 +26,22 @@ end
 local Runner = {}
 Runner.__index = Runner
 
--- takes what the started program wrote since the last time; once it exited, the timer stops
+-- takes what the sorter wrote, and whether the sorter and the stopped program exited
+function Runner:pollOthers()
+  lines(self.sorter:read(), self.sortedLater)
+  local sorted, sortCode = self.sorter:exited()
+
+  if sorted and self.sortCode == nil then
+    lines(self.sorter:read(), self.sortedLater)
+    self.sortCode = sortCode
+  end
+
+  self.killed = self.killed or self.sleeper:exited()
+end
+
+-- takes what the started programs wrote since the last time; once they exited, the timer stops
 function Runner:poll()
+  self:pollOthers()
   lines(self.program:read(), self.lines)
   lines(self.program:readErrors(), self.errors)
   local exited, code = self.program:exited()
@@ -37,6 +51,9 @@ function Runner:poll()
     lines(self.program:read(), self.lines)
     lines(self.program:readErrors(), self.errors)
     self.code = code
+  end
+
+  if self.code and self.sortCode and self.killed then
     self.timer:stop()
   end
 
@@ -55,6 +72,22 @@ function Runner.create(panel)
   -- start gives a handle of the program; its methods read, write, kill it and tell whether it exited
   local program, problem = process.start(shell("echo one && echo two && echo three 1>&2"), "")
   state.program = assert(program, problem)
+
+  -- a started program takes input too: write sends it, and closeInput ends it, so sort, which reads to the end, sorts and exits
+  state.sorter = assert(process.start(shell("sort"), ""))
+  state.sortedLater = {}
+  state.sorter:write("d\nc\n")
+  state.sorter:closeInput()
+
+  -- kill stops a program that would run on; with force, at once
+  -- the program runs alone, without a shell, so killing it leaves nothing behind
+  state.sleeper = assert(process.start(WINDOWS and { "ping", "-n", "30", "127.0.0.1" } or { "sleep", "30" }, ""))
+  state.sleeper:kill(true)
+
+  -- a program that cannot start gives nothing and why
+  local missing, why = process.start({ "openecs-no-such-program" }, "")
+  state.missing = missing == nil and type(why) == "string" and why ~= ""
+
   state.timer = ecs.timer.start(0.05, true, function()
     state:poll()
   end)
@@ -91,7 +124,8 @@ end
 
 -- what the test reads
 function Runner:saveState()
-  return { sorted = self.sorted, counted = self.counted, lines = self.lines, errors = self.errors, code = self.code }
+  return { sorted = self.sorted, counted = self.counted, lines = self.lines, errors = self.errors, code = self.code, sortedLater = self.sortedLater,
+    sortCode = self.sortCode, killed = self.killed, missing = self.missing }
 end
 
 ecs.panel.registerType({

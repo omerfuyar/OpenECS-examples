@@ -10,6 +10,14 @@ return {
     }, "the archive's state")
 
     local state = test.session().workspaces[1].windows[1].panels[1].state
+
+    -- extract writes the archive's files into a folder, and refuses names that would go outside it; data of no format fails to unpack
+    test.match(state, {
+      extracted = true,
+      refused = { "the entry '../outside.txt' would go outside the folder", "the entry '/outside.txt' would go outside the folder" },
+      garbage = "the data's format is not gzip, zlib or zstd; deflate's must be named",
+    }, "extract and the failures")
+    assert(io.open(state.tarPath:gsub("archive%.tar%.gz%.ignore$", "outside.txt"), "rb") == nil, "no file goes outside the folder")
     test.match(state.tar, { same = true, names = { "archive/", "archive/run.sh", state.tar.long } }, "the tar archive read back")
 
     -- the system's tar lists the same entries, with the long name whole and the script executable

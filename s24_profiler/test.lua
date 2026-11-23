@@ -20,6 +20,15 @@ return {
     test.click(view.x + 40, view.y + 75)
     test.match(test.setting("ecs.profile"), true, "Measure turns ecs.profile on")
     test.wait(1.7)
+
+    -- LuaJIT samples every millisecond, so a slow machine may need another second before a sample falls in wave
+    for _ = 1, 8 do
+      if test.panel(busy).state.wave then
+        break
+      end
+      test.wait(0.5)
+    end
+
     test.match(test.panel(busy).state, { measured = true, busy = true, draw = true, wave = true }, "busy and draw each have their own time, and wave is busy's")
 
     -- Pause keeps the numbers, and the tabs choose the table; the panel saves both. A click gives Pause the keys, and Tab goes on past Copy

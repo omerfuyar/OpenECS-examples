@@ -120,7 +120,13 @@ function Terminal:saveState()
     end
   end
 
-  return { output = self.output, cells = cells, styles = styles, size = self.size, columns = columns, screen = table.concat(screen) }
+  -- a row that print fills to its end keeps the cursor on its last column, until the next character goes on the next row
+  local edge = textgrid.new(4, 2)
+  edge:print("abcd")
+  local edgeColumn, edgeRow = edge:cursor()
+
+  return { output = self.output, cells = cells, styles = styles, size = self.size, columns = columns, screen = table.concat(screen),
+    edge = { edgeColumn, edgeRow } }
 end
 
 function Terminal:destroy()
