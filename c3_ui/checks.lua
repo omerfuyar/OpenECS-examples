@@ -103,6 +103,16 @@ return function(test, number, title)
   test.key("Return")
   test.match(#state().tint == 7 and state().tint ~= "#3366CC", true, "the picked colour")
 
+  -- the picker works from the keys too: the arrows move saturation and value, and Shift with Up and Down the hue; each move gives the colour
+  test.click(at("tint"))
+  local picked = state().tint
+  test.key("Left")
+  test.match(state().tint ~= picked, true, "the colour that Left gives")
+  picked = state().tint
+  test.key("Shift+Down")
+  test.match(state().tint ~= picked, true, "the colour that Shift+Down gives")
+  test.key("Return")
+
   -- a click on the section's heading hides what is below it
   test.click(at("colors:heading"))
   test.match({ state().colors, state().rects.tint }, { false, nil }, "the closed section")
