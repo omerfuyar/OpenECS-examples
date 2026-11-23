@@ -6,6 +6,7 @@ local ecs = require("ecs")
 local draw = require("draw") -- the functions of a plugin the manifest depends on
 
 local MARGIN, SIZE = 16, 20 -- in layout units
+local HINT = "Type some words" -- shown in italic while the field is empty
 
 -- each panel's state is an object of Field, whose functions are methods
 local Field = {}
@@ -28,6 +29,12 @@ function Field:draw(surface)
   self.scale = surface.scale
   surface:fill(0, 0, surface.width, surface.height, "background")
   local width = draw.text(surface, draw.font("ui"), self.text, MARGIN, MARGIN, SIZE, "text")
+
+  -- a font in a style comes from draw.styledFont, and draw.font is the font itself
+  if self.text == "" then
+    draw.text(surface, draw.styledFont("ui", "italic"), HINT, MARGIN, MARGIN, SIZE, "textDim")
+  end
+
   local _, height = draw.font("ui"):measure(self.text, SIZE, surface.scale)
   draw.fill(surface, MARGIN + width, MARGIN, 2, height, "accent") -- the cursor
 end
@@ -45,8 +52,17 @@ function Field:event(event)
   self.panel:redraw()
 end
 
+-- the hint's width is saved measured whole and word by word, as ui lays out a text of spans: draw measures text by where each
+-- glyph starts the next, so the two are the same, in italic too, whose slanted glyphs reach past that
 function Field:saveState()
-  return { text = self.text }
+  local italic = draw.styledFont("ui", "italic")
+  local words = 0
+
+  for word, blank in HINT:gmatch("(%S+)(%s*)") do
+    words += italic:measure(word, SIZE, 1) + (blank ~= "" and italic:measure(blank, SIZE, 1) or 0)
+  end
+
+  return { text = self.text, hint = italic:measure(HINT, SIZE, 1), hintByWords = words }
 end
 
 ecs.panel.registerType({

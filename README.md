@@ -10,7 +10,7 @@ Examples for writing [OpenECS](https://github.com/omerfuyar/OpenECS) plugins, on
 - `s10_cglm` shows the cglm plugin, which gives cglm's vectors, matrices and quaternions to Lua: a cube's edges, turned and seen in perspective, drawn with draw. Its second workspace has the same cube in C, with the same functions. Drag to turn it.
 - `s11_parse` writes a table in each of parse's formats, JSON, TOML, INI, .env and CSV, reads each text back, and shows that it reads back the same.
 - `s12_compress` packs its own file with gzip, zlib, deflate and zstd and unpacks it, then writes a zip archive of its files, lists it and reads a file back.
-- `s13_process` runs sort with an input and waits for its output, then starts the shell beside the tool and takes its output and errors from a timer.
+- `s13_process` runs sort with an input and waits for its output, then starts the shell beside the tool and takes its output and errors from a timer. Its test also closes a program's input, kills a program, and starts one that is missing.
 - `s14_gamepad` draws every gamepad that is plugged in: its triggers, sticks and buttons, which light up as they are used, from gamepad's events. Space on the panel plugs in a virtual gamepad that the keyboard drives: A, B, X and Y press its buttons, the arrows move its left stick, I, J, K and L its right stick, and Q and E pull its triggers.
 - `s15_hash` hashes a text with each of hash's algorithms, and its own file whole and in parts, which give the same hash.
 - `s16_sqlite` keeps a table of fruits in a database in memory: it creates the table, adds and updates rows with parameters, and shows a query of them. Return adds a row.
