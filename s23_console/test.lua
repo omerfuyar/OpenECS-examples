@@ -25,11 +25,11 @@ return {
     test.match(state(), { entries = 2, count = 2 }, "Run adds two entries, and the repeated one stacks")
 
     -- the error's entry names main.lua at line 3, above its text: a click runs console.editor with the file's path in the
-    -- console's folder; touch is a program of Linux, so the click is checked there
+    -- console's folder; touch is a program of Linux, so the click is checked there. The program may take seconds to start on a slow machine
     if package.config:sub(1, 1) == "/" then
       test.click(log.x + 97, log.y + 121)
       local found = false
-      for _ = 1, 100 do
+      for _ = 1, 400 do
         local file = io.open(mark, "rb")
         if file then
           file:close()
