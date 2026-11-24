@@ -62,6 +62,19 @@ return {
     test.drag(x, y, toX, toY - height * 0.4)
     test.match(state().dropped, { node = "main", where = "before", on = "lib" }, "a drop before a node")
 
+    -- lib holds a hundred files: open, the tree builds only the rows in view and near it, and End reaches the last row, which it builds then
+    test.click(row(3))
+    test.key("Right")
+    test.key("Space")
+    test.match({ state().open.lib, state().rects["tree:f100"] }, { true, nil }, "a long tree builds the rows in view")
+    test.key("End")
+    test.match(state().rects["tree:f100"] ~= nil, true, "a long tree builds the rows that come into view")
+    test.key("Home")
+    test.click(row(3))
+    test.key("Right")
+    test.key("Space")
+    test.match(state().open, { src = true }, "lib closes again")
+
     -- a right click beside the elements reaches the root's onMenu, which opens the panel's menu there: its entries are a row each, with a line between the
     -- first and the second, and Reset is enabled only when there are clicks
     local clicks = state().clicks
