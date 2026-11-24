@@ -43,7 +43,7 @@ end
 return {
   preset = "preset.lua",
   run = function(test)
-    -- the core's settings file binds the panel list to Alt+W, then .
+    -- the panel list binds itself to Alt+W, then .
     test.key("Alt+W")
     test.key(".")
     local list = assert(find(test, "panels.list"), "the panel list is open")

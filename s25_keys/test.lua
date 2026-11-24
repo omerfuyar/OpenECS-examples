@@ -75,5 +75,21 @@ return {
     test.click(right - 96, list.y + 126)
     test.key("Ctrl+M")
     test.match(press("Ctrl+M"), 1, "the key added from the folder counts")
+
+    -- while the core waits for the key after the prefix, the key list shows the keys after it in a popup, which closes when the key comes;
+    -- the counter's own key after the prefix counts
+    local before = count()
+    test.key("Escape")
+    test.key("Alt+W")
+    test.match(pcall(test.popup, 1), true, "the keys after the prefix show")
+    test.key("C")
+    test.match({ pcall(test.popup, 1), count() - before }, { false, 1 }, "the list closes, and the counter's key after the prefix counts")
+
+    -- the title bar's menu Tools holds the counter's entry, after the core's menus
+    local tools = false
+    for _, part in ipairs(test.titleBar()) do
+      tools = tools or (part.kind == "menu" and part.label == "Tools")
+    end
+    test.match(tools, true, "the title bar's menu Tools")
   end,
 }

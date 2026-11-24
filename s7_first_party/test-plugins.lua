@@ -48,7 +48,7 @@ end
 return {
   preset = "preset-plugins.lua",
   run = function(test)
-    -- the core's settings file binds the plugin list to Alt+W, then ;
+    -- the plugin list binds itself to Alt+W, then ;
     test.key("Alt+W")
     test.key(";")
     assert(find(test, "plugins.list"), "the plugin list is open")
