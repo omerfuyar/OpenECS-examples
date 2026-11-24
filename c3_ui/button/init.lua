@@ -37,6 +37,26 @@ local NODES = {
   { id = "readme", label = "README.md" },
 }
 
+-- lib holds a hundred files, so its tree is long when it is open
+for i = 2, 100 do
+  NODES[1].children[2].children[i] = { id = "f" .. i, label = ("file%d.c"):format(i) }
+end
+
+-- the number of the tree's shown nodes: those at the top, and the children of each open node
+local function shownCount(nodes, open)
+  local count = 0
+
+  for _, node in ipairs(nodes) do
+    count += 1
+
+    if node.children and open[node.id] then
+      count += shownCount(node.children, open)
+    end
+  end
+
+  return count
+end
+
 -- each panel's state is an object of Controls, whose functions are methods
 local Controls = {}
 Controls.__index = Controls
@@ -54,7 +74,7 @@ local NOTE = "Tab gives the keys to the next control and Shift+Tab to the one be
 
 -- the elements the test clicks, by id; their rectangles are saved, so the test finds them
 local IDS = { "button", "tab", "sound", "volume", "size", "fruit", "count", "item:2", "name", "note", "beside", "tree:src", "tree:main", "tree:readme:star",
-  "tree:lib", "table:header", "table:1", "table:2", "table:title:name", "table:title:price", "graph", "about",
+  "tree:lib", "tree:f100", "table:header", "table:1", "table:2", "table:title:name", "table:title:price", "graph", "about",
   "tint", "colors:heading", "tag:1", "tag:2", "tag:6", "file", "list" }
 
 -- the rows of the Table tab, in the order the panel sorts them
@@ -152,6 +172,7 @@ function Controls:draw(surface)
 
   -- a long list builds only the items in view and near it, which ui.range gives; the list gets count, its number of items, and first
   local first, last = ui.range(self.panel, "list", ITEM_COUNT)
+  local treeFirst, treeLast = ui.range(self.panel, "tree", shownCount(NODES, self.open))
 
   for i = first, last do
     items[#items + 1] = ui.text(("Item %d"):format(i), { id = "item:" .. i })
@@ -210,9 +231,12 @@ function Controls:draw(surface)
       -- a text of spans mixes styles; a click on a span with a link gives the link to onLink
       ui.text({ "The controls of ", { text = "ui", bold = true }, ", each changing the panel's self: ", { text = "ui's design", link = "https://github.com/omerfuyar/OpenECS-std/blob/dev/DESIGN.md" } },
         { id = "about", color = "textDim", onLink = set("link") }),
+      -- a long tree builds only the rows in view and near it, which ui.range gives for the number of shown nodes
       ui.tree(self:nodesOf(),
         {
           id = "tree",
+          first = treeFirst,
+          last = treeLast,
           height = 110,
           grow = 0,
           border = "frame",
