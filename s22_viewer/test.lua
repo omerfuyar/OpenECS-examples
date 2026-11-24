@@ -25,5 +25,45 @@ return {
     test.match(viewer(), { title = "click.wav" }, "the sound")
     test.call("gallery.next")
     test.match(viewer(), { title = "init.lua" }, "the text")
+
+    -- the title bar shows the tool's name, the core's menus that have functions here, then the gallery's buttons
+    local function bar()
+      local parts = {}
+      for _, part in ipairs(test.titleBar()) do
+        parts[part.label] = part
+      end
+      return parts
+    end
+    local parts = bar()
+    test.match(parts, {
+      Viewer = { kind = "name" },
+      File = { kind = "menu" },
+      ["\u{25B6}"] = { kind = "button", enabled = true },
+      Slideshow = { kind = "button", on = false },
+    }, "the title bar")
+
+    local function click(label)
+      local rect = bar()[label].rect
+      test.click(rect.x + rect.width / 2, rect.y + rect.height / 2)
+    end
+
+    -- a click on a button runs its function: from the text to the image, and back
+    click("\u{25B6}")
+    test.match(viewer(), { title = "halves.png" }, "after Next")
+    click("\u{25C0}")
+    test.match(viewer(), { title = "init.lua" }, "after Previous")
+
+    -- the slideshow's button is on while its setting is true, and the files go on by themselves
+    click("Slideshow")
+    test.match(bar().Slideshow, { on = true }, "the slideshow plays")
+    test.wait(1.2)
+    test.match(viewer(), { title = "halves.png" }, "the slideshow showed the next file")
+    click("Slideshow")
+    test.match(bar().Slideshow, { on = false }, "the slideshow stopped")
+
+    -- a click on the tool's name opens the tool's menu below it; Enter runs its first entry, the gallery's Next File
+    click("Viewer")
+    test.key("Return")
+    test.match(viewer(), { title = "click.wav" }, "the tool's menu")
   end,
 }
