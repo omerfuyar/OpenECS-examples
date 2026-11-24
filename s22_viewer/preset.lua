@@ -9,8 +9,6 @@ return {
   depends = { gallery = "0.1", viewer = "0.1" },
   pluginsDir = ".",
   settings = {
-    -- the tool's menu, which the tool's name in the title bar opens, lists the gallery's function
-    ["ecs.toolMenu"] = { "gallery.next" },
     -- the tool's own buttons in the title bar, after the core's menus: a label may be a symbol, and a button with a setting shows on while it is true
     ["ecs.titleButtons"] = {
       { "gallery.previous", label = "\u{25C0}" },

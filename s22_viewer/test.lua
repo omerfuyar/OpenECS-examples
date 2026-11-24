@@ -60,10 +60,5 @@ return {
     test.match(viewer(), { title = "halves.png" }, "the slideshow showed the next file")
     click("Slideshow")
     test.match(bar().Slideshow, { on = false }, "the slideshow stopped")
-
-    -- a click on the tool's name opens the tool's menu below it; Enter runs its first entry, the gallery's Next File
-    click("Viewer")
-    test.key("Return")
-    test.match(viewer(), { title = "click.wav" }, "the tool's menu")
   end,
 }

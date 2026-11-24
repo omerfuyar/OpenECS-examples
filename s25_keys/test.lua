@@ -82,6 +82,14 @@ return {
     test.key("Escape")
     test.key("Alt+W")
     test.match(pcall(test.popup, 1), true, "the keys after the prefix show")
+    -- the list sits at the bottom right of the window, which the close button and the lowest panel end near
+    local list, bar, bottom = test.popup(1), test.titleBar(), 0
+    for _, panel in ipairs(test.panels()) do
+      local rect = test.rect(panel.id)
+      bottom = math.max(bottom, rect.y + rect.height)
+    end
+    local right = bar[#bar].rect.x + bar[#bar].rect.width
+    test.match({ math.abs(list.x + list.width - right) < 40, math.abs(list.y + list.height - bottom) < 40 }, { true, true }, "the list at the bottom right")
     test.key("C")
     test.match({ pcall(test.popup, 1), count() - before }, { false, 1 }, "the list closes, and the counter's key after the prefix counts")
 
