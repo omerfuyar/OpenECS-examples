@@ -104,12 +104,12 @@ return {
     test.click(panel.x + 30, panel.y + 20)
 
     -- the search field beside the selector shows only the files whose name holds its text, whatever its case
-    test.click(panel.x + panel.width - 40, panel.y + 20)
+    test.click(panel.x + panel.width - 80, panel.y + 20)
     test.text("PLUM")
     test.wait()
     test.click(row(1))
     test.match(notes(), { chosen = "plumber.txt" }, "the search shows only plumber.txt")
-    test.click(panel.x + panel.width - 40, panel.y + 20)
+    test.click(panel.x + panel.width - 80, panel.y + 20)
     test.key("Ctrl+A")
     test.key("Backspace")
     test.wait()

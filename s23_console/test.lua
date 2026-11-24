@@ -27,7 +27,7 @@ return {
     -- the error's entry names main.lua at line 3, above its text: a click runs console.editor with the file's path in the
     -- console's folder; touch is a program of Linux, so the click is checked there. The program may take seconds to start on a slow machine
     if package.config:sub(1, 1) == "/" then
-      test.click(log.x + 97, log.y + 121)
+      test.click(log.x + 120, log.y + 126)
       local found = false
       for _ = 1, 400 do
         local file = io.open(mark, "rb")
@@ -42,11 +42,11 @@ return {
       os.remove(mark)
     end
 
-    test.click(log.x + 150, log.y + 121)
+    test.click(log.x + 188, log.y + 126)
     test.match(state(), { shown = 1 }, "a click on the error's own link calls its function")
 
     -- a click on an entry chooses it, and Ctrl+C copies its text, with how many times it stacked
-    test.click(log.x + 400, log.y + 141)
+    test.click(log.x + 400, log.y + 147)
     test.match(test.panel(logId).state, { chosen = "main.lua:3: attempt to call a nil value" }, "a click chooses the entry")
     test.key("Ctrl+C")
     test.match(state(), { clipboard = "main.lua:3: attempt to call a nil value (×2)" }, "Ctrl+C copies the chosen entry")
@@ -59,8 +59,8 @@ return {
     test.match(test.panel(logId).state, { chosen = "Running main.lua\nstarted" }, "a double click on an entry without a place chooses it")
     test.wait(0.5)
     if package.config:sub(1, 1) == "/" then
-      test.click(log.x + 400, log.y + 141)
-      test.click(log.x + 400, log.y + 141)
+      test.click(log.x + 400, log.y + 147)
+      test.click(log.x + 400, log.y + 147)
       local found = false
       for _ = 1, 100 do
         local file = io.open(mark, "rb")
@@ -85,13 +85,13 @@ return {
     test.match(state(), { clipboard = "Running main.lua\nstarted" }, "the menu's Copy copies the entry")
 
     -- the Errors toggle hides the errors' entries, which the panel's state keeps, and shows them again
-    test.click(log.x + 189, log.y + 21)
+    test.click(log.x + 250, log.y + 21)
     test.match(test.panel(logId).state, { hidden = { error = true } }, "the toggle hides the errors")
-    test.click(log.x + 189, log.y + 21)
+    test.click(log.x + 250, log.y + 21)
     test.match(test.panel(logId).state, { hidden = {} }, "and shows them again")
 
     -- the search, beside the toggles, shows only the entries that hold its text
-    test.click(log.x + 340, log.y + 21)
+    test.click(log.x + 400, log.y + 21)
     test.text("NIL")
     test.wait()
     test.match(test.panel(logId).state, { shown = 1 }, "the search shows the error alone")
