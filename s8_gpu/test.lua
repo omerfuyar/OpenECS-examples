@@ -18,7 +18,8 @@ return {
       test.match(test.pixel(left + b, top + a), "#A3BE8C", message .. ": the top-right tile")
       test.match(test.pixel(left + a, top + b), "#EBCB8B", message .. ": the bottom-left tile")
       test.match(test.pixel(left + b, top + b), "#5E81AC", message .. ": the bottom-right tile")
-      test.match(test.pixel(panel.x + 2, panel.y + 2), "#1B2A4A", message .. ": the background")
+      -- the group's corners are rounded, so the background is read a little inside the bottom-left corner
+      test.match(test.pixel(panel.x + 8, panel.y + panel.height - 8), "#1B2A4A", message .. ": the background")
     end
 
     check(1, "the panel in Lua")

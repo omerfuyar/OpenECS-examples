@@ -31,7 +31,7 @@ local function openMenu(picker, x, y)
 
     -- the surface is the popup's own; what draw leaves out is transparent
     draw = function(surface)
-      draw.fill(surface, 0, 0, WIDTH, ROW * #CHOICES, "background")
+      draw.fill(surface, 0, 0, WIDTH, ROW * #CHOICES, "overlay")
 
       for i, choice in ipairs(CHOICES) do
         if i == hover then

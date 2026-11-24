@@ -21,7 +21,7 @@ return {
     end
     -- the search shows one row, so its key and buttons are at the same place each time
     local function search(text)
-      test.click(list.x + 400, list.y + 75)
+      test.click(list.x + 400, list.y + 62)
       test.key("Ctrl+A")
       test.key("Backspace")
       test.text(text)
@@ -29,7 +29,7 @@ return {
     -- the row's key and buttons are at its right side, so their places are measured from the panel's right edge, whatever its width
     local right = list.x + list.width
     local key, reset, alone = list.x + list.width * 0.75, right - 57, right - 76
-    local row = list.y + 218
+    local row = list.y + 198
 
     test.match(press("Ctrl+J"), 1, "the preset's key counts")
 
@@ -52,18 +52,18 @@ return {
     test.match(press("Ctrl+J"), 0, "Remove takes the key away")
 
     -- a function and a key add a binding: the dropdown searches what is typed, and Return chooses
-    test.click(list.x + 200, list.y + 144)
+    test.click(list.x + 200, list.y + 126)
     for letter in ("count"):gmatch(".") do
       test.key(letter:upper())
     end
     test.key("Return")
-    test.click(right - 96, list.y + 144)
+    test.click(right - 96, list.y + 126)
     test.key("Ctrl+K")
     test.match(press("Ctrl+K"), 1, "the added key counts")
 
     -- the functions are in folders by their names' dots, a folder at a time: Return opens the one hovered, counter, the first, below
     -- the way back, Left goes up to the folders, Right opens it again, and Return chooses count, the first in it
-    test.click(list.x + 200, list.y + 144)
+    test.click(list.x + 200, list.y + 126)
     local top = test.popup(1).height
     test.key("Return")
     local inside = test.popup(1).height
@@ -72,8 +72,24 @@ return {
     test.key("Right")
     test.match({ inside < top, back, test.popup(1).height }, { true, top, inside }, "the folders, and back into counter")
     test.key("Return")
-    test.click(right - 96, list.y + 144)
+    test.click(right - 96, list.y + 126)
     test.key("Ctrl+M")
     test.match(press("Ctrl+M"), 1, "the key added from the folder counts")
+
+    -- while the core waits for the key after the prefix, the key list shows the keys after it in a popup, which closes when the key comes;
+    -- the counter's own key after the prefix counts
+    local before = count()
+    test.key("Escape")
+    test.key("Alt+W")
+    test.match(pcall(test.popup, 1), true, "the keys after the prefix show")
+    test.key("C")
+    test.match({ pcall(test.popup, 1), count() - before }, { false, 1 }, "the list closes, and the counter's key after the prefix counts")
+
+    -- the title bar's menu Tools holds the counter's entry, after the core's menus
+    local tools = false
+    for _, part in ipairs(test.titleBar()) do
+      tools = tools or (part.kind == "menu" and part.label == "Tools")
+    end
+    test.match(tools, true, "the title bar's menu Tools")
   end,
 }

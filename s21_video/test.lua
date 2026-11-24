@@ -12,7 +12,7 @@ return {
 
     -- the first frame shows before it plays: the middle of the panel is not its background
     local panel = test.rect(1)
-    assert(test.pixel(panel.x + panel.width / 2, panel.y + (panel.height - 40) / 2) ~= test.setting("ecs.colorBackground"):sub(1, 7), "the first frame")
+    assert(test.pixel(panel.x + panel.width / 2, panel.y + (panel.height - 40) / 2) ~= test.setting("ecs.colorPanel"):sub(1, 7), "the first frame")
 
     test.key("Space")
     test.wait(0.5)

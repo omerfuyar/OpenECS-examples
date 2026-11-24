@@ -17,7 +17,7 @@ return {
     test.match(test.panel(busy).state, { measured = false }, "nothing is measured at first")
 
     -- the switch sets ecs.profile in the user's settings; the profile sums plugins' times over a whole second
-    test.click(view.x + 40, view.y + 75)
+    test.click(view.x + 40, view.y + 16)
     test.match(test.setting("ecs.profile"), true, "Measure turns ecs.profile on")
     test.wait(1.7)
 
@@ -33,13 +33,13 @@ return {
 
     -- Pause keeps the numbers, and the tabs choose the table; the panel saves both. A click gives Pause the keys, and Tab goes on past Copy
     -- report to the tabs, where Right chooses the next one
-    test.click(view.x + 139, view.y + 75)
+    test.click(view.x + 139, view.y + 16)
     test.key("Tab")
     test.key("Tab")
     test.key("Right")
     test.match(test.panel(profiler).state, { tab = 2, paused = true }, "the Panels tab and Pause are kept")
 
-    test.click(view.x + 40, view.y + 75)
+    test.click(view.x + 40, view.y + 16)
     test.match(test.setting("ecs.profile"), false, "Measure turns ecs.profile off")
     test.match(test.panel(busy).state, { measured = false }, "nothing is measured once it is off")
   end,

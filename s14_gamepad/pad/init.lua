@@ -149,7 +149,7 @@ function Pad:event(event)
 end
 
 function Pad:draw(surface)
-  surface:fill(0, 0, surface.width, surface.height, "background")
+  surface:fill(0, 0, surface.width, surface.height, "panel")
   local font = draw.font("ui")
   local width, height = surface.width / surface.scale, surface.height / surface.scale
   local y = 12

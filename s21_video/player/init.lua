@@ -33,7 +33,7 @@ function Player:event(event)
 end
 
 function Player:draw(surface)
-  surface:fill(0, 0, surface.width, surface.height, "background")
+  surface:fill(0, 0, surface.width, surface.height, "panel")
   local clip = self.clip
   local width, height = surface.width / surface.scale, surface.height / surface.scale - 40
   local videoWidth, videoHeight = clip:size()

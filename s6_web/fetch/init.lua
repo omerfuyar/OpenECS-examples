@@ -141,7 +141,7 @@ function Fetch.create(panel)
 end
 
 function Fetch:draw(surface)
-  surface:fill(0, 0, surface.width, surface.height, "background")
+  surface:fill(0, 0, surface.width, surface.height, "panel")
   local _, height = draw.font("ui"):measure("Ag", SIZE, surface.scale)
   local lines = math.max(1, math.floor(surface.height / surface.scale / height) - 2)
   local first = math.max(1, #log - lines + 1)

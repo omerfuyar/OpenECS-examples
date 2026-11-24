@@ -20,6 +20,10 @@ ecs.service.register({
   },
 })
 
+-- a plugin gives its own functions a key after the core prefix, Alt+W, then C, and an entry in the tool's menu Tools
+ecs.key.bind("prefix", "C", "counter.count")
+ecs.app.addMenuEntry("counter.count")
+
 -- each panel's state is an object of Counter, whose functions are methods
 local Counter = {}
 Counter.__index = Counter

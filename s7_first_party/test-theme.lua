@@ -1,6 +1,6 @@
 -- the settings window changes the theme: "system" follows the system, and "dark" and "light" choose one; the colours follow it
 
-local LIGHT_BACKGROUND = "#D9DCE1"
+local LIGHT_BACKGROUND = "#A3A3A3"
 
 -- the settings window's panel, if it is open
 local function window(test)

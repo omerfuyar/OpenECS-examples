@@ -27,7 +27,7 @@ end
 
 function Field:draw(surface)
   self.scale = surface.scale
-  surface:fill(0, 0, surface.width, surface.height, "background")
+  surface:fill(0, 0, surface.width, surface.height, "panel")
   local width = draw.text(surface, draw.font("ui"), self.text, MARGIN, MARGIN, SIZE, "text")
 
   -- a font in a style comes from draw.styledFont, and draw.font is the font itself

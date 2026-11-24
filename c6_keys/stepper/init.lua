@@ -31,7 +31,7 @@ function Stepper:destroy()
 end
 
 function Stepper:draw(surface)
-  surface:fill(0, 0, surface.width, surface.height, "background")
+  surface:fill(0, 0, surface.width, surface.height, "panel")
   draw.text(surface, draw.font("ui"), tostring(self.value), 24, 24, 48, "text")
 end
 

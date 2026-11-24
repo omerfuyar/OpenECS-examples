@@ -46,7 +46,7 @@ end
 function Busy:draw(surface, seconds)
   self.time += seconds
   local width, height = surface.width / surface.scale, surface.height / surface.scale
-  draw.fill(surface, 0, 0, width, height, "background")
+  draw.fill(surface, 0, 0, width, height, "panel")
 
   -- each bar is a call into draw, a C plugin: the profiler counts that time as draw's, not as this plugin's
   local bar = width / BARS

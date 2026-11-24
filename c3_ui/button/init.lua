@@ -192,7 +192,7 @@ function Controls:draw(surface)
         height = 110,
         grow = 0,
         stretch = true,
-        border = "tabShown",
+        border = "frame",
         sort = self.sort,
         ascending = self.ascending,
         selected = self.row,
@@ -215,7 +215,7 @@ function Controls:draw(surface)
           id = "tree",
           height = 110,
           grow = 0,
-          border = "tabShown",
+          border = "frame",
           open = self.open,
           -- the tree chooses many nodes: selected is the list of the chosen ones, and the first is where Up and Down move from;
           -- a press with Ctrl adds a node or takes it out, and one with Shift chooses the shown nodes from the first chosen one to it
@@ -298,7 +298,7 @@ function Controls:draw(surface)
         first = first,
         height = 90,
         grow = 0,
-        border = "tabShown",
+        border = "frame",
         selected = self.selected,
         onSelect = set(
           "selected")

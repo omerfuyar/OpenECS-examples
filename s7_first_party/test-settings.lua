@@ -14,7 +14,7 @@ return {
   run = function(test)
     test.match(test.panel(1), { title = "Square, #A3BE8C" }, "the square shows the default colour")
 
-    -- the core's settings file binds the settings window to Alt+W, then ","
+    -- the settings window binds itself to Alt+W, then ","
     test.key("Alt+W")
     test.key(",")
     assert(window(test), "the settings window is open")

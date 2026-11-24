@@ -19,7 +19,7 @@ end
 
 function Palette:draw(surface)
   self.scale = surface.scale
-  surface:fill(0, 0, surface.width, surface.height, "background")
+  surface:fill(0, 0, surface.width, surface.height, "panel")
 
   for i, color in ipairs(COLORS) do
     draw.fill(surface, (i - 1) * SWATCH, 0, SWATCH, SWATCH, color)

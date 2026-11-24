@@ -57,7 +57,7 @@ function Tally:destroy()
 end
 
 function Tally:draw(surface)
-  surface:fill(0, 0, surface.width, surface.height, "background")
+  surface:fill(0, 0, surface.width, surface.height, "panel")
   draw.text(surface, draw.font("ui"), ("%d clicks in all"):format(counter.get("clicks")), 24, 24, 24, "text")
 end
 
