@@ -151,7 +151,7 @@ static void DescribeTable(Controls *controls)
         cells[i * 3 + 2] = rows[i].stockText;
     }
 
-    UI_TABLE(&controls->row, COLUMNS, cells, COUNT(FRUIT_ROWS), .id = "table", .height = 110, .grow = UI_FIXED, .stretch = true, .border = "tabShown",
+    UI_TABLE(&controls->row, COLUMNS, cells, COUNT(FRUIT_ROWS), .id = "table", .height = 110, .grow = UI_FIXED, .stretch = true, .border = "frame",
              .onSort = true, .sort = controls->sort, .ascending = controls->ascending ? UI_TRUE : UI_FALSE);
 }
 
@@ -175,7 +175,7 @@ static void DescribeTree(Controls *controls)
             snprintf(controls->link, sizeof(controls->link), "%s", link);
         }
 
-        UI_TREE(&controls->node, nodes, .id = "tree", .height = 110, .grow = UI_FIXED, .border = "tabShown");
+        UI_TREE(&controls->node, nodes, .id = "tree", .height = 110, .grow = UI_FIXED, .border = "frame");
 
         // a row with wrap = true puts the children that do not fit the rest of a line on the next line, as a toolbar does in a narrow panel;
         // this one is in a narrow column, so its buttons take two lines
@@ -288,7 +288,7 @@ static void ControlsDraw(void *data, ECSSurface *surface, f64 seconds)
             i32 last = 0;
             UI_PLUGIN.functions.range(state->panel, "list", ITEM_COUNT, &first, &last);
 
-            UI_LIST(&state->selected, .id = "list", .count = ITEM_COUNT, .first = first, .height = 90, .grow = UI_FIXED, .border = "tabShown")
+            UI_LIST(&state->selected, .id = "list", .count = ITEM_COUNT, .first = first, .height = 90, .grow = UI_FIXED, .border = "frame")
             {
                 for (i32 i = first; i <= last; i++)
                 {

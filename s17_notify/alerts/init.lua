@@ -81,7 +81,7 @@ function Alerts:event(event)
 end
 
 function Alerts:draw(surface)
-  surface:fill(0, 0, surface.width, surface.height, "background")
+  surface:fill(0, 0, surface.width, surface.height, "panel")
   local font, y = draw.font("ui"), 16
   draw.text(surface, font, "Return sends a notification", 16, y, 18, "text")
 

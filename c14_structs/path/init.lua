@@ -47,7 +47,7 @@ end
 
 function Path:draw(surface)
   self.scale = surface.scale
-  surface:fill(0, 0, surface.width, surface.height, "background")
+  surface:fill(0, 0, surface.width, surface.height, "panel")
 
   -- fields are read as in any table
   for i, p in ipairs(self.points) do

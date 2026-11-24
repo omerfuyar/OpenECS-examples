@@ -53,7 +53,7 @@ function Records:event(event)
 end
 
 function Records:draw(surface)
-  surface:fill(0, 0, surface.width, surface.height, "background")
+  surface:fill(0, 0, surface.width, surface.height, "panel")
   local font, y = draw.font("ui"), 16
 
   for _, row in ipairs(self.rows) do

@@ -12,7 +12,7 @@ function Closer.create(panel)
 end
 
 function Closer:draw(surface)
-  surface:fill(0, 0, surface.width, surface.height, "background")
+  surface:fill(0, 0, surface.width, surface.height, "panel")
   ecs.layout.close(self.panel)
 end
 

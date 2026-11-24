@@ -28,7 +28,7 @@ end
 
 function Marks:draw(surface)
   self.scale = surface.scale
-  surface:fill(0, 0, surface.width, surface.height, "background")
+  surface:fill(0, 0, surface.width, surface.height, "panel")
 
   for i = 1, #self.dots - 1, 2 do
     draw.fill(surface, self.dots[i] - DOT / 2, self.dots[i + 1] - DOT / 2, DOT, DOT, "accent")

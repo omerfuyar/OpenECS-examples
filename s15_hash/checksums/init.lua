@@ -50,7 +50,7 @@ function Checksums.create()
 end
 
 function Checksums:draw(surface)
-  surface:fill(0, 0, surface.width, surface.height, "background")
+  surface:fill(0, 0, surface.width, surface.height, "panel")
   local font, y = draw.font("ui"), 16
 
   local function show(text, color)
