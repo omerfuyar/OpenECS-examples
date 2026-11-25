@@ -65,7 +65,7 @@ local NOTE = "Tab gives the keys to the next control and Shift+Tab to the one be
 local IDS = { "button", "tab", "sound", "volume", "size", "fruit", "count", "item:2", "name", "note", "beside", "tree:src", "tree:main", "tree:readme:star",
   "tree:readme:lock", "icon:eye", "icon:eyeClosed", "icon:lock", "icon:lockOpen", "lockButton",
   "tree:lib", "tree:f100", "table:header", "table:1", "table:2", "table:title:name", "table:title:price", "graph", "about",
-  "tint", "colors:heading", "tag:1", "tag:2", "tag:6", "file", "list" }
+  "tint", "colors:heading", "tag:1", "tag:2", "tag:6", "file", "list", "cut", "lines", "cutLines", "cutSpans" }
 
 -- the rows of the Table tab, in the order the panel sorts them
 function Controls:sorted()
@@ -291,6 +291,14 @@ function Controls:draw(surface)
       -- a row with wrap = true puts the children that do not fit the rest of a line on the next line, as a toolbar does in a narrow panel;
       -- this one is in a narrow column, so its buttons take two lines
       ui.column({ width = 160 }, { ui.row({ wrap = true, gap = 4 }, tags) }),
+      -- a text with maxLines wraps, and shows at most that many lines; the last one ends with an ellipsis when more follow, as a long
+      -- file's name does under its icon. Spans do the same
+      ui.column({ width = 160 }, {
+        ui.text(NOTE, { id = "cut", maxLines = 2 }),
+        ui.text("Lua\nLua", { id = "lines" }),
+        ui.text("Lua\nLua\nC", { id = "cutLines", maxLines = 2 }),
+        ui.text({ "Lua\n", { text = "Lua\nC" } }, { id = "cutSpans", maxLines = 2 }),
+      }),
     }) or ui.group({ title = "Options", gap = 8 }, {
       ui.toggle(self.sound, { id = "sound", label = "Sound", onChange = set("sound") }),
       ui.toggle(self.dark, { id = "dark", label = "Dark", look = "switch", onChange = set("dark") }),

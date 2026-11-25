@@ -191,6 +191,11 @@ return function(test, number, title)
   -- the tags' row wraps in its narrow column: the first two share a line, and the last is on a line below
   local tags = state().rects
   test.match({ tags["tag:2"].y == tags["tag:1"].y, tags["tag:6"].y > tags["tag:1"].y }, { true, true }, "the wrapped row")
+  -- a text with maxLines = 2 takes two lines, as a text of two lines does, however long it is; the last ends with an ellipsis, which makes
+  -- it wider than the same lines without one
+  local lines = state().rects.lines
+  test.match({ tags.cut.height, tags.cutLines.height, tags.cutSpans.height }, { lines.height, lines.height, lines.height }, "the texts cut to two lines")
+  test.match({ tags.cutLines.width > lines.width, tags.cutSpans.width > lines.width }, { true, true }, "the ellipsis of the cut texts")
   local _, srcY = at("tree:src")
   test.click(panel.x + state().rects["tree:src"].x + 14, srcY)
   test.match(state().open, { src = true }, "the opened node")
