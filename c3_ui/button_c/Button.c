@@ -39,7 +39,7 @@ static const FruitRow FRUIT_ROWS[] = {{"Cherry", 4.5, 12, "4.5", "12"}, {"Apple"
 
 /// @brief The elements the test clicks, by id; their rectangles are saved, so the test finds them.
 static const char *const IDS[] = {"button", "tab", "sound", "volume", "size", "fruit", "count", "item:2", "name", "note", "beside", "tree:src",
-                                  "tree:main", "tree:lib", "tree:readme:star", "table:header", "table:1", "table:2", "table:title:name", "table:title:price", "about",
+                                  "tree:main", "tree:lib", "tree:f100", "tree:readme:star", "table:header", "table:1", "table:2", "table:title:name", "table:title:price", "about",
                                   "tint", "colors:heading", "tag:1", "tag:2", "tag:6", "file", "list"};
 
 static const char *const NOTE = "Tab gives the keys to the next control and Shift+Tab to the one before. Return or Space presses the control that has them, "
@@ -158,7 +158,23 @@ static void DescribeTable(Controls *controls)
 // a tree shows its open nodes' children below them; the panel keeps which nodes are open, and the chosen one
 static void DescribeTree(Controls *controls)
 {
-    const UiTreeNode lib[] = {{.id = "util", .label = "util.c"}, {0}};
+    // lib holds a hundred files, so its tree is long when it is open; the tree builds only the rows in view and near it
+    static char ids[100][16];
+    static char labels[100][24];
+    static UiTreeNode lib[101];
+
+    if (lib[0].id == nullptr)
+    {
+        lib[0] = (UiTreeNode){.id = "util", .label = "util.c"};
+
+        for (int i = 2; i <= 100; i++)
+        {
+            snprintf(ids[i - 1], sizeof(ids[i - 1]), "f%d", i);
+            snprintf(labels[i - 1], sizeof(labels[i - 1]), "file%d.c", i);
+            lib[i - 1] = (UiTreeNode){.id = ids[i - 1], .label = labels[i - 1]};
+        }
+    }
+
     const UiTreeNode src[] = {{.id = "main", .label = "main.c"}, {.id = "lib", .label = "lib", .children = lib, .open = &controls->libOpen}, {0}};
     // a node's marks are short texts at the end of its row, on or off; README.md has a star, which UI_TREE turns in the panel's bool
     const UiTreeMark star[] = {{.id = "star", .text = "Star", .on = &controls->starred, .tooltip = "A click stars the file, or takes the star off"}, {0}};

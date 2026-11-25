@@ -42,21 +42,6 @@ for i = 2, 100 do
   NODES[1].children[2].children[i] = { id = "f" .. i, label = ("file%d.c"):format(i) }
 end
 
--- the number of the tree's shown nodes: those at the top, and the children of each open node
-local function shownCount(nodes, open)
-  local count = 0
-
-  for _, node in ipairs(nodes) do
-    count += 1
-
-    if node.children and open[node.id] then
-      count += shownCount(node.children, open)
-    end
-  end
-
-  return count
-end
-
 -- each panel's state is an object of Controls, whose functions are methods
 local Controls = {}
 Controls.__index = Controls
@@ -172,7 +157,6 @@ function Controls:draw(surface)
 
   -- a long list builds only the items in view and near it, which ui.range gives; the list gets count, its number of items, and first
   local first, last = ui.range(self.panel, "list", ITEM_COUNT)
-  local treeFirst, treeLast = ui.range(self.panel, "tree", shownCount(NODES, self.open))
 
   for i = first, last do
     items[#items + 1] = ui.text(("Item %d"):format(i), { id = "item:" .. i })
@@ -231,12 +215,10 @@ function Controls:draw(surface)
       -- a text of spans mixes styles; a click on a span with a link gives the link to onLink
       ui.text({ "The controls of ", { text = "ui", bold = true }, ", each changing the panel's self: ", { text = "ui's design", link = "https://github.com/omerfuyar/OpenECS-std/blob/dev/DESIGN.md" } },
         { id = "about", color = "textDim", onLink = set("link") }),
-      -- a long tree builds only the rows in view and near it, which ui.range gives for the number of shown nodes
+      -- a tree is given every node, and builds only the rows in view and near it
       ui.tree(self:nodesOf(),
         {
           id = "tree",
-          first = treeFirst,
-          last = treeLast,
           height = 110,
           grow = 0,
           border = "frame",
