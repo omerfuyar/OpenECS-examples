@@ -1,7 +1,7 @@
 -- the console keeps the entries that a plugin adds, and stacks a repeated one; a click on the place that an entry names runs
 -- the command of console.editor; a click chooses an entry, a double click goes to what it is about, and Ctrl+C and its menu copy
--- it; the levels' toggles and the search filter the entries, a run clears them while Clear on run is on, and Clear empties the
--- console; the log's lines come in from the level that the Log dropdown chooses, and a source's checkbox hides its entries
+-- it; the Show dropdown and the search filter the entries at once, and Clear empties the console; every line of the log comes in,
+-- and a source's checkbox hides its entries
 return {
   preset = "preset.lua",
   run = function(test)
@@ -19,7 +19,8 @@ return {
     local mark = state().folder .. "main.lua.3"
     os.remove(mark)
 
-    -- a run adds two entries, the second added twice, which stacks
+    -- a run clears the console, as the runner chooses, and adds two entries, the second added twice, which stacks; the core's lines
+    -- that came in before differ on each machine
     local button = test.rect(runner)
     test.click(button.x + 30, button.y + 24)
     test.match(state(), { entries = 2, count = 2 }, "Run adds two entries, and the repeated one stacks")
@@ -84,42 +85,37 @@ return {
     test.click(menu.x + 20, menu.y + menu.height * 3 / 4)
     test.match(state(), { clipboard = "Running main.lua\nstarted" }, "the menu's Copy copies the entry")
 
-    -- the Errors toggle hides the errors' entries, which the panel's state keeps, and shows them again
-    test.click(log.x + 240, log.y + 16)
-    test.match(test.panel(logId).state, { hidden = { error = true } }, "the toggle hides the errors")
-    test.click(log.x + 240, log.y + 16)
-    test.match(test.panel(logId).state, { hidden = {} }, "and shows them again")
+    -- the Show dropdown shows the entries from a level up, at once, which the panel's state keeps: Errors hides the info's entry,
+    -- and Info and up, the default, shows it again
+    local function show(choice)
+      test.click(log.x + log.width - 160, log.y + 16)
+      local levels = test.popup(1)
+      assert(levels, "the Show dropdown opens its levels")
+      test.click(levels.x + 20, levels.y + levels.height * (choice * 2 - 1) / 8)
+      test.wait()
+    end
+    -- the counts are taken from the console, as a machine may log a line meanwhile, such as one that its clipboard is missing
+    local all = test.panel(logId).state.shown
+    show(1)
+    test.match(test.panel(logId).state.show, "error", "Errors is chosen")
+    assert(test.panel(logId).state.shown < all, "Errors hides the info's entry, at once")
+    show(3)
+    test.match(test.panel(logId).state, { show = "info", shown = all }, "and Info and up shows every entry again")
 
-    -- the search, beside the toggles, shows only the entries that hold its text
-    test.click(log.x + 380, log.y + 16)
+    -- the search, at the bar's start, shows only the entries that hold its text
+    test.click(log.x + 100, log.y + 16)
     test.text("NIL")
     test.wait()
     test.match(test.panel(logId).state, { shown = 1 }, "the search shows the error alone")
     test.key("Ctrl+A")
     test.key("Backspace")
     test.wait()
-    test.match(test.panel(logId).state, { shown = 2 }, "and every entry when it is empty")
-
-    -- another run clears the console first; with Clear on run off, it adds to it
-    test.click(button.x + 30, button.y + 24)
-    test.match(state(), { entries = 2 }, "a run clears the console")
-    test.click(log.x + log.width - 161, log.y + 16)
-    test.click(button.x + 30, button.y + 24)
-    test.match(state(), { entries = 4 }, "without Clear on run, a run adds to the console")
-    test.click(log.x + log.width - 161, log.y + 16)
+    test.match(test.panel(logId).state, { shown = all }, "and every entry when it is empty")
 
     test.click(log.x + log.width - 34, log.y + 16)
     test.match(state(), { entries = 0 }, "Clear empties the console")
 
-    -- the log's lines come in from the level of console.logLevel up, which the preset sets to none, and the Log dropdown, beside the
-    -- sources, to warnings; each names its plugin as its source, whose checkbox hides its entries and shows them again
-    test.call("runner.warn")
-    test.match(state(), { entries = 0 }, "no line of the log while the console takes none")
-    test.click(log.x + log.width - 60, log.y + 48)
-    local levels = test.popup(1)
-    assert(levels, "the Log dropdown opens its levels")
-    test.click(levels.x + 20, levels.y + levels.height * 5 / 10)
-    test.match(test.setting("console.logLevel"), "warn", "the dropdown chooses warnings")
+    -- every line of the log comes in, with its plugin as its source, whose checkbox hides its entries and shows them again
     test.call("runner.warn")
     test.match(state(), { entries = 1, source = "runner", text = "The runner warns." }, "the warning comes in, from its plugin")
     test.click(log.x + 68, log.y + 48)
