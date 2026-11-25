@@ -10,23 +10,35 @@ local PORT = 47200
 local SIZE = 16
 
 -- a function that can fail outside the plugin, as when the port is taken, gives nil and why, as Lua's io.open does
-local server, reason = net.listen(PORT)
+-- an empty host listens on every address of this computer, so other computers reach it too
+local server, reason = net.listen("", PORT)
 local client = net.connect("127.0.0.1", PORT)
 local accepted -- the server's end of the connection, once the client is accepted
 local udpServer = net.udp(PORT) -- UDP ports are apart from TCP ports, so the same number serves both
 local udpClient = net.udp(0)    -- port 0: any free port
 local log = { server and "Listening on port " .. PORT or reason }
 
+-- 127.0.0.1 listens for this computer's programs only, as a tool does for a program it starts; port 0 picks a free port, which port tells
+local localServer = assert(net.listen("127.0.0.1", 0))
+local localPort = localServer:port()
+local localClient = net.connect("127.0.0.1", localPort)
+local localAccepted
+local localSent = false
+local localAnswer = "" -- what came back from the local server, saved for the test
+
+-- a host that does not resolve gives nil and why
+local _, badHost = net.listen("no-such-host.invalid", 0)
+
 -- connectTLS starts a TLS connection: its status is 0 until the handshake is done, and the server's certificate is checked against the system's trusted ones
 -- this one goes to a plain server on the next port, which answers in plain text, so its handshake fails, its status becomes -1, and its error says why
-local plain = net.listen(PORT + 1)
+local plain = net.listen("", PORT + 1)
 local secure = net.connectTLS("127.0.0.1", PORT + 1)
 local plainClient
 local tls, tlsError = 0, "" -- the TLS connection's status and error, saved for the test
 
 -- listenTLS serves TLS with a certificate and its key; this pair was made for this example, for localhost, and is not secret
 -- the certificate is nobody's trusted one, so trust adds it to the client's; the server sends back in capitals what the client sends
-local secureServer = net.listenTLS(PORT + 2, ecs.plugin.folder .. "certificate.pem", ecs.plugin.folder .. "key.pem")
+local secureServer = net.listenTLS("", PORT + 2, ecs.plugin.folder .. "certificate.pem", ecs.plugin.folder .. "key.pem")
 net.trust(ecs.plugin.folder .. "certificate.pem")
 local secureClient = net.connectTLS("localhost", PORT + 2)
 local secureAccepted
@@ -55,6 +67,18 @@ local timer = ecs.timer.start(0.05, true, function()
   end
 
   tls, tlsError = secure:status(), secure:error()
+
+  localAccepted = localAccepted or localServer:accept()
+
+  if localAccepted and localAccepted:receive(1024) ~= "" then
+    localAccepted:send("local")
+  end
+
+  if not localSent and localClient:status() == 1 then
+    localSent = localClient:send("?")
+  end
+
+  localAnswer = localAnswer .. localClient:receive(1024)
 
   secureAccepted = secureAccepted or (secureServer and secureServer:accept())
 
@@ -172,7 +196,8 @@ ecs.panel.registerType({
 ecs.plugin.register({
   stateVersion = 1,
   saveState = function()
-    return { log = log, tls = tls, tlsError = tlsError, secure = secureAnswer, connected = client:status() == 1 }
+    return { log = log, tls = tls, tlsError = tlsError, secure = secureAnswer, connected = client:status() == 1,
+      localPort = localPort, localAnswer = localAnswer, badHost = badHost }
   end,
   restoreState = function() end,
   destroy = function()

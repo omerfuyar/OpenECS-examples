@@ -13,7 +13,7 @@ local PORT = 47201
 local SIZE = 16
 local PAGES = { ["/"] = "Hello from OpenECS", ["/plain"] = "A plain page" }
 
-local server = net.listen(PORT) -- nil if the port is taken
+local server = net.listen("", PORT) -- nil if the port is taken
 local clients = {}              -- the server's connections, until each closes
 local log = { server and "Serving http://127.0.0.1:" .. PORT .. "/" or "Cannot serve on port " .. PORT }
 local panels = {}               -- the open panels, drawn again when the log changes
