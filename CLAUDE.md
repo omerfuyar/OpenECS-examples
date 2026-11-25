@@ -15,7 +15,7 @@ This repository is part of OpenECS. OpenECS's [CLAUDE.md](https://github.com/ome
 | `.clang-format`                    | How clang-format formats the C code, as OpenECS's does.                                                                                                                    |
 | `.clang-tidy`                      | What clang-tidy checks in the C code: OpenECS-std's names for a plugin's functions, how complex functions are, and common bugs.                                            |
 | `.claude/`                         | Claude Code's settings and notes: it formats each C file it edits; `notes.md` says why the tools are set up as they are. OpenECS's `.claude/skills/` holds the procedures. |
-| `LICENSE.md`                       | The license, zlib.                                                                                                                                                         |
+| `LICENSE.md`                       | The license, 0BSD.                                                                                                                                                         |
 
 OpenECS's DESIGN.md, section 17.6, says what an example is and how its comments are written. Before you propose or change anything, read it, then the Contents of OpenECS's DESIGN.md and every section the task touches.
 
