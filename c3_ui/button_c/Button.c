@@ -17,6 +17,8 @@ static const UiProps LABELED = {.gap = 8};
 #define COUNT(array) (sizeof(array) / sizeof((array)[0]))
 
 static const char *const FRUITS[] = {"Apple", "Banana", "Cherry", nullptr};
+// more choices than a window holds, so the dropdown's popup scrolls
+static const char *const ITEMS[] = {"Item 1", "Item 2", "Item 3", "Item 4", "Item 5", "Item 6", "Item 7", "Item 8", "Item 9", "Item 10", "Item 11", "Item 12", "Item 13", "Item 14", "Item 15", "Item 16", "Item 17", "Item 18", "Item 19", "Item 20", "Item 21", "Item 22", "Item 23", "Item 24", "Item 25", "Item 26", "Item 27", "Item 28", "Item 29", "Item 30", "Item 31", "Item 32", "Item 33", "Item 34", "Item 35", "Item 36", "Item 37", "Item 38", "Item 39", "Item 40", nullptr};
 static const char *const SIZES[] = {"S", "M", "L", nullptr};
 static const char *const TABS[] = {"Options", "About", "Table", nullptr};
 #define ITEM_COUNT 40
@@ -38,7 +40,7 @@ typedef struct FruitRow
 static const FruitRow FRUIT_ROWS[] = {{"Cherry", 4.5, 12, "4.5", "12"}, {"Apple", 1.2, 40, "1.2", "40"}, {"Banana", 0.8, 25, "0.8", "25"}};
 
 /// @brief The elements the test clicks, by id; their rectangles are saved, so the test finds them.
-static const char *const IDS[] = {"button", "tab", "sound", "volume", "size", "fruit", "count", "item:2", "name", "note", "beside", "tree:src",
+static const char *const IDS[] = {"button", "tab", "sound", "volume", "size", "fruit", "item", "count", "item:2", "name", "note", "beside", "tree:src",
                                   "tree:main", "tree:lib", "tree:f100", "tree:readme:star", "tree:readme:lock", "icon:eye", "icon:eyeClosed", "icon:lock", "icon:lockOpen", "lockButton", "table:header", "table:1", "table:2", "table:title:name", "table:title:price", "about",
                                   "tint", "colors:heading", "tag:1", "tag:2", "tag:6", "file", "list", "cut", "lines", "cutLines", "cutSpans"};
 
@@ -58,6 +60,7 @@ typedef struct Controls
     f64 kept;  // the volume that the slider's drag ended on
     i32 size;  // the chosen size's number in SIZES, from 1
     i32 fruit; // the chosen fruit's number in FRUITS, from 1
+    i32 item;  // the chosen item's number in ITEMS, from 1
     f64 count;
     i32 tab;      // the chosen tab's number in TABS, from 1
     i32 selected; // the list's chosen item, from 1
@@ -88,7 +91,7 @@ static SHUResult ControlsCreate(ECSPanel panel, const ECSValue *savedState, u32 
         return SHUResult_ErrAllocation;
     }
 
-    *state = (Controls){.panel = panel, .scale = 1.0f, .dark = true, .volume = 0.5, .kept = 0.5, .size = 2, .fruit = 1, .tab = 1, .count = 3, .selected = 1, .node = "readme", .sort = "name", .ascending = true, .tint = "#3366CC", .colors = true};
+    *state = (Controls){.panel = panel, .scale = 1.0f, .dark = true, .volume = 0.5, .kept = 0.5, .size = 2, .fruit = 1, .item = 1, .tab = 1, .count = 3, .selected = 1, .node = "readme", .sort = "name", .ascending = true, .tint = "#3366CC", .colors = true};
     *retState = state;
     return SHUResult_Ok;
 }
@@ -266,6 +269,12 @@ static void DescribeOptions(Controls *controls)
         {
             UI_TEXT("Fruit");
             UI_DROPDOWN(&controls->fruit, FRUITS, .id = "fruit");
+        }
+
+        UI_ROW(.style = &LABELED)
+        {
+            UI_TEXT("Item");
+            UI_DROPDOWN(&controls->item, ITEMS, .id = "item");
         }
 
         // a number field takes a number from min to max: Return gives what is typed, and Up and Down change it by step
@@ -457,6 +466,7 @@ static SHUResult ControlsSaveState(void *data, ECSValue *retSavedState)
     SHU_ReturnResult(SetNumber(retSavedState, "kept", state->kept));
     SHU_ReturnResult(SetString(retSavedState, "size", SIZES[state->size - 1]));
     SHU_ReturnResult(SetString(retSavedState, "fruit", FRUITS[state->fruit - 1]));
+    SHU_ReturnResult(SetString(retSavedState, "item", ITEMS[state->item - 1]));
     SHU_ReturnResult(SetNumber(retSavedState, "count", state->count));
     SHU_ReturnResult(SetString(retSavedState, "tab", TABS[state->tab - 1]));
     SHU_ReturnResult(SetString(retSavedState, "tip", ECSValue_GetString(UI_PLUGIN.functions.tooltip(state->panel), nullptr)));
