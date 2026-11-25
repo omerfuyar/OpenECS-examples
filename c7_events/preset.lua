@@ -6,9 +6,9 @@ return {
   version = "0.1.0",
   app = { id = "openecs.example.events", name = "Events" },
   hint = "The panels count the ticker's ticks; Alt+W, then ., opens another panel, and every panel hears that it opened",
-  depends = { ticker = "0.1", listener = "0.1" },
+  depends = { ticker = "0.1", listener = "0.1", heard_c = "0.1" },
   pluginsDir = ".",
   workspaces = {
-    { name = "Main", windows = { { panels = { { type = "listener.panel" } } } } },
+    { name = "Main", windows = { { panels = { { type = "listener.panel" }, { type = "heard_c.panel" } } } } },
   },
 }

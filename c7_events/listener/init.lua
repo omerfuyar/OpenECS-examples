@@ -73,12 +73,30 @@ ecs.event.subscribe("ecs.panelOpened", function(_, value)
   ecs.log.debug(("A %s opened."):format(value.type))
 end)
 
+-- the core emits each line of the log as ecs.logged: { time, level, plugin, message }, where plugin is "ecs" for the core's lines;
+-- a line logged while a handler of it runs goes to the log but not to the event, so the handler below does not hear its own line
+local logged, echoed = 0, 0
+
+ecs.event.subscribe("ecs.logged", function(_, line)
+  if line.plugin ~= "listener" then
+    return
+  end
+
+  if line.message == "A line the handler logs." then
+    echoed += 1
+  elseif line.level == "warn" and line.message == "A listener warns." and line.time ~= "" then
+    logged += 1
+    ecs.log.warn("A line the handler logs.")
+  end
+end)
+
 function Listener.create(panel)
   local listener = setmetatable({ panel = panel, ticks = 0 }, Listener)
   listeners[panel] = listener
   ecs.event.emit("listener.opened", { panel = panel, mark = "\0\255", note = ecs.handle.new("note", "hello") })
 
   ecs.event.emit("listener.noted")
+  ecs.log.warn("A listener warns.")
 
   -- nothing but the event keeps the note now, and a collection before the delivery does not take it
   collectgarbage()
@@ -90,7 +108,7 @@ function Listener:destroy()
 end
 
 function Listener:saveState()
-  return { ticks = self.ticks, renewed = renewed, noted = noted }
+  return { ticks = self.ticks, renewed = renewed, noted = noted, logged = logged, echoed = echoed }
 end
 
 function Listener:draw(surface)
