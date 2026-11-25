@@ -52,5 +52,11 @@ return {
     -- the TLS server, whose certificate the client trusts, sends back in capitals what the client sent
     waitUntil(test, function() return state().secure == "SECRET" end)
     test.match(state().secure, "SECRET", "the TLS server's answer")
+
+    -- the server on 127.0.0.1 took a free port from 49152 to 65535, which port told, and the client reached it there
+    test.match(state().localPort >= 49152 and state().localPort <= 65535, true, "the free port")
+    waitUntil(test, function() return state().localAnswer == "local" end)
+    test.match(state().localAnswer, "local", "the local server's answer")
+    test.match(type(state().badHost) == "string" and state().badHost ~= "", true, "why a host that does not resolve cannot listen")
   end,
 }

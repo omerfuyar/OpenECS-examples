@@ -64,28 +64,32 @@ function Runner.create(panel)
   local state = setmetatable({ panel = panel, lines = {}, errors = {} }, Runner)
 
   -- run gives a program its input, which sort reads to the end, and waits for its output
-  state.sorted = lines(process.run(shell("sort"), "", "b\na\n"), {})
+  -- the third value is the program's environment: texts NAME=VALUE set beside the tool's own variables, or {} for the tool's alone
+  state.sorted = lines(process.run(shell("sort"), "", {}, "b\na\n"), {})
+  state.greeting = lines(process.run(shell(WINDOWS and "echo %GREETING%" or "echo \"$GREETING\""), "", { "GREETING=hello" }, ""), {})
 
   -- a large input goes while the output is read, as the program's input pipe takes only part of it at a time
-  state.counted = #lines(process.run(shell("sort"), "", ("line\n"):rep(200000)), {})
+  state.counted = #lines(process.run(shell("sort"), "", {}, ("line\n"):rep(200000)), {})
 
   -- start gives a handle of the program; its methods read, write, kill it and tell whether it exited
-  local program, problem = process.start(shell("echo one && echo two && echo three 1>&2"), "")
+  -- it gets a variable too, which the shell writes as the second line
+  local program, problem = process.start(shell(WINDOWS and "echo one && echo %SECOND% && echo three 1>&2" or "echo one && echo \"$SECOND\" && echo three 1>&2"), "",
+    { "SECOND=two" })
   state.program = assert(program, problem)
 
   -- a started program takes input too: write sends it, and closeInput ends it, so sort, which reads to the end, sorts and exits
-  state.sorter = assert(process.start(shell("sort"), ""))
+  state.sorter = assert(process.start(shell("sort"), "", {}))
   state.sortedLater = {}
   state.sorter:write("d\nc\n")
   state.sorter:closeInput()
 
   -- kill stops a program that would run on; with force, at once
   -- the program runs alone, without a shell, so killing it leaves nothing behind
-  state.sleeper = assert(process.start(WINDOWS and { "ping", "-n", "30", "127.0.0.1" } or { "sleep", "30" }, ""))
+  state.sleeper = assert(process.start(WINDOWS and { "ping", "-n", "30", "127.0.0.1" } or { "sleep", "30" }, "", {}))
   state.sleeper:kill(true)
 
   -- a program that cannot start gives nothing and why
-  local missing, why = process.start({ "openecs-no-such-program" }, "")
+  local missing, why = process.start({ "openecs-no-such-program" }, "", {})
   state.missing = missing == nil and type(why) == "string" and why ~= ""
 
   state.timer = ecs.timer.start(0.05, true, function()
@@ -124,7 +128,7 @@ end
 
 -- what the test reads
 function Runner:saveState()
-  return { sorted = self.sorted, counted = self.counted, lines = self.lines, errors = self.errors, code = self.code, sortedLater = self.sortedLater,
+  return { sorted = self.sorted, greeting = self.greeting, counted = self.counted, lines = self.lines, errors = self.errors, code = self.code, sortedLater = self.sortedLater,
     sortCode = self.sortCode, killed = self.killed, missing = self.missing }
 end
 
