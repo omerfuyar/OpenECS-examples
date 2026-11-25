@@ -41,6 +41,7 @@ return {
     os.remove(folder .. "dropped 2.txt")
     os.remove(folder .. "box/inside.txt")
     os.remove(folder .. "box")
+    os.remove(folder .. "zebra crossing on a very long road.txt")
     test.wait(0.3)
 
     -- the panel's rows, below the selector of the tree and the grid: the folder's files by name
@@ -101,6 +102,22 @@ return {
     test.match(notes(), { chosen = "bread.txt" }, "a click on a tile chooses the file")
     test.click(panel.x + 138, panel.y + 110)
     test.match(notes(), { opened = "bread.txt" }, "a double click on a tile opens it")
+    -- a long name is cut with an ellipsis at its tile's width, so nothing is drawn in the gap before the next tile
+    local long = "zebra crossing on a very long road.txt"
+    file = assert(io.open(folder .. long, "wb"))
+    file:write("Long.\n")
+    file:close()
+    test.wait(1)
+    test.move(panel.x + 10, panel.y + panel.height - 10)
+    test.wait()
+    local gap = test.pixel(panel.x + 270, panel.y + 70)
+    for y = panel.y + 70, panel.y + 160 do
+      for x = panel.x + 269, panel.x + 271 do
+        test.match(test.pixel(x, y), gap, ("nothing is drawn between the tiles at %d, %d"):format(x - panel.x, y - panel.y))
+      end
+    end
+    os.remove(folder .. long)
+    test.wait(0.5)
     test.click(panel.x + 30, panel.y + 20)
 
     -- the search field beside the selector shows only the files whose name holds its text, whatever its case
