@@ -26,24 +26,82 @@ return {
     test.call("gallery.next")
     test.match(viewer(), { title = "init.lua" }, "the text")
 
-    -- the file's first line, a comment, is too long for the panel: the rows it wraps into start with a dim mark, grey, where the comment's
-    -- own colour is not; down the first column, past the path above and the comment's first row, a bright grey pixel is the mark
+    -- each line of a text starts with its number, dim and grey, in a column at the left, and the rows that the file's first line, a long
+    -- comment, wraps into show a dim mark there instead. The comment's colour is not grey: its first row finds where the text starts
     local function channels(color)
       return tonumber(color:sub(2, 3), 16), tonumber(color:sub(4, 5), 16), tonumber(color:sub(6, 7), 16)
     end
-    local x = rect.x + 10
-    local panelColor = channels(test.pixel(x, rect.y + 2))
-    local comment, mark
-    for y = rect.y + 4, rect.y + 200 do
+    local function grey(x, y)
       local r, g, b = channels(test.pixel(x, y))
-      local grey = r == g and g == b
-      comment = comment or (not grey and y)
-      if comment and grey and r >= panelColor + 48 then
-        mark = y
+      return r == g and g == b, r
+    end
+    local background = select(2, grey(rect.x + 2, rect.y + 2))
+    local comment, textX
+    for y = rect.y + 4, rect.y + 200, 2 do
+      for x = rect.x + 4, rect.x + 120, 2 do
+        if not grey(x, y) then
+          comment, textX = y, x
+          break
+        end
+      end
+      if comment then
         break
       end
     end
-    assert(comment and mark, "the rows of a wrapped line start with a dim mark")
+    assert(comment, "the comment is drawn")
+    -- its leftmost coloured pixel, on any of its first row's rows of pixels
+    for y = comment, comment + 12 do
+      for x = rect.x + 4, textX - 1 do
+        if not grey(x, y) then
+          textX = x
+          break
+        end
+      end
+    end
+    assert(textX - rect.x >= 20, "the text starts after the numbers' column, at " .. textX - rect.x)
+
+    -- the column, up to a character before the text, holds only grey: each row's ink, a number's or the mark's, is a band of
+    -- rows of pixels, and its picture is where they are bright
+    local left, right = rect.x + 6, textX - 8
+    local bands, band = {}, nil
+    for y = rect.y + 4, math.min(rect.y + rect.height - 4, comment + 240) do
+      local pixels = {}
+      for x = left, right do
+        local isGrey, level = grey(x, y)
+        assert(isGrey, ("the numbers' column holds only grey, not at %d, %d"):format(x - rect.x, y - rect.y))
+        pixels[#pixels + 1] = level >= background + 48 and "#" or "."
+      end
+      local picture = table.concat(pixels)
+      if picture:find("#", 1, true) then
+        band = band or { top = y, rows = {} }
+        band.rows[#band.rows + 1] = picture
+      elseif band then
+        band.bottom, band.picture = y, table.concat(band.rows, "\n")
+        bands[#bands + 1] = band
+        band = nil
+      end
+    end
+
+    -- the comment's first row shows 1, its next rows the mark, each the same, then the next lines show 2, 3 and on, each another picture
+    local first
+    for i, each in ipairs(bands) do
+      if each.top <= comment and comment < each.bottom then
+        first = i
+      end
+    end
+    assert(first, "the comment's row has a number")
+    local mark = bands[first + 1]
+    assert(mark and mark.picture ~= bands[first].picture, "the comment's next row shows the mark, not a number")
+    local after = first + 2
+    while bands[after] and bands[after].picture == mark.picture do
+      after += 1
+    end
+    local seen = { [bands[first].picture] = true, [mark.picture] = true }
+    for i = after, after + 4 do
+      assert(bands[i], "the lines after the comment have numbers")
+      assert(not seen[bands[i].picture], "each line after the comment shows its own number")
+      seen[bands[i].picture] = true
+    end
 
     -- the title bar shows the tool's name, the core's menus that have functions here, then the gallery's buttons
     local function bar()
