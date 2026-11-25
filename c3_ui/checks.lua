@@ -19,12 +19,21 @@ return function(test, number, title)
   test.click(panel.x + 5, panel.y + 5)
   test.match(test.panel(number), { title = title .. " (2)" })
 
-  -- the button's tooltip shows when the pointer rests on it, and goes when the pointer leaves
+  -- the button's tooltip shows in a popup when the pointer rests on it, and goes when the pointer leaves
   test.move(at("button"))
   test.wait(0.8)
   test.match(state().tip, "button", "the tooltip")
+  test.match((pcall(test.popup, 1)), true, "the tooltip's popup")
   test.move(panel.x + 5, panel.y + 5)
   test.match(state().tip, nil, "the tooltip gone")
+  test.match((pcall(test.popup, 1)), false, "the tooltip's popup closed")
+
+  -- the pointer goes through a tooltip, so a click on the button counts while its tooltip shows, and hides the tooltip
+  test.move(at("button"))
+  test.wait(0.8)
+  test.click(at("button"))
+  test.match(state().clicks, 3, "a click while the tooltip shows")
+  test.match(state().tip, nil, "the tooltip gone at a click")
 
   -- a click on the first tab gives the tabs the keys, and Right and Left choose the next and the one before
   test.click(at("tab", 0.02))
@@ -66,6 +75,24 @@ return function(test, number, title)
   test.key("N")
   test.key("Return")
   test.match(state().fruit, "Banana", "the dropdown's search")
+
+  -- a dropdown of more choices than the window holds shows no more than its room, inside the window, and scrolls: the wheel moves
+  -- it three rows on, so its first row is the fourth choice; Down past the last row shown scrolls too
+  local box = panel
+  test.click(at("item"))
+  local long = test.popup(1)
+  local row = long.height / math.floor(long.height / (menu.height / 3) + 0.5)
+  test.match({ long.y >= 0, long.y + long.height <= box.y + box.height, long.height < 40 * row }, { true, true, true },
+    "the long dropdown keeps inside the window")
+  test.wheel(long.x + 10, long.y + 10, -1)
+  test.click(long.x + 10, long.y + row / 2)
+  test.match(state().item, "Item 4", "the wheel scrolls the long dropdown")
+  test.click(at("item"))
+  for _ = 1, 39 do
+    test.key("Down")
+  end
+  test.key("Return")
+  test.match(state().item, "Item 40", "Down scrolls to the last choice")
 
   -- the number field keeps its number from 0 to 10; Up and Down change it by 1, a text that is not a number is not taken, and a sum is
   test.click(at("count"))
@@ -172,7 +199,7 @@ return function(test, number, title)
   test.key("Escape")
   test.key("Tab")
   test.key("Space")
-  test.match(state().clicks, 3, "the keys")
+  test.match(state().clicks, 4, "the keys")
 
   -- a path is typed as a field is, and Return gives it; its button would open the file dialog
   test.click(at("file", 0.1))
@@ -191,6 +218,11 @@ return function(test, number, title)
   -- the tags' row wraps in its narrow column: the first two share a line, and the last is on a line below
   local tags = state().rects
   test.match({ tags["tag:2"].y == tags["tag:1"].y, tags["tag:6"].y > tags["tag:1"].y }, { true, true }, "the wrapped row")
+  -- a text with maxLines = 2 takes two lines, as a text of two lines does, however long it is; the last ends with an ellipsis, which makes
+  -- it wider than the same lines without one
+  local lines = state().rects.lines
+  test.match({ tags.cut.height, tags.cutLines.height, tags.cutSpans.height }, { lines.height, lines.height, lines.height }, "the texts cut to two lines")
+  test.match({ tags.cutLines.width > lines.width, tags.cutSpans.width > lines.width }, { true, true }, "the ellipsis of the cut texts")
   local _, srcY = at("tree:src")
   test.click(panel.x + state().rects["tree:src"].x + 14, srcY)
   test.match(state().open, { src = true }, "the opened node")

@@ -1,7 +1,7 @@
 -- the console keeps the entries that a plugin adds, and stacks a repeated one; a click on the place that an entry names runs
 -- the command of console.editor; a click chooses an entry, a double click goes to what it is about, and Ctrl+C and its menu copy
--- it; the Show dropdown and the search filter the entries at once, and Clear empties the console; every line of the log comes in,
--- and a source's checkbox hides its entries
+-- it; the Show dropdown, which starts from the setting console.show, and the search filter the entries at once, and Clear empties
+-- the console; every line of the log comes in, and a source's checkbox hides its entries
 return {
   preset = "preset.lua",
   run = function(test)
@@ -16,6 +16,7 @@ return {
     local function state()
       return test.panel(runner).state
     end
+    test.match(test.panel(logId).state.show, "info", "the preset's console.show starts the console at Info and up")
     local mark = state().folder .. "main.lua.3"
     os.remove(mark)
 
@@ -86,7 +87,7 @@ return {
     test.match(state(), { clipboard = "Running main.lua\nstarted" }, "the menu's Copy copies the entry")
 
     -- the Show dropdown shows the entries from a level up, at once, which the panel's state keeps: Errors hides the info's entry,
-    -- and Info and up, the default, shows it again
+    -- and Info and up shows it again; the setting console.show stays as the preset set it
     local function show(choice)
       test.click(log.x + log.width - 160, log.y + 16)
       local levels = test.popup(1)
@@ -98,6 +99,7 @@ return {
     local all = test.panel(logId).state.shown
     show(1)
     test.match(test.panel(logId).state.show, "error", "Errors is chosen")
+    test.match(test.setting("console.show"), "Info and up", "a console's Show does not change the setting")
     assert(test.panel(logId).state.shown < all, "Errors hides the info's entry, at once")
     show(3)
     test.match(test.panel(logId).state, { show = "info", shown = all }, "and Info and up shows every entry again")
