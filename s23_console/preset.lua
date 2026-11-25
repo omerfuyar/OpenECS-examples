@@ -9,7 +9,8 @@ return {
   depends = { runner = "0.1", console = "0.1" },
   pluginsDir = ".",
   -- the command that opens a file at a line; here it only marks the file, so the test sees that a click ran it
-  settings = { ["console.editor"] = "touch {file}.{line}" },
+  -- and a new console shows Info and up, as the program's prints are info
+  settings = { ["console.editor"] = "touch {file}.{line}", ["console.show"] = "Info and up" },
   workspaces = {
     {
       name = "Main",
