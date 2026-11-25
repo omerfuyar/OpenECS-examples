@@ -243,6 +243,13 @@ return function(test, number, title)
     local icon = state().rects["icon:" .. name]
     test.match(icon ~= nil and math.abs(icon.width - icon.height) <= 1 and icon.height > 8, true, "the icon " .. name)
   end
+  -- a button's label of an icon and words is wider than the words by the icon, and its click locks the file, as the mark's does
+  local button = state().rects.lockButton
+  test.match(button ~= nil and button.width > button.height * 2, true, "a label of an icon and words")
+  test.click(at("lockButton"))
+  test.match(state().locked, true, "the button with an icon locks the file")
+  test.click(at("lockButton"))
+  test.match(state().locked, false, "and unlocks it")
 
   -- the Table tab: the rows are sorted by name, a click on a title sorts by its column, and a second click reverses the order
   test.click(at("tab", 0.02))

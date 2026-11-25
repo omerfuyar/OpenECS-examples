@@ -39,7 +39,7 @@ static const FruitRow FRUIT_ROWS[] = {{"Cherry", 4.5, 12, "4.5", "12"}, {"Apple"
 
 /// @brief The elements the test clicks, by id; their rectangles are saved, so the test finds them.
 static const char *const IDS[] = {"button", "tab", "sound", "volume", "size", "fruit", "count", "item:2", "name", "note", "beside", "tree:src",
-                                  "tree:main", "tree:lib", "tree:f100", "tree:readme:star", "tree:readme:lock", "icon:eye", "icon:eyeClosed", "icon:lock", "icon:lockOpen", "table:header", "table:1", "table:2", "table:title:name", "table:title:price", "about",
+                                  "tree:main", "tree:lib", "tree:f100", "tree:readme:star", "tree:readme:lock", "icon:eye", "icon:eyeClosed", "icon:lock", "icon:lockOpen", "lockButton", "table:header", "table:1", "table:2", "table:title:name", "table:title:price", "about",
                                   "tint", "colors:heading", "tag:1", "tag:2", "tag:6", "file", "list"};
 
 static const char *const NOTE = "Tab gives the keys to the next control and Shift+Tab to the one before. Return or Space presses the control that has them, "
@@ -177,10 +177,10 @@ static void DescribeTree(Controls *controls)
     }
 
     const UiTreeNode src[] = {{.id = "main", .label = "main.c"}, {.id = "lib", .label = "lib", .children = lib, .open = &controls->libOpen}, {0}};
-    // a node's marks are short texts or icons at the end of its row, on or off; README.md has a star, and a padlock that shows locked or open,
+    // a node's marks are short labels at the end of its row, on or off; README.md has a star, and a padlock that shows locked or open,
     // which UI_TREE turns in the panel's bools
-    const UiTreeMark marks[] = {{.id = "star", .text = "Star", .on = &controls->starred, .tooltip = "A click stars the file, or takes the star off"},
-                                {.id = "lock", .icon = controls->locked ? "lock" : "lockOpen", .on = &controls->locked, .tooltip = "A click locks the file, or unlocks it"},
+    const UiTreeMark marks[] = {{.id = "star", .label = "Star", .on = &controls->starred, .tooltip = "A click stars the file, or takes the star off"},
+                                {.id = "lock", .spans = UI_LABEL({.icon = controls->locked ? "lock" : "lockOpen"}), .on = &controls->locked, .tooltip = "A click locks the file, or unlocks it"},
                                 {0}};
     const UiTreeNode nodes[] = {{.id = "src", .label = "src", .children = src, .open = &controls->srcOpen}, {.id = "readme", .label = "README.md", .marks = marks}, {0}};
 
@@ -202,6 +202,12 @@ static void DescribeTree(Controls *controls)
             UI_ICON("eyeClosed", .id = "icon:eyeClosed", .tooltip = "Hidden");
             UI_ICON("lock", .id = "icon:lock", .color = "accent", .tooltip = "Locked");
             UI_ICON("lockOpen", .id = "icon:lockOpen", .tooltip = "Open");
+
+            // a label is a text, or spans of words and pictures, wherever one shows: a button's, a tree's node and mark, a section's title
+            if (UI_BUTTON("lockButton", .spans = UI_LABEL({.icon = controls->locked ? "lock" : "lockOpen"}, {.text = controls->locked ? " Unlock" : " Lock"})))
+            {
+                controls->locked = !controls->locked;
+            }
         }
 
         UI_TREE(&controls->node, nodes, .id = "tree", .height = 110, .grow = UI_FIXED, .border = "frame");

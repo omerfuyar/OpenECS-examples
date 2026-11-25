@@ -46,12 +46,12 @@ end
 local Controls = {}
 Controls.__index = Controls
 
--- the tree's nodes: a node's marks are short texts or icons at the end of its row, on or off; README.md has a star, and a padlock that
+-- the tree's nodes: a node's marks are short labels at the end of its row, on or off; README.md has a star, and a padlock that
 -- shows locked or open, which the panel keeps
 function Controls:nodesOf()
   NODES[2].marks = {
-    { id = "star", text = "Star", on = self.starred == true, tooltip = "A click stars the file, or takes the star off" },
-    { id = "lock", icon = self.locked and "lock" or "lockOpen", on = self.locked == true, tooltip = "A click locks the file, or unlocks it" },
+    { id = "star", label = "Star", on = self.starred == true, tooltip = "A click stars the file, or takes the star off" },
+    { id = "lock", label = { ui.icon(self.locked and "lock" or "lockOpen") }, on = self.locked == true, tooltip = "A click locks the file, or unlocks it" },
   }
   return NODES
 end
@@ -63,7 +63,7 @@ local NOTE = "Tab gives the keys to the next control and Shift+Tab to the one be
 
 -- the elements the test clicks, by id; their rectangles are saved, so the test finds them
 local IDS = { "button", "tab", "sound", "volume", "size", "fruit", "count", "item:2", "name", "note", "beside", "tree:src", "tree:main", "tree:readme:star",
-  "tree:readme:lock", "icon:eye", "icon:eyeClosed", "icon:lock", "icon:lockOpen",
+  "tree:readme:lock", "icon:eye", "icon:eyeClosed", "icon:lock", "icon:lockOpen", "lockButton",
   "tree:lib", "tree:f100", "table:header", "table:1", "table:2", "table:title:name", "table:title:price", "graph", "about",
   "tint", "colors:heading", "tag:1", "tag:2", "tag:6", "file", "list" }
 
@@ -226,6 +226,9 @@ function Controls:draw(surface)
         ui.icon("eyeClosed", { id = "icon:eyeClosed", tooltip = "Hidden" }),
         ui.icon("lock", { id = "icon:lock", color = "accent", tooltip = "Locked" }),
         ui.icon("lockOpen", { id = "icon:lockOpen", tooltip = "Open" }),
+        -- a label is a text, or spans of words and pictures, wherever one shows: a button's, a tree's node and mark, a section's title
+        ui.button({ ui.icon(self.locked and "lock" or "lockOpen"), self.locked and " Unlock" or " Lock" },
+          { id = "lockButton", onClick = function() self.locked = not self.locked end }),
       }),
       -- a tree is given every node, and builds only the rows in view and near it
       ui.tree(self:nodesOf(),
