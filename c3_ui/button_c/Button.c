@@ -40,7 +40,7 @@ static const FruitRow FRUIT_ROWS[] = {{"Cherry", 4.5, 12, "4.5", "12"}, {"Apple"
 /// @brief The elements the test clicks, by id; their rectangles are saved, so the test finds them.
 static const char *const IDS[] = {"button", "tab", "sound", "volume", "size", "fruit", "count", "item:2", "name", "note", "beside", "tree:src",
                                   "tree:main", "tree:lib", "tree:f100", "tree:readme:star", "tree:readme:lock", "icon:eye", "icon:eyeClosed", "icon:lock", "icon:lockOpen", "lockButton", "table:header", "table:1", "table:2", "table:title:name", "table:title:price", "about",
-                                  "tint", "colors:heading", "tag:1", "tag:2", "tag:6", "file", "list"};
+                                  "tint", "colors:heading", "tag:1", "tag:2", "tag:6", "file", "list", "cut", "lines", "cutLines", "cutSpans"};
 
 static const char *const NOTE = "Tab gives the keys to the next control and Shift+Tab to the one before. Return or Space presses the control that has them, "
                                 "Left and Right change a selector or a slider, and Escape takes the keys away. A field takes typing as soon as it has the keys. "
@@ -223,6 +223,17 @@ static void DescribeTree(Controls *controls)
                     (void)UI_BUTTON(TAGS[i], .id = TAG_IDS[i]);
                 }
             }
+        }
+
+        // a text with maxLines wraps, and shows at most that many lines; the last one ends with an ellipsis when more follow, as a long
+        // file's name does under its icon. Spans do the same
+        UI_COLUMN(.width = 160)
+        {
+            UI_TEXT(NOTE, .id = "cut", .maxLines = 2);
+            UI_TEXT("Lua\nLua", .id = "lines");
+            UI_TEXT("Lua\nLua\nC", .id = "cutLines", .maxLines = 2);
+            const UiSpan cutSpans[] = {{.text = "Lua\n"}, {.text = "Lua\nC"}};
+            (void)UI_SPANS(cutSpans, COUNT(cutSpans), .id = "cutSpans", .maxLines = 2);
         }
     }
 }

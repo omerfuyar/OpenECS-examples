@@ -102,7 +102,8 @@ return {
     test.match(notes(), { chosen = "bread.txt" }, "a click on a tile chooses the file")
     test.click(panel.x + 138, panel.y + 110)
     test.match(notes(), { opened = "bread.txt" }, "a double click on a tile opens it")
-    -- a long name is cut with an ellipsis at its tile's width, so nothing is drawn in the gap before the next tile
+    -- a long name wraps onto a second line, and is cut there with an ellipsis at its tile's width, so nothing is drawn in the gap before the
+    -- next tile
     local long = "zebra crossing on a very long road.txt"
     file = assert(io.open(folder .. long, "wb"))
     file:write("Long.\n")
@@ -116,6 +117,14 @@ return {
         test.match(test.pixel(x, y), gap, ("nothing is drawn between the tiles at %d, %d"):format(x - panel.x, y - panel.y))
       end
     end
+    -- the long name's tile is the fourth, and its name's second line is drawn below the first
+    local drawn = false
+    for y = panel.y + 144, panel.y + 154 do
+      for x = panel.x + 276, panel.x + 352 do
+        drawn = drawn or test.pixel(x, y) ~= gap
+      end
+    end
+    test.match(drawn, true, "the long name's second line")
     os.remove(folder .. long)
     test.wait(0.5)
     test.click(panel.x + 30, panel.y + 20)
