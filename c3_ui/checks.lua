@@ -67,6 +67,24 @@ return function(test, number, title)
   test.key("Return")
   test.match(state().fruit, "Banana", "the dropdown's search")
 
+  -- a dropdown of more choices than the window holds shows no more than its room, inside the window, and scrolls: the wheel moves
+  -- it three rows on, so its first row is the fourth choice; Down past the last row shown scrolls too
+  local box = panel
+  test.click(at("item"))
+  local long = test.popup(1)
+  local row = long.height / math.floor(long.height / (menu.height / 3) + 0.5)
+  test.match({ long.y >= 0, long.y + long.height <= box.y + box.height, long.height < 40 * row }, { true, true, true },
+    "the long dropdown keeps inside the window")
+  test.wheel(long.x + 10, long.y + 10, -1)
+  test.click(long.x + 10, long.y + row / 2)
+  test.match(state().item, "Item 4", "the wheel scrolls the long dropdown")
+  test.click(at("item"))
+  for _ = 1, 39 do
+    test.key("Down")
+  end
+  test.key("Return")
+  test.match(state().item, "Item 40", "Down scrolls to the last choice")
+
   -- the number field keeps its number from 0 to 10; Up and Down change it by 1, a text that is not a number is not taken, and a sum is
   test.click(at("count"))
   test.text("7")

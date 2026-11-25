@@ -13,6 +13,11 @@ local LABELED = { gap = 8 }
 local STYLES = ui.styles()
 
 local FRUITS = { "Apple", "Banana", "Cherry" }
+-- more choices than a window holds, so the dropdown's popup scrolls
+local ITEMS = {}
+for i = 1, 40 do
+  ITEMS[i] = "Item " .. i
+end
 local SIZES = { "S", "M", "L" }
 local TABS = { "Options", "About", "Table" }
 const ITEM_COUNT = 40
@@ -62,7 +67,7 @@ local NOTE = "Tab gives the keys to the next control and Shift+Tab to the one be
   "In a field, Home and End move the cursor to its start and end, Shift with them selects, and Ctrl+C, Ctrl+X and Ctrl+V copy, cut and paste."
 
 -- the elements the test clicks, by id; their rectangles are saved, so the test finds them
-local IDS = { "button", "tab", "sound", "volume", "size", "fruit", "count", "item:2", "name", "note", "beside", "tree:src", "tree:main", "tree:readme:star",
+local IDS = { "button", "tab", "sound", "volume", "size", "fruit", "item", "count", "item:2", "name", "note", "beside", "tree:src", "tree:main", "tree:readme:star",
   "tree:readme:lock", "icon:eye", "icon:eyeClosed", "icon:lock", "icon:lockOpen", "lockButton",
   "tree:lib", "tree:f100", "table:header", "table:1", "table:2", "table:title:name", "table:title:price", "graph", "about",
   "tint", "colors:heading", "tag:1", "tag:2", "tag:6", "file", "list" }
@@ -106,6 +111,7 @@ local START = {
   kept = 0.5,
   size = 2,
   fruit = 1,
+  item = 1,
   count = 3,
   tab = 1,
   selected = 1,
@@ -305,6 +311,8 @@ function Controls:draw(surface)
         { ui.text("Size"), ui.selector(self.size, SIZES, { id = "size", onSelect = set("size") }) }),
       ui.row({ style = LABELED },
         { ui.text("Fruit"), ui.dropdown(self.fruit, FRUITS, { id = "fruit", onSelect = set("fruit") }) }),
+      ui.row({ style = LABELED },
+        { ui.text("Item"), ui.dropdown(self.item, ITEMS, { id = "item", onSelect = set("item") }) }),
       -- a number field takes a number from min to max: Return gives what is typed to onSubmit, and Up and Down change it by step;
       -- onChange would get the number at each edit
       ui.row({ style = LABELED },
@@ -371,6 +379,7 @@ function Controls:saveState()
     dropped = self.dropped,
     size = SIZES[self.size],
     fruit = FRUITS[self.fruit],
+    item = ITEMS[self.item],
     count = self.count,
     tab = TABS[self.tab],
     tip = ui.tooltip(self.panel),
