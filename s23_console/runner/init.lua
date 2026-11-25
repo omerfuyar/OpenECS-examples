@@ -1,7 +1,8 @@
 -- A runner built on the console: the console plugin keeps the entries that plugins add, each in a box of its level's colour,
 -- stacks an entry that repeats the one before it, shows the links that a plugin gives an entry, and opens the file that an
 -- entry names in the user's code editor, with the command of its setting console.editor. Each entry names its source: here
--- "program" for what the program prints, and the plugin of each line of the log that the console shows.
+-- "program" for what the program prints, and the plugin of each line of the log, which the console takes in whole. Each console
+-- panel's Show dropdown shows the entries from a level up, at once.
 
 local ecs = require("ecs")
 local console = require("console")
@@ -19,8 +20,9 @@ local links = { { text = "Show", tooltip = "Show what raised the error", onClick
 end } }
 
 local function run()
-  -- a run clears the console first, while its setting console.clearOnRun is on, as it is by default
-  console.run()
+  -- the runner clears the console when a run starts: whether a tool clears it is the tool's own choice, as the console knows
+  -- nothing of runs
+  console.clear()
   -- an entry may hold many lines; one such as "main.lua:3" names a file and a line, and the same entry twice in a row stacks
   console.add("Running main.lua\nstarted", "info", nil, "program")
   console.add("main.lua:3: attempt to call a nil value", "error", links, "program")
@@ -33,7 +35,7 @@ ecs.service.register({
   forget = { sig = "void()", doc = "Empty the clipboard", fn = function()
     ecs.clipboard.setText("")
   end },
-  warn = { sig = "void()", doc = "Log a warning, which the console shows from the level of its setting console.logLevel up", fn = function()
+  warn = { sig = "void()", doc = "Log a warning, which the console takes in with every line of the log", fn = function()
     ecs.log.warn("The runner warns.")
   end },
   many = { sig = "void()", doc = "Add 500 entries", fn = function()
