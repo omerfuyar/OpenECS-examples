@@ -19,12 +19,21 @@ return function(test, number, title)
   test.click(panel.x + 5, panel.y + 5)
   test.match(test.panel(number), { title = title .. " (2)" })
 
-  -- the button's tooltip shows when the pointer rests on it, and goes when the pointer leaves
+  -- the button's tooltip shows in a popup when the pointer rests on it, and goes when the pointer leaves
   test.move(at("button"))
   test.wait(0.8)
   test.match(state().tip, "button", "the tooltip")
+  test.match((pcall(test.popup, 1)), true, "the tooltip's popup")
   test.move(panel.x + 5, panel.y + 5)
   test.match(state().tip, nil, "the tooltip gone")
+  test.match((pcall(test.popup, 1)), false, "the tooltip's popup closed")
+
+  -- the pointer goes through a tooltip, so a click on the button counts while its tooltip shows, and hides the tooltip
+  test.move(at("button"))
+  test.wait(0.8)
+  test.click(at("button"))
+  test.match(state().clicks, 3, "a click while the tooltip shows")
+  test.match(state().tip, nil, "the tooltip gone at a click")
 
   -- a click on the first tab gives the tabs the keys, and Right and Left choose the next and the one before
   test.click(at("tab", 0.02))
@@ -172,7 +181,7 @@ return function(test, number, title)
   test.key("Escape")
   test.key("Tab")
   test.key("Space")
-  test.match(state().clicks, 3, "the keys")
+  test.match(state().clicks, 4, "the keys")
 
   -- a path is typed as a field is, and Return gives it; its button would open the file dialog
   test.click(at("file", 0.1))
