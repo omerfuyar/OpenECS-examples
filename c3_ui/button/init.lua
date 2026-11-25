@@ -46,9 +46,13 @@ end
 local Controls = {}
 Controls.__index = Controls
 
--- the tree's nodes: a node's marks are short texts at the end of its row, on or off, and README.md has a star, which the panel keeps
+-- the tree's nodes: a node's marks are short texts or icons at the end of its row, on or off; README.md has a star, and a padlock that
+-- shows locked or open, which the panel keeps
 function Controls:nodesOf()
-  NODES[2].marks = { { id = "star", text = "Star", on = self.starred == true, tooltip = "A click stars the file, or takes the star off" } }
+  NODES[2].marks = {
+    { id = "star", text = "Star", on = self.starred == true, tooltip = "A click stars the file, or takes the star off" },
+    { id = "lock", icon = self.locked and "lock" or "lockOpen", on = self.locked == true, tooltip = "A click locks the file, or unlocks it" },
+  }
   return NODES
 end
 
@@ -59,6 +63,7 @@ local NOTE = "Tab gives the keys to the next control and Shift+Tab to the one be
 
 -- the elements the test clicks, by id; their rectangles are saved, so the test finds them
 local IDS = { "button", "tab", "sound", "volume", "size", "fruit", "count", "item:2", "name", "note", "beside", "tree:src", "tree:main", "tree:readme:star",
+  "tree:readme:lock", "icon:eye", "icon:eyeClosed", "icon:lock", "icon:lockOpen",
   "tree:lib", "tree:f100", "table:header", "table:1", "table:2", "table:title:name", "table:title:price", "graph", "about",
   "tint", "colors:heading", "tag:1", "tag:2", "tag:6", "file", "list" }
 
@@ -215,6 +220,13 @@ function Controls:draw(surface)
       -- a text of spans mixes styles; a click on a span with a link gives the link to onLink
       ui.text({ "The controls of ", { text = "ui", bold = true }, ", each changing the panel's self: ", { text = "ui's design", link = "https://github.com/omerfuyar/OpenECS-std/blob/dev/DESIGN.md" } },
         { id = "about", color = "textDim", onLink = set("link") }),
+      -- icons are small pictures drawn from shapes, a line of text high, in a colour
+      ui.row({ gap = 8 }, {
+        ui.icon("eye", { id = "icon:eye", tooltip = "Shown" }),
+        ui.icon("eyeClosed", { id = "icon:eyeClosed", tooltip = "Hidden" }),
+        ui.icon("lock", { id = "icon:lock", color = "accent", tooltip = "Locked" }),
+        ui.icon("lockOpen", { id = "icon:lockOpen", tooltip = "Open" }),
+      }),
       -- a tree is given every node, and builds only the rows in view and near it
       ui.tree(self:nodesOf(),
         {
@@ -253,8 +265,12 @@ function Controls:draw(surface)
             self.open[id] = open or nil
           end,
           -- a click on a mark gives its node, the mark and its new self, and does not choose the node
-          onMark = function(_, _, on)
-            self.starred = on
+          onMark = function(_, mark, on)
+            if mark == "lock" then
+              self.locked = on
+            else
+              self.starred = on
+            end
           end,
           -- a right click on a node chooses it, unless it is chosen, and gives its id, as a menu about it would take it
           onMenu = function(id)
@@ -363,6 +379,7 @@ function Controls:saveState()
     nodes = self.nodes,
     menuNode = self.menuNode,
     starred = self.starred == true,
+    locked = self.locked == true,
     open = self.open,
     sort = self.sort,
     ascending = self.ascending,

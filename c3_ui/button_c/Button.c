@@ -39,7 +39,7 @@ static const FruitRow FRUIT_ROWS[] = {{"Cherry", 4.5, 12, "4.5", "12"}, {"Apple"
 
 /// @brief The elements the test clicks, by id; their rectangles are saved, so the test finds them.
 static const char *const IDS[] = {"button", "tab", "sound", "volume", "size", "fruit", "count", "item:2", "name", "note", "beside", "tree:src",
-                                  "tree:main", "tree:lib", "tree:f100", "tree:readme:star", "table:header", "table:1", "table:2", "table:title:name", "table:title:price", "about",
+                                  "tree:main", "tree:lib", "tree:f100", "tree:readme:star", "tree:readme:lock", "icon:eye", "icon:eyeClosed", "icon:lock", "icon:lockOpen", "table:header", "table:1", "table:2", "table:title:name", "table:title:price", "about",
                                   "tint", "colors:heading", "tag:1", "tag:2", "tag:6", "file", "list"};
 
 static const char *const NOTE = "Tab gives the keys to the next control and Shift+Tab to the one before. Return or Space presses the control that has them, "
@@ -67,6 +67,7 @@ typedef struct Controls
     bool srcOpen;     // the tree's open nodes
     bool libOpen;
     bool starred;     // whether README.md's mark is on
+    bool locked;      // whether README.md's padlock is locked
     const char *sort; // the id of the column the rows are sorted by
     bool ascending;
     i32 row;       // the table's chosen row, from 1, or 0 for none
@@ -176,9 +177,12 @@ static void DescribeTree(Controls *controls)
     }
 
     const UiTreeNode src[] = {{.id = "main", .label = "main.c"}, {.id = "lib", .label = "lib", .children = lib, .open = &controls->libOpen}, {0}};
-    // a node's marks are short texts at the end of its row, on or off; README.md has a star, which UI_TREE turns in the panel's bool
-    const UiTreeMark star[] = {{.id = "star", .text = "Star", .on = &controls->starred, .tooltip = "A click stars the file, or takes the star off"}, {0}};
-    const UiTreeNode nodes[] = {{.id = "src", .label = "src", .children = src, .open = &controls->srcOpen}, {.id = "readme", .label = "README.md", .marks = star}, {0}};
+    // a node's marks are short texts or icons at the end of its row, on or off; README.md has a star, and a padlock that shows locked or open,
+    // which UI_TREE turns in the panel's bools
+    const UiTreeMark marks[] = {{.id = "star", .text = "Star", .on = &controls->starred, .tooltip = "A click stars the file, or takes the star off"},
+                                {.id = "lock", .icon = controls->locked ? "lock" : "lockOpen", .on = &controls->locked, .tooltip = "A click locks the file, or unlocks it"},
+                                {0}};
+    const UiTreeNode nodes[] = {{.id = "src", .label = "src", .children = src, .open = &controls->srcOpen}, {.id = "readme", .label = "README.md", .marks = marks}, {0}};
 
     UI_COLUMN(.gap = 8)
     {
@@ -189,6 +193,15 @@ static void DescribeTree(Controls *controls)
         if (link != nullptr)
         {
             snprintf(controls->link, sizeof(controls->link), "%s", link);
+        }
+
+        // icons are small pictures drawn from shapes, a line of text high, in a colour
+        UI_ROW(.gap = 8)
+        {
+            UI_ICON("eye", .id = "icon:eye", .tooltip = "Shown");
+            UI_ICON("eyeClosed", .id = "icon:eyeClosed", .tooltip = "Hidden");
+            UI_ICON("lock", .id = "icon:lock", .color = "accent", .tooltip = "Locked");
+            UI_ICON("lockOpen", .id = "icon:lockOpen", .tooltip = "Open");
         }
 
         UI_TREE(&controls->node, nodes, .id = "tree", .height = 110, .grow = UI_FIXED, .border = "frame");
@@ -438,6 +451,7 @@ static SHUResult ControlsSaveState(void *data, ECSValue *retSavedState)
     SHU_ReturnResult(SetBool(retSavedState, "colors", state->colors));
     SHU_ReturnResult(SetString(retSavedState, "node", state->node));
     SHU_ReturnResult(SetBool(retSavedState, "starred", state->starred));
+    SHU_ReturnResult(SetBool(retSavedState, "locked", state->locked));
     SHU_ReturnResult(SetString(retSavedState, "sort", state->sort));
     SHU_ReturnResult(SetBool(retSavedState, "ascending", state->ascending));
 

@@ -231,6 +231,18 @@ return function(test, number, title)
   test.match({ state().starred, state().node }, { true, "main" }, "a click turns a mark on, and chooses no node")
   test.click(at("tree:readme:star"))
   test.match(state().starred, false, "and another turns it off")
+  -- its second mark is an icon, a padlock, as wide as it is high: a click locks the file and leaves the star, and another opens it
+  local lock = state().rects["tree:readme:lock"]
+  test.match(lock ~= nil and lock.width <= lock.height + 1, true, "an icon mark is a square")
+  test.click(at("tree:readme:lock"))
+  test.match({ state().locked, state().starred, state().node }, { true, false, "main" }, "a click on the icon locks the file")
+  test.click(at("tree:readme:lock"))
+  test.match(state().locked, false, "and another opens it")
+  -- each icon is a square a line of text high
+  for _, name in ipairs({ "eye", "eyeClosed", "lock", "lockOpen" }) do
+    local icon = state().rects["icon:" .. name]
+    test.match(icon ~= nil and math.abs(icon.width - icon.height) <= 1 and icon.height > 8, true, "the icon " .. name)
+  end
 
   -- the Table tab: the rows are sorted by name, a click on a title sorts by its column, and a second click reverses the order
   test.click(at("tab", 0.02))
