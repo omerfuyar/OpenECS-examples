@@ -1,6 +1,9 @@
 -- the settings window changes the theme: "system" follows the system, and "dark" and "light" choose one; the colours follow it
 
 local LIGHT_BACKGROUND = "#A3A3A3"
+-- errors and warnings have colours of their own, readable on each theme's panels
+local DARK_ERROR, DARK_WARNING = "#F07178", "#E5C07B"
+local LIGHT_ERROR, LIGHT_WARNING = "#A1231B", "#7A5200"
 
 -- the settings window's panel, if it is open
 local function window(test)
@@ -15,6 +18,7 @@ return {
   preset = "preset.lua",
   run = function(test)
     test.match(test.setting("ecs.theme"), "system", "the theme at start")
+    test.match({ test.setting("ecs.colorError"), test.setting("ecs.colorWarning") }, { DARK_ERROR, DARK_WARNING }, "the dark theme's error and warning")
 
     test.key("Alt+W")
     test.key(",")
@@ -34,5 +38,6 @@ return {
     test.key("Right")
     test.match(test.setting("ecs.theme"), "light", "the theme after two steps")
     test.match(test.setting("ecs.colorBackground"), LIGHT_BACKGROUND, "the light theme's background")
+    test.match({ test.setting("ecs.colorError"), test.setting("ecs.colorWarning") }, { LIGHT_ERROR, LIGHT_WARNING }, "the light theme's error and warning")
   end,
 }
