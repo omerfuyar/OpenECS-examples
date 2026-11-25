@@ -48,13 +48,25 @@ return {
     test.key(".")
     local list = assert(find(test, "panels.list"), "the panel list is open")
 
-    -- the types are listed by plugin, then by title, and the list leaves itself out: the launcher's list, settings' window, then shapes' frame and square
+    -- the types are listed by plugin, then by title, and the list leaves itself out: the launcher's list, the blank panel, settings' window,
+    -- then shapes' frame and square
     test.match(list.state.selected, "launcher.list", "the first type")
+    test.key("Down")
+    test.match(find(test, "panels.list").state.selected, "panels.blank", "after Down")
+
+    -- Return opens a panel of the chosen type in the group of the panel that had the focus: a blank panel, which holds a place in the
+    -- layout and draws the theme's panel colour
+    test.key("Return")
+    local blank = assert(find(test, "panels.blank"), "the blank panel opened")
+    local rect = test.rect(blank.id)
+    test.match(test.pixel(rect.x + 8, rect.y + 8), test.setting("ecs.colorPanel"), "the blank panel's colour")
+
+    -- the list keeps the type it chose; a type chosen now opens where the blank panel is
+    test.key("Alt+W")
+    test.key(".")
     test.key("Down")
     test.key("Down")
     test.match(find(test, "panels.list").state.selected, "shapes.frame", "after Down twice")
-
-    -- Return opens a panel of the chosen type in the group of the panel that had the focus
     test.key("Return")
     test.match(find(test, "shapes.frame"), { type = "shapes.frame" }, "the frame opened")
 
