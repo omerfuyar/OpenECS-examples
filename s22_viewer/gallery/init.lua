@@ -1,6 +1,4 @@
--- A gallery of its own files, built on the viewer: the viewer plugin shows a file as what it is, with the standard
--- loaders, so the gallery only names the file. An image fills the panel, a sound gets Play and Stop, and a text shows
--- in syntax's colours.
+-- A gallery of its own files, built on the viewer: the viewer plugin shows a file as what it is, with the standard loaders, so the gallery only names the file. An image fills the panel, a sound gets Play and Stop, and a text shows in syntax's colours; a line too long for the panel, as this one, wraps, and each row after its first starts with a dim mark.
 
 local ecs = require("ecs")
 local viewer = require("viewer")
