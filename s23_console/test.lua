@@ -94,10 +94,13 @@ return {
       test.click(levels.x + 20, levels.y + levels.height * (choice * 2 - 1) / 8)
       test.wait()
     end
+    -- the counts are taken from the console, as a machine may log a line meanwhile, such as one that its clipboard is missing
+    local all = test.panel(logId).state.shown
     show(1)
-    test.match(test.panel(logId).state, { show = "error", shown = 1 }, "Errors shows the error alone, at once")
+    test.match(test.panel(logId).state.show, "error", "Errors is chosen")
+    assert(test.panel(logId).state.shown < all, "Errors hides the info's entry, at once")
     show(3)
-    test.match(test.panel(logId).state, { show = "info", shown = 2 }, "and Info and up every entry again")
+    test.match(test.panel(logId).state, { show = "info", shown = all }, "and Info and up shows every entry again")
 
     -- the search, at the bar's start, shows only the entries that hold its text
     test.click(log.x + 100, log.y + 16)
@@ -107,7 +110,7 @@ return {
     test.key("Ctrl+A")
     test.key("Backspace")
     test.wait()
-    test.match(test.panel(logId).state, { shown = 2 }, "and every entry when it is empty")
+    test.match(test.panel(logId).state, { shown = all }, "and every entry when it is empty")
 
     test.click(log.x + log.width - 34, log.y + 16)
     test.match(state(), { entries = 0 }, "Clear empties the console")
