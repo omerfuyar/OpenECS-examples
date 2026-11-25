@@ -3,6 +3,8 @@ return {
   preset = "preset.lua",
   run = function(test)
     test.match(test.panel(1), { title = "Hello, OpenECS (32)" })
+    -- a choice's default need not be its first choice
+    test.match(test.setting("greeter.color"), "green", "the choice's default")
 
     local panel = test.rect(1)
     test.wheel(panel.x + 50, panel.y + 50, 1)

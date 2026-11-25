@@ -23,7 +23,7 @@ end
 -- its value in effect comes from the highest of three layers: the default declared here, then the preset, then the user's settings file
 -- declare settings while the plugin loads; a setting's name starts with the plugin's name
 ecs.setting.declare({ name = "name", type = "string", description = "Who to greet", default = "world", changed = changed })
-ecs.setting.declare({ name = "color", type = "choice", description = "Colour of the greeting", default = "blue", choices = { "blue", "green", "red" }, changed = changed })
+ecs.setting.declare({ name = "color", type = "choice", description = "Colour of the greeting", default = "green", choices = { "blue", "green", "red" }, changed = changed })
 ecs.setting.declare({ name = "size", type = "integer", description = "Size of the greeting; the wheel changes it", default = 32, changed = changed })
 ecs.setting.declare({ name = "background", type = "color", description = "Colour behind the greeting", default = "#2E3440", changed = changed })
 
