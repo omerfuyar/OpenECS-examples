@@ -1,7 +1,7 @@
 -- the console keeps the entries that a plugin adds, and stacks a repeated one; a click on the place that an entry names runs
 -- the command of console.editor; a click chooses an entry, a double click goes to what it is about, and Ctrl+C and its menu copy
 -- it; the levels' toggles and the search filter the entries, a run clears them while Clear on run is on, and Clear empties the
--- console
+-- console; the log's lines come in from the level that the Log dropdown chooses, and a source's checkbox hides its entries
 return {
   preset = "preset.lua",
   run = function(test)
@@ -27,7 +27,7 @@ return {
     -- the error's entry names main.lua at line 3, above its text: a click runs console.editor with the file's path in the
     -- console's folder; touch is a program of Linux, so the click is checked there. The program may take seconds to start on a slow machine
     if package.config:sub(1, 1) == "/" then
-      test.click(log.x + 110, log.y + 119)
+      test.click(log.x + 166, log.y + 151)
       local found = false
       for _ = 1, 400 do
         local file = io.open(mark, "rb")
@@ -42,11 +42,11 @@ return {
       os.remove(mark)
     end
 
-    test.click(log.x + 168, log.y + 119)
+    test.click(log.x + 225, log.y + 151)
     test.match(state(), { shown = 1 }, "a click on the error's own link calls its function")
 
     -- a click on an entry chooses it, and Ctrl+C copies its text, with how many times it stacked
-    test.click(log.x + 400, log.y + 137)
+    test.click(log.x + 400, log.y + 169)
     test.match(test.panel(logId).state, { chosen = "main.lua:3: attempt to call a nil value" }, "a click chooses the entry")
     test.key("Ctrl+C")
     test.match(state(), { clipboard = "main.lua:3: attempt to call a nil value (×2)" }, "Ctrl+C copies the chosen entry")
@@ -54,13 +54,13 @@ return {
 
     -- a double click goes to what an entry is about: the file and line it names, or else its first link, as the info's
     -- entry names neither, and the error's runs console.editor, as a click on its place does
-    test.click(log.x + 400, log.y + 70)
-    test.click(log.x + 400, log.y + 70)
+    test.click(log.x + 400, log.y + 102)
+    test.click(log.x + 400, log.y + 102)
     test.match(test.panel(logId).state, { chosen = "Running main.lua\nstarted" }, "a double click on an entry without a place chooses it")
     test.wait(0.5)
     if package.config:sub(1, 1) == "/" then
-      test.click(log.x + 400, log.y + 137)
-      test.click(log.x + 400, log.y + 137)
+      test.click(log.x + 400, log.y + 169)
+      test.click(log.x + 400, log.y + 169)
       local found = false
       for _ = 1, 100 do
         local file = io.open(mark, "rb")
@@ -78,7 +78,7 @@ return {
 
     -- a right click opens the entry's menu, whose Copy copies it
     test.call("runner.forget")
-    test.click(log.x + 400, log.y + 70, 3)
+    test.click(log.x + 400, log.y + 102, 3)
     local menu = test.popup(1)
     assert(menu, "a right click opens a menu")
     test.click(menu.x + 20, menu.y + menu.height * 3 / 4)
@@ -110,6 +110,23 @@ return {
 
     test.click(log.x + log.width - 34, log.y + 16)
     test.match(state(), { entries = 0 }, "Clear empties the console")
+
+    -- the log's lines come in from the level of console.log up, which the preset sets to none, and the Log dropdown, beside the
+    -- sources, to warnings; each names its plugin as its source, whose checkbox hides its entries and shows them again
+    test.call("runner.warn")
+    test.match(state(), { entries = 0 }, "no line of the log while the console takes none")
+    test.click(log.x + log.width - 60, log.y + 48)
+    local levels = test.popup(1)
+    assert(levels, "the Log dropdown opens its levels")
+    test.click(levels.x + 20, levels.y + levels.height * 5 / 10)
+    test.match(test.setting("console.log"), "warn", "the dropdown chooses warnings")
+    test.call("runner.warn")
+    test.match(state(), { entries = 1, source = "runner", text = "The runner warns." }, "the warning comes in, from its plugin")
+    test.click(log.x + 68, log.y + 48)
+    test.match(test.panel(logId).state, { hiddenSources = { runner = true }, shown = 0 }, "the source's checkbox hides its entries")
+    test.click(log.x + 68, log.y + 48)
+    test.match(test.panel(logId).state, { hiddenSources = {}, shown = 1 }, "and shows them again")
+    test.click(log.x + log.width - 34, log.y + 16)
 
     -- a long console builds only the entries in view, and follows the last; Up chooses the entries above, which were not built, and
     -- scrolls to each
