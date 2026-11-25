@@ -26,6 +26,25 @@ return {
     test.call("gallery.next")
     test.match(viewer(), { title = "init.lua" }, "the text")
 
+    -- the file's first line, a comment, is too long for the panel: the rows it wraps into start with a dim mark, grey, where the comment's
+    -- own colour is not; down the first column, past the path above and the comment's first row, a bright grey pixel is the mark
+    local function channels(color)
+      return tonumber(color:sub(2, 3), 16), tonumber(color:sub(4, 5), 16), tonumber(color:sub(6, 7), 16)
+    end
+    local x = rect.x + 10
+    local panelColor = channels(test.pixel(x, rect.y + 2))
+    local comment, mark
+    for y = rect.y + 4, rect.y + 200 do
+      local r, g, b = channels(test.pixel(x, y))
+      local grey = r == g and g == b
+      comment = comment or (not grey and y)
+      if comment and grey and r >= panelColor + 48 then
+        mark = y
+        break
+      end
+    end
+    assert(comment and mark, "the rows of a wrapped line start with a dim mark")
+
     -- the title bar shows the tool's name, the core's menus that have functions here, then the gallery's buttons
     local function bar()
       local parts = {}
