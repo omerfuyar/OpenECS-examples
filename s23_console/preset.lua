@@ -10,7 +10,7 @@ return {
   pluginsDir = ".",
   -- the command that opens a file at a line; here it only marks the file, so the test sees that a click ran it
   -- the console shows no line of the log at first, as the core's lines differ on each machine; the test chooses its warnings
-  settings = { ["console.editor"] = "touch {file}.{line}", ["console.log"] = "off" },
+  settings = { ["console.editor"] = "touch {file}.{line}", ["console.logLevel"] = "off" },
   workspaces = {
     {
       name = "Main",

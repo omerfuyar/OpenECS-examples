@@ -33,7 +33,7 @@ ecs.service.register({
   forget = { sig = "void()", doc = "Empty the clipboard", fn = function()
     ecs.clipboard.setText("")
   end },
-  warn = { sig = "void()", doc = "Log a warning, which the console shows from the level of its setting console.log up", fn = function()
+  warn = { sig = "void()", doc = "Log a warning, which the console shows from the level of its setting console.logLevel up", fn = function()
     ecs.log.warn("The runner warns.")
   end },
   many = { sig = "void()", doc = "Add 500 entries", fn = function()

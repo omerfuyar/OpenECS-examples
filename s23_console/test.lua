@@ -111,7 +111,7 @@ return {
     test.click(log.x + log.width - 34, log.y + 16)
     test.match(state(), { entries = 0 }, "Clear empties the console")
 
-    -- the log's lines come in from the level of console.log up, which the preset sets to none, and the Log dropdown, beside the
+    -- the log's lines come in from the level of console.logLevel up, which the preset sets to none, and the Log dropdown, beside the
     -- sources, to warnings; each names its plugin as its source, whose checkbox hides its entries and shows them again
     test.call("runner.warn")
     test.match(state(), { entries = 0 }, "no line of the log while the console takes none")
@@ -119,7 +119,7 @@ return {
     local levels = test.popup(1)
     assert(levels, "the Log dropdown opens its levels")
     test.click(levels.x + 20, levels.y + levels.height * 5 / 10)
-    test.match(test.setting("console.log"), "warn", "the dropdown chooses warnings")
+    test.match(test.setting("console.logLevel"), "warn", "the dropdown chooses warnings")
     test.call("runner.warn")
     test.match(state(), { entries = 1, source = "runner", text = "The runner warns." }, "the warning comes in, from its plugin")
     test.click(log.x + 68, log.y + 48)
