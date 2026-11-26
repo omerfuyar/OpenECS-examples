@@ -21,6 +21,18 @@ return {
       end
       return file ~= nil
     end
+    -- chooses the entry with a label in the open menu: Down moves the choice until it is there, so an entry added before it changes nothing
+    local function choose(label)
+      for _ = 1, #test.menu() do
+        for _, entry in ipairs(test.menu()) do
+          if entry.chosen and entry.label == label then
+            return
+          end
+        end
+        test.key("Down")
+      end
+      error(("the menu has no entry '%s'"):format(label), 2)
+    end
     -- waits up to 5 seconds, as the panel follows the folder through fs's watch
     local function waitFor(condition)
       for _ = 1, 100 do
@@ -72,7 +84,7 @@ return {
     -- a right click beside the files opens the menu of New: a folder, the tool's note, or a file; the note's entry asks for a name
     -- in a field above the files, which has the keys, and Return makes it with the tool's make
     test.click(panel.x + 60, panel.y + panel.height - 20, 3)
-    test.key("Down")
+    choose("New note")
     test.key("Return")
     -- the field shows, and takes the keys, at the panel's next draw
     test.wait()
@@ -82,11 +94,10 @@ return {
       return exists(folder .. "milk.txt")
     end), "New makes a note with the tool's make")
 
-    -- a right click on a file chooses it, and its menu's Rename, the entry before the last, asks for the new name
+    -- a right click on a file chooses it, and its menu's Rename asks for the new name
     x, y = row(2)
     test.click(x, y, 3)
-    test.key("Up")
-    test.key("Up")
+    choose("Rename")
     test.key("Return")
     test.wait()
     test.key("Ctrl+A")
@@ -140,9 +151,9 @@ return {
     test.key("Backspace")
     test.wait()
 
-    -- Delete, the last entry, asks first
+    -- Delete asks first
     test.click(x, y, 3)
-    test.key("Up")
+    choose("Delete")
     test.key("Return")
     test.match(test.dialog(), { title = "Delete bread.txt" }, "Delete asks")
     test.key("Return")
@@ -200,6 +211,7 @@ return {
       return test.panel(files).state.selected
     end
     test.click(panel.x + 60, panel.y + panel.height - 20, 3)
+    choose("New folder")
     test.key("Return")
     test.wait()
     test.text("box")
@@ -221,7 +233,7 @@ return {
     os.remove(folder .. "box/inside.txt")
     x, y = row(1)
     test.click(x, y, 3)
-    test.key("Up")
+    choose("Delete")
     test.key("Return")
     test.match(test.dialog(), { title = "Delete box" }, "Delete asks about the folder")
     test.key("Return")
