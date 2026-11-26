@@ -54,6 +54,7 @@ typedef struct Controls
     ECSPanel panel;
     f32 scale;
     i32 clicks;
+    i32 untaken; // the keys that reached the panel's own Event, which ui did not take
     bool sound;
     bool dark;
     f64 volume;
@@ -107,11 +108,21 @@ static SHUResult ControlsCreate(ECSPanel panel, const ECSValue *savedState, u32 
     return ECSPanel_AcceptDrops(panel, drops, COUNT(drops));
 }
 
-static void ControlsDestroy(void *data)
+// the panel's own Event gets only the events that ui did not take, such as a key while no element has the keys; it counts those keys
+static void ControlsEvent(void *data, const ECSPanelEvent *event)
 {
     Controls *state = data;
-    UI_PLUGIN.functions.forget(state->panel);
-    free(state);
+
+    if (event->type == ECSPanelEventType_KeyDown)
+    {
+        state->untaken++;
+    }
+}
+
+// ui forgets the panel before its Destroy runs
+static void ControlsDestroy(void *data)
+{
+    free(data);
 }
 
 /// @brief Whether a row comes before another in the order the panel sorts them: by its sort column, up or down.
@@ -389,101 +400,89 @@ static void DescribeOptions(Controls *controls)
     }
 }
 
-// each draw describes every element; a macro that takes a pointer writes into it what the user changed since the last draw
-static void ControlsDraw(void *data, ECSSurface *surface, f64 seconds)
+// each draw describes every element, which ui shows; a macro that takes a pointer writes into it what the user changed since the last draw
+static void ControlsView(void *data, ECSSurface *surface)
 {
-    (void)seconds;
     Controls *state = data;
     state->scale = surface->scale;
     char clicked[64];
     snprintf(clicked, sizeof(clicked), "Clicked %d times", state->clicks);
 
-    UI_SHOW(&UI_PLUGIN, state->panel, surface)
+    UI_COLUMN(.style = &UI_PLUGIN.styles.view)
     {
-        UI_COLUMN(.style = &UI_PLUGIN.styles.view)
+        UI_TEXT(clicked, .style = &UI_PLUGIN.styles.title);
+
+        // UI_BUTTON gives whether the button was clicked since the last draw; a tooltip shows when the pointer rests on its element
+        if (UI_BUTTON("Click me", .id = "button", .tooltip = "Counts the clicks in the panel's title"))
         {
-            UI_TEXT(clicked, .style = &UI_PLUGIN.styles.title);
+            char title[64];
+            snprintf(title, sizeof(title), "Controls in C (%d)", ++state->clicks);
+            ECSPanel_SetTitle(state->panel, title);
+        }
 
-            // UI_BUTTON gives whether the button was clicked since the last draw; a tooltip shows when the pointer rests on its element
-            if (UI_BUTTON("Click me", .id = "button", .tooltip = "Counts the clicks in the panel's title"))
+        UI_SEPARATOR();
+
+        // tabs choose what shows below them; the panel keeps the chosen one and describes only its elements
+        UI_TABS(&state->tab, TABS, .id = "tab");
+
+        if (strcmp(TABS[state->tab - 1], "Table") == 0)
+        {
+            DescribeTable(state);
+        }
+        else if (strcmp(TABS[state->tab - 1], "About") == 0)
+        {
+            DescribeTree(state);
+        }
+        else
+        {
+            DescribeOptions(state);
+        }
+
+        // a long list describes only the items in view and near it, which ui's range gives; the list gets count, its number of items, and first
+        i32 first = 0;
+        i32 last = 0;
+        UI_PLUGIN.functions.range(state->panel, "list", ITEM_COUNT, &first, &last);
+
+        UI_LIST(&state->selected, .id = "list", .count = ITEM_COUNT, .first = first, .height = 90, .grow = UI_FIXED, .border = "frame")
+        {
+            for (i32 i = first; i <= last; i++)
             {
-                char title[64];
-                snprintf(title, sizeof(title), "Controls in C (%d)", ++state->clicks);
-                ECSPanel_SetTitle(state->panel, title);
+                char id[16];
+                char text[16];
+                snprintf(id, sizeof(id), "item:%d", (int)i);
+                snprintf(text, sizeof(text), "Item %d", (int)i);
+                UI_TEXT(text, .id = id);
             }
+        }
 
-            UI_SEPARATOR();
+        // a path is a field with a button that opens the system's file dialog; UI_PATH writes the typed or chosen path into its buffer
+        UI_ROW(.style = &LABELED)
+        {
+            UI_TEXT("File");
+            UI_PATH(state->file, sizeof(state->file), .id = "file", .grow = 1, .pattern = "lua");
+        }
 
-            // tabs choose what shows below them; the panel keeps the chosen one and describes only its elements
-            UI_TABS(&state->tab, TABS, .id = "tab");
+        // a field keeps what is typed while it has the keys; Left, Right, Home and End move its cursor, Shift with them selects, and Ctrl+C, Ctrl+X and Ctrl+V copy, cut and paste
+        UI_ROW(.style = &LABELED)
+        {
+            UI_TEXT("Name");
+            UI_FIELD(state->name, sizeof(state->name), .id = "name", .grow = 1);
+        }
 
-            if (strcmp(TABS[state->tab - 1], "Table") == 0)
+        // text with wrap = true breaks into lines at the width of its column
+        UI_TEXT(NOTE, .id = "note", .style = &UI_PLUGIN.styles.note, .wrap = true);
+
+        // in a row, wrapped text and columns share what the other children leave, and a growing column's text breaks at the width it grows to
+        UI_ROW(.gap = 8)
+        {
+            UI_TEXT("Keys", .wrap = true);
+
+            UI_COLUMN(.grow = 1)
             {
-                DescribeTable(state);
-            }
-            else if (strcmp(TABS[state->tab - 1], "About") == 0)
-            {
-                DescribeTree(state);
-            }
-            else
-            {
-                DescribeOptions(state);
-            }
-
-            // a long list describes only the items in view and near it, which ui's range gives; the list gets count, its number of items, and first
-            i32 first = 0;
-            i32 last = 0;
-            UI_PLUGIN.functions.range(state->panel, "list", ITEM_COUNT, &first, &last);
-
-            UI_LIST(&state->selected, .id = "list", .count = ITEM_COUNT, .first = first, .height = 90, .grow = UI_FIXED, .border = "frame")
-            {
-                for (i32 i = first; i <= last; i++)
-                {
-                    char id[16];
-                    char text[16];
-                    snprintf(id, sizeof(id), "item:%d", (int)i);
-                    snprintf(text, sizeof(text), "Item %d", (int)i);
-                    UI_TEXT(text, .id = id);
-                }
-            }
-
-            // a path is a field with a button that opens the system's file dialog; UI_PATH writes the typed or chosen path into its buffer
-            UI_ROW(.style = &LABELED)
-            {
-                UI_TEXT("File");
-                UI_PATH(state->file, sizeof(state->file), .id = "file", .grow = 1, .pattern = "lua");
-            }
-
-            // a field keeps what is typed while it has the keys; Left, Right, Home and End move its cursor, Shift with them selects, and Ctrl+C, Ctrl+X and Ctrl+V copy, cut and paste
-            UI_ROW(.style = &LABELED)
-            {
-                UI_TEXT("Name");
-                UI_FIELD(state->name, sizeof(state->name), .id = "name", .grow = 1);
-            }
-
-            // text with wrap = true breaks into lines at the width of its column
-            UI_TEXT(NOTE, .id = "note", .style = &UI_PLUGIN.styles.note, .wrap = true);
-
-            // in a row, wrapped text and columns share what the other children leave, and a growing column's text breaks at the width it grows to
-            UI_ROW(.gap = 8)
-            {
-                UI_TEXT("Keys", .wrap = true);
-
-                UI_COLUMN(.grow = 1)
-                {
-                    UI_TEXT(NOTE, .id = "beside", .style = &UI_PLUGIN.styles.note, .wrap = true);
-                }
+                UI_TEXT(NOTE, .id = "beside", .style = &UI_PLUGIN.styles.note, .wrap = true);
             }
         }
     }
-}
-
-// the panel's events go to ui, which calls the callbacks of the elements they reach; Up and Down choose a list's or the tree's next item and the one
-// before, and Right and Left open and close the tree's chosen node
-static void ControlsEvent(void *data, const ECSPanelEvent *event)
-{
-    Controls *state = data;
-    Ui_Event(&UI_PLUGIN, state->panel, event);
 }
 
 /// @brief Sets a field of a table to a number.
@@ -553,6 +552,7 @@ static SHUResult ControlsSaveState(void *data, ECSValue *retSavedState)
     Controls *state = data;
     ECSValue_SetTable(retSavedState);
     SHU_ReturnResult(SetNumber(retSavedState, "clicks", state->clicks));
+    SHU_ReturnResult(SetNumber(retSavedState, "untaken", state->untaken));
     SHU_ReturnResult(SetBool(retSavedState, "sound", state->sound));
     SHU_ReturnResult(SetNumber(retSavedState, "volume", state->volume));
     SHU_ReturnResult(SetNumber(retSavedState, "kept", state->kept));
@@ -623,15 +623,21 @@ SHUResult ECSPlugin_Init(ECSPlugin plugin)
     // Ui_Init looks up ui's functions, which the manifest's dependency on ui makes sure exist
     SHU_ReturnResult(Ui_Init(&UI_PLUGIN, plugin));
 
-    const ECSPanelTypeDesc controls = {
-        .name = "panel",
-        .title = "Controls in C",
-        .Create = ControlsCreate,
-        .Destroy = ControlsDestroy,
-        .Draw = ControlsDraw,
-        .Event = ControlsEvent,
-        .SaveState = ControlsSaveState,
+    // Ui_PanelType completes the type with ui's part: its Draw shows what View describes, and its events go to ui, which calls the callbacks of the
+    // elements they reach; Up and Down choose a list's or the tree's next item and the one before, and Right and Left open and close the tree's chosen
+    // node
+    const UiPanelTypeDesc controls = {
+        .type =
+            {
+                .name = "panel",
+                .title = "Controls in C",
+                .Create = ControlsCreate,
+                .Destroy = ControlsDestroy,
+                .Event = ControlsEvent,
+                .SaveState = ControlsSaveState,
+            },
+        .View = ControlsView,
     };
 
-    return ECSPanelType_Register(plugin, &controls);
+    return ECSPanelType_Register(plugin, Ui_PanelType(&UI_PLUGIN, &controls));
 }

@@ -42,6 +42,11 @@ return function(test, number, title)
   test.key("Left")
   test.match(state().tab, "Options", "the first tab")
 
+  -- the panel's own event gets only the keys that ui did not take: the tabs took Right and Left, and no element takes x
+  test.match(state().untaken, 0, "the keys that ui took")
+  test.key("x")
+  test.match(state().untaken, 1, "a key that ui did not take")
+
   test.click(at("sound", 0.05))
   test.match(state().sound, true, "the toggle")
 

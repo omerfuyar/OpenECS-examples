@@ -133,6 +133,7 @@ end
 -- the state a new panel starts with: the value of each control, and the rectangles of the elements the test clicks
 local START = {
   clicks = 0,
+  untaken = 0,
   sound = false,
   dark = true,
   volume = 0.5,
@@ -152,7 +153,6 @@ local START = {
   ascending = true,
   tint = "#3366CC",
   colors = true,
-  rects = {},
 }
 
 -- a copy of a table and of the tables in it, so each panel changes its own state, not START
@@ -180,7 +180,8 @@ end
 
 -- draw runs only when the panel needs drawing; a panel type that draws every frame says continuous = true
 -- ui lays out and draws the elements that draw describes each time, so the panel keeps only its own state
-function Controls:draw(surface)
+function Controls:view(surface)
+  self.scale = surface.scale
   -- each callback changes the panel's self; ui then asks the core to draw the panel again
   local function set(key)
     return function(value)
@@ -214,7 +215,7 @@ function Controls:draw(surface)
     })
   end
 
-  ui.show(self.panel, surface, ui.column({ style = STYLES.view, onMenu = menu }, {
+  return ui.column({ style = STYLES.view, onMenu = menu }, {
     ui.text(("Clicked %d times"):format(self.clicks), { style = STYLES.title }),
     -- a tooltip shows when the pointer rests on its element
     ui.button("Click me", {
@@ -393,34 +394,27 @@ function Controls:draw(surface)
     ui.text(NOTE, { id = "note", style = STYLES.note, wrap = true }),
     -- in a row, wrapped text and columns share what the other children leave, and a growing column's text breaks at the width it grows to
     ui.row({ gap = 8 }, { ui.text("Keys", { wrap = true }), ui.column({ grow = 1 }, { ui.text(NOTE, { id = "beside", style = STYLES.note, wrap = true }) }) }),
-  }))
+  })
+end
 
-  -- the rectangles of the elements, in the panel's surface pixels; ui.rect gives nil for an element that is not shown, such as one on another tab
+-- the rectangles of the elements in the last show, in the panel's surface pixels; ui.rect gives nil for an element that is not shown, such as one
+-- on another tab
+local function rects(panel, scale)
+  local found = {}
+
   for _, id in ipairs(IDS) do
-    local rect = ui.rect(self.panel, id)
-    self.rects[id] = rect and {
-      x = rect.x * surface.scale,
-      y = rect.y * surface.scale,
-      width = rect.width * surface.scale,
-      height = rect.height * surface.scale,
-    }
+    local rect = ui.rect(panel, id)
+    found[id] = rect and { x = rect.x * scale, y = rect.y * scale, width = rect.width * scale, height = rect.height * scale }
   end
-end
 
--- the panel's events go to ui, which calls the callbacks of the elements they reach; Up and Down choose a list's or the tree's next item and
--- the one before, and Right and Left open and close the tree's chosen node
-function Controls:event(event)
-  ui.event(self.panel, event)
-end
-
-function Controls:destroy()
-  ui.forget(self.panel)
+  return found
 end
 
 -- the values and the rectangles are saved, so the test can read them
 function Controls:saveState()
   return {
     clicks = self.clicks,
+    untaken = self.untaken,
     sound = self.sound,
     volume = self.volume,
     kept = self.kept,
@@ -449,21 +443,29 @@ function Controls:saveState()
     link = self.link,
     tint = self.tint,
     colors = self.colors,
-    rects = self.rects
+    rects = rects(self.panel, self.scale)
   }
 end
 
-ecs.panel.registerType({
+-- the panel's own event gets only the events that ui did not take, such as a key while no element has the keys; it counts those keys
+function Controls:event(event)
+  if event.type == "keyDown" then
+    self.untaken += 1
+  end
+end
+
+-- ui.panelType completes the type with ui's part: its draw shows what view gives, and its events go to ui, which calls the callbacks of the
+-- elements they reach; Up and Down choose a list's or the tree's next item and the one before, and Right and Left open and close the tree's chosen
+-- node
+ecs.panel.registerType(ui.panelType({
   name = "panel",
   title = "Controls",
 
   create = Controls.create,
 
-  draw = Controls.draw,
+  view = Controls.view,
 
   event = Controls.event,
 
-  destroy = Controls.destroy,
-
   saveState = Controls.saveState,
-})
+}))

@@ -113,7 +113,7 @@ function Archive.create(panel)
   return state
 end
 
-function Archive:draw(surface)
+function Archive:view()
   local rows = {}
 
   for _, line in ipairs(self.lines) do
@@ -121,15 +121,7 @@ function Archive:draw(surface)
   end
 
   rows[#rows + 1] = ui.text(self.problem or "Every format unpacks to the same text.")
-  ui.show(self.panel, surface, ui.column({ padding = 12, gap = 8 }, rows))
-end
-
-function Archive:event(event)
-  ui.event(self.panel, event)
-end
-
-function Archive:destroy()
-  ui.forget(self.panel)
+  return ui.column({ padding = 12, gap = 8 }, rows)
 end
 
 function Archive:saveState()
@@ -137,17 +129,13 @@ function Archive:saveState()
     extracted = self.extracted, refused = self.refused, garbage = self.garbage }
 end
 
-ecs.panel.registerType({
+ecs.panel.registerType(ui.panelType({
   name = "panel",
   title = "Archive",
 
   create = Archive.create,
 
-  draw = Archive.draw,
-
-  event = Archive.event,
-
-  destroy = Archive.destroy,
+  view = Archive.view,
 
   saveState = Archive.saveState,
-})
+}))

@@ -65,14 +65,14 @@ function LogFilter.create(panel)
   return state
 end
 
-function LogFilter:draw(surface)
+function LogFilter:view()
   local lines = {}
 
   for _, line in ipairs(self.shown) do
     lines[#lines + 1] = ui.text(line.text, { font = "mono", color = line.level == "ERROR" and "accent" or "text" })
   end
 
-  ui.show(self.panel, surface, ui.column({ padding = 12, gap = 8 }, {
+  return ui.column({ padding = 12, gap = 8 }, {
     ui.text("The log of " .. self.day),
     ui.row({ gap = 8 }, {
       ui.field(self.typed, { id = "pattern", grow = 1, valid = self.problem == nil, onChange = function(text)
@@ -86,15 +86,7 @@ function LogFilter:draw(surface)
     }),
     ui.text(self.problem or ("%d of %d lines match"):format(#self.shown, #LOG), { color = self.problem and "accent" or "textDim", wrap = true }),
     ui.scroll({ id = "lines", grow = 1, gap = 2 }, lines),
-  }))
-end
-
-function LogFilter:event(event)
-  ui.event(self.panel, event)
-end
-
-function LogFilter:destroy()
-  ui.forget(self.panel)
+  })
 end
 
 -- what the test reads
@@ -109,17 +101,13 @@ function LogFilter:saveState()
     durations = self.durations, hidden = self.hidden, numbers = self.numbers }
 end
 
-ecs.panel.registerType({
+ecs.panel.registerType(ui.panelType({
   name = "panel",
   title = "Log filter",
 
   create = LogFilter.create,
 
-  draw = LogFilter.draw,
-
-  event = LogFilter.event,
-
-  destroy = LogFilter.destroy,
+  view = LogFilter.view,
 
   saveState = LogFilter.saveState,
-})
+}))

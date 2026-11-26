@@ -95,10 +95,11 @@ local Primes = {}
 Primes.__index = Primes
 
 function Primes.create(panel)
-  return setmetatable({ panel = panel, limit = 2, running = false, primes = 0, chunks = 0, seconds = 0, done = {}, workers = {}, rects = {} }, Primes)
+  return setmetatable({ panel = panel, limit = 2, running = false, primes = 0, chunks = 0, seconds = 0, done = {}, workers = {} }, Primes)
 end
 
-function Primes:draw(surface)
+function Primes:view(surface)
+  self.scale = surface.scale
   -- a bar shows a share of the chunks: the first one all the workers' together, and the others each worker's own
   local function bar(label, done)
     return ui.row({ gap = 8, align = "center" }, {
@@ -120,7 +121,7 @@ function Primes:draw(surface)
       or self.chunks == CHUNKS and ("%d primes below %s, in about %.1f s"):format(self.primes, LIMITS[self.limit], self.seconds)
       or "Press Start to count the primes."
 
-  ui.show(self.panel, surface, ui.column({ style = STYLES.view }, {
+  return ui.column({ style = STYLES.view }, {
     ui.text("Four workers count the primes, each on a thread of its own. Drag the panel or open its menu while they count: it stays free.", { wrap = true }),
     ui.row({ gap = 8, align = "center" }, {
       ui.text("Below"),
@@ -132,45 +133,40 @@ function Primes:draw(surface)
     }),
     ui.column({ gap = 6 }, bars),
     ui.text(status, { size = 16 }),
-  }))
-
-  -- the rectangles of the elements, in the panel's surface pixels
-  for _, id in ipairs(IDS) do
-    local rect = ui.rect(self.panel, id)
-    self.rects[id] = rect and {
-      x = rect.x * surface.scale,
-      y = rect.y * surface.scale,
-      width = rect.width * surface.scale,
-      height = rect.height * surface.scale,
-    }
-  end
-end
-
-function Primes:event(event)
-  ui.event(self.panel, event)
+  })
 end
 
 function Primes:destroy()
   stop(self)
-  ui.forget(self.panel)
+end
+
+-- the rectangles of the elements in the last show, in the panel's surface pixels; ui.rect gives nil for an element that is not shown, such as one
+-- on another tab
+local function rects(panel, scale)
+  local found = {}
+
+  for _, id in ipairs(IDS) do
+    local rect = ui.rect(panel, id)
+    found[id] = rect and { x = rect.x * scale, y = rect.y * scale, width = rect.width * scale, height = rect.height * scale }
+  end
+
+  return found
 end
 
 -- the counts are saved, so the test can read them
 function Primes:saveState()
-  return { limit = LIMITS[self.limit], running = self.running, primes = self.primes, chunks = self.chunks, done = self.done, rects = self.rects, refused = self.refused }
+  return { limit = LIMITS[self.limit], running = self.running, primes = self.primes, chunks = self.chunks, done = self.done, rects = rects(self.panel, self.scale), refused = self.refused }
 end
 
-ecs.panel.registerType({
+ecs.panel.registerType(ui.panelType({
   name = "panel",
   title = "Workers",
 
   create = Primes.create,
 
-  draw = Primes.draw,
-
-  event = Primes.event,
+  view = Primes.view,
 
   destroy = Primes.destroy,
 
   saveState = Primes.saveState,
-})
+}))

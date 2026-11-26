@@ -73,39 +73,27 @@ function Formats.create(panel, saved)
   return state
 end
 
-function Formats:draw(surface)
+function Formats:view()
   -- a text keeps its own lines; wrap also breaks them at spaces to fit the column, and a scroll shows what does not fit
-  ui.show(self.panel, surface, ui.scroll({ id = "text", padding = 12, gap = 8 }, {
+  return ui.scroll({ id = "text", padding = 12, gap = 8 }, {
     ui.text(self.text, { wrap = true }),
     ui.text(self.same and "It reads back the same." or "It does not read back the same."),
     ui.text("A broken JSON text: " .. self.problem, { wrap = true }),
-  }))
-end
-
-function Formats:event(event)
-  ui.event(self.panel, event)
-end
-
-function Formats:destroy()
-  ui.forget(self.panel)
+  })
 end
 
 function Formats:saveState()
   return { format = self.format, text = self.text, same = self.same, problem = self.problem, deep = self.deep, broken = self.broken }
 end
 
-ecs.panel.registerType({
+ecs.panel.registerType(ui.panelType({
   name = "panel",
   title = "Formats",
   stateVersion = 1,
 
   create = Formats.create,
 
-  draw = Formats.draw,
-
-  event = Formats.event,
-
-  destroy = Formats.destroy,
+  view = Formats.view,
 
   saveState = Formats.saveState,
-})
+}))
