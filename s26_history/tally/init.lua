@@ -67,6 +67,39 @@ function Tally:saveState()
   return { count = self.count, level = self.level, history = history.state(h), rects = rects }
 end
 
+-- a panel that keeps no history of its own: Ctrl+Z and Ctrl+Y in it act on the tool's default history, which tally_c names, and its buttons
+-- name another one or none; the definitions do not let a handle be nil yet (OpenECS TODO), so the call with nil silences the check
+local Note = {}
+Note.__index = Note
+
+function Note.create(panel)
+  return setmetatable({ panel = panel }, Note)
+end
+
+function Note:view()
+  return ui.column({ style = STYLES.view, gap = 8 }, {
+    ui.text("This panel keeps no history: Ctrl+Z here undoes the tool's default one.", { style = STYLES.note, wrap = true }),
+    ui.button("Default: tally", { id = "tally", onClick = function() history.useDefault(h) end }),
+    ui.button("No default", { id = "none", onClick = function()
+      ---@diagnostic disable-next-line: param-type-mismatch
+      history.useDefault(nil)
+    end }),
+  })
+end
+
+-- not read back; the test reads where the buttons are, in layout units, here
+function Note:saveState()
+  return { rects = { tally = ui.rect(self.panel, "tally"), none = ui.rect(self.panel, "none") } }
+end
+
+ecs.panel.registerType(ui.panelType({
+  name = "note",
+  title = "Note",
+  create = Note.create,
+  view = Note.view,
+  saveState = Note.saveState,
+}))
+
 ecs.panel.registerType(ui.panelType({
   name = "panel",
   title = "Tally",
