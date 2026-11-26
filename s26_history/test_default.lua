@@ -67,5 +67,14 @@ return {
     test.call("history.close", scratch)
     test.key("Ctrl+Z")
     test.match({ value, counts() }, { 1, { 1, 1 } }, "after the default history closes, Ctrl+Z in the note does nothing")
+
+    -- useDefault takes its history as handle<history.history>?, so a generic call, through the C API, takes nil too
+    test.call("history.useDefault", test.call("history.open", "tally_c"))
+    test.key("Ctrl+Z")
+    test.match(counts(), { 1, 0 }, "the C tally's history is the default again")
+    test.call("history.useDefault", nil)
+    test.key("Ctrl+Z")
+    test.match(#test.misuses(), 0, "nil through a generic call is no misuse")
+    test.match(counts(), { 1, 0 }, "and takes the default away")
   end,
 }

@@ -692,7 +692,8 @@ function services.useBrush(brush, panel)
   local canvas = findCanvas(panel)
 
   if canvas then
-    canvas.brush = ecs.handle.value(brush, "brush")
+    -- nil gives the canvas the settings' brush again
+    canvas.brush = brush and ecs.handle.value(brush, "brush")
   end
 end
 
@@ -714,7 +715,10 @@ ecs.service.register({
   eachCanvas = { sig = "int(fn<void(handle<ecs.panel>, int)>)", doc = "Calls a function with every canvas and its number of strokes", fn = services.eachCanvas },
   pixels = { sig = "buffer(handle<ecs.panel>)", doc = "Gives a canvas as a PPM image", fn = services.pixels },
   brush = { sig = "handle<sketch_lua.brush>(int, string)", doc = "Makes a brush of a size and a colour", fn = services.brush },
-  useBrush = { sig = "void(handle<sketch_lua.brush>, handle<ecs.panel>)", doc = "Makes a canvas draw with a brush", fn = services.useBrush },
+  useBrush = {
+    sig = "void(handle<sketch_lua.brush>? brush, handle<ecs.panel>)", doc = "Makes a canvas draw with a brush, or with the settings' brush again for nil",
+    fn = services.useBrush,
+  },
 })
 
 -- default keys that work while a canvas has the focus; the canvas's menu shows the same functions with their keys
