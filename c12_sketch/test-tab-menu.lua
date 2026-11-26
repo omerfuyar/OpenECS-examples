@@ -1,20 +1,7 @@
 -- a right click on a tab and a right click on the rest of the row open one menu, the panel's, which acts on the panel and on
 -- its group: close, close the group, the submenu Tabs, and the rest; a tab row has no button for it
 
--- chooses the entry with a label in the open menu: Down moves the choice until it is there, so an entry added before it changes nothing
-local function choose(test, label)
-  for _ = 1, #test.menu() do
-    for _, entry in ipairs(test.menu()) do
-      if entry.chosen and entry.label == label then
-        return
-      end
-    end
-
-    test.key("Down")
-  end
-
-  error(("the menu has no entry '%s'"):format(label), 2)
-end
+local menu = dofile(debug.getinfo(1, "S").source:match("^@(.*[/\\])") .. "menu.lua")
 
 -- the types of the panels of the third workspace, the clocks' group last
 local function types(test)
@@ -50,10 +37,11 @@ return {
     -- prefix. Its submenu Tabs marks the shown tab, and its entry of the Lua clock shows that clock
     test.click(clock.x + 40, y, 3)
     test.match(test.menu()[1], { label = "Close", keys = "Alt+W, X", enabled = true, chosen = true }, "the menu's first entry")
-    choose(test, "Tabs")
+    menu.checkRightEdge(test, clock.x + 40, y, "the menu is as wide as its widest entry's label and keys")
+    menu.choose(test, "Tabs")
     test.key("Right")
     test.match(test.menu(), { { keys = "\u{2022}", chosen = true }, { label = "Lua clock", chosen = false } }, "the submenu Tabs")
-    choose(test, "Lua clock")
+    menu.choose(test, "Lua clock")
     test.key("Return")
     test.match(test.menu(), nil, "no menu after Return")
     test.match(shown(), 2, "the Lua clock shown from the tab's Tabs")

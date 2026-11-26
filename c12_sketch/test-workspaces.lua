@@ -2,6 +2,7 @@
 -- The window buttons stay at the bar's right end whatever the menu's name, and a panel moves to another workspace, or to a new one, by menu and by key
 
 local title = dofile(debug.getinfo(1, "S").source:match("^@(.*[/\\])") .. "title.lua")
+local menu = dofile(debug.getinfo(1, "S").source:match("^@(.*[/\\])") .. "menu.lua")
 local parts, centre = title.parts, title.centre
 
 -- the workspaces' names, by number
@@ -36,19 +37,25 @@ return {
     title.checkMargin(test, 1, "with C")
     title.checkButtons(test, "with C")
 
-    -- the list opens with the first workspace chosen; Down chooses the next one
+    -- the list opens with the current workspace chosen, so Down chooses the next one
     test.click(centre(parts(test).workspace.rect))
+    test.match(test.menu()[1], { label = "1: C", chosen = true }, "the list opens at the first workspace")
     test.key("Down")
     test.key("Return")
     test.match({ test.session().currentWorkspace, parts(test).workspace.label }, { 2, "Lua \u{25BE}" }, "the second workspace, by the menu")
 
     -- a longer name makes the menu wider, and the window buttons stay
     test.click(centre(parts(test).workspace.rect))
-    test.key("Down")
+    test.match(test.menu()[2], { label = "2: Lua", chosen = true }, "the list opens at the second workspace")
     test.key("Down")
     test.key("Return")
     test.match(parts(test).workspace.label, "Side by side \u{25BE}", "the third workspace, by the menu")
     title.checkButtons(test, "with Side by side")
+
+    -- ecs.workspace.menu shows the same list, with the current workspace chosen
+    test.call("ecs.workspace.menu")
+    test.match(test.menu()[3], { label = "3: Side by side", chosen = true }, "ecs.workspace.menu opens at the third workspace")
+    test.key("Escape")
 
     -- Alt+W, then Shift+1, moves the focused C canvas to the first workspace, which stays hidden
     test.click(test.rect(5).x + 100, test.rect(5).y + 100)
@@ -63,12 +70,12 @@ return {
     test.match({ names(test), test.session().currentWorkspace, typesIn(test, 4) },
       { { "C", "Lua", "Side by side", test.panel(6).title }, 3, { "sketch_lua.canvas" } }, "a canvas moved to a new workspace by key")
 
-    -- the C clock's tab menu ends with To workspace, whose last entry is a new workspace: Up comes round to them from the first entry
+    -- the C clock's tab menu has To workspace, whose last entry is a new workspace
     local tab = test.rect(7)
     test.click(tab.x + 20, tab.y - 12, 3)
-    test.key("Up")
+    menu.choose(test, "To workspace")
     test.key("Right")
-    test.key("Up")
+    menu.choose(test, "New workspace")
     test.key("Return")
     test.match({ #names(test), typesIn(test, 5), test.session().currentWorkspace }, { 5, { "sketch_c.clock" }, 3 }, "a clock moved to a new workspace by the menu")
   end,
