@@ -13,7 +13,11 @@ return {
     test.match(test.panel(2), { title = "Stepper (10)" }, "after Space")
 
     test.key("Shift+Up")
-    test.match(test.panel(2), { title = "Stepper (11)" }, "after the preset's Shift+Up for the panel type")
+    test.match(test.panel(2), { title = "Stepper (11)" }, "after the preset's Shift+Up for the panel type, which wins over the plugin's")
+
+    test.key("Shift+Down")
+    test.key("Shift+Down")
+    test.match(test.panel(2), { title = "Stepper (9)" }, "after the preset's Shift+Down for the plugin")
 
     test.key("Ctrl+0")
     test.match(test.panel(1), { title = "Stepper (0)" }, "after Ctrl+0")

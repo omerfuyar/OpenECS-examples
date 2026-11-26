@@ -723,6 +723,9 @@ for key, service in pairs({ Delete = "clear", ["Ctrl+E"] = "export", ["Ctrl+C"] 
   ecs.panel.addMenuEntry(name("canvas"), name(service))
 end
 
+-- the plugin's own name as the scope binds a key for all of its panel types: Ctrl+H highlights while the canvas or the clock has the focus
+ecs.key.bind(NAME, "Ctrl+H", name("highlight"))
+
 -- events ----------------------------------------------------------------
 
 ecs.event.declare("strokeAdded", "A canvas has a new stroke: { panel = id, strokes = count }")
