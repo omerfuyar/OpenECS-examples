@@ -216,6 +216,8 @@ SHUResult ECSPlugin_Init(ECSPlugin plugin)
     SHU_ReturnResult(Ui_Init(&UI_PLUGIN, plugin));
     SHU_ReturnResult(HistoryFunctions_Get(plugin, &HISTORY));
     TALLY_HISTORY = HISTORY.open("tally_c");
+    // the tool's default history: Ctrl+Z and Ctrl+Y act on it in a panel that keeps none, and when no panel has the focus
+    HISTORY.useDefault(TALLY_HISTORY);
 
     // history.changed is emitted at each change of a history, so the panel shows its count and level after an undo from the History panel too
     static const char *const REDRAW_ON[] = {"history.changed"};
