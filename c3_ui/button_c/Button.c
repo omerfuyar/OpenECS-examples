@@ -1,7 +1,7 @@
 // The controls of the button plugin, in C: the same elements, ids and state as the Lua plugin in ../button, so both behave the same. ui's header,
 // which the build writes from ui's functions (OpenECS DESIGN 10.10), has macros that describe the elements in the manner of Clay's CLAY: a container's
-// block holds its children, and each draw describes them anew. ui builds them with the same functions as for Lua. C gives ui no functions: an element
-// with an id keeps what happened to it, and its macro takes that at the next draw.
+// block holds its children, and each draw describes them anew. ui builds them with the same functions as for Lua. An element with an id keeps what
+// happened to it, and its macro takes that at the next draw; where ui needs an answer at once, as a drag does, the props take C functions.
 
 #include "ui.h" // ui's functions and macros; it includes OpenECS.h
 
@@ -77,6 +77,14 @@ typedef struct Controls
     char link[96]; // the link last clicked in the About tab's text
     char tint[10]; // a colour, "#RRGGBB"
     bool colors;   // whether the Colour section is open
+    struct
+    {
+        char node[16]; // the node dropped on the tree
+        char where[8]; // where it landed: before, after or into
+        char on[16];   // the node it landed on
+    } dropped;
+    char menuNode[16]; // the node a right click gave to the tree's onMenu
+    char renamed[16];  // the node whose menu's Rename was clicked
 } Controls;
 
 static SHUResult ControlsCreate(ECSPanel panel, const ECSValue *savedState, u32 version, void **retState)
@@ -93,7 +101,10 @@ static SHUResult ControlsCreate(ECSPanel panel, const ECSValue *savedState, u32 
 
     *state = (Controls){.panel = panel, .scale = 1.0f, .dark = true, .volume = 0.5, .kept = 0.5, .size = 2, .fruit = 1, .item = 1, .tab = 1, .count = 3, .selected = 1, .node = "readme", .sort = "name", .ascending = true, .tint = "#3366CC", .colors = true};
     *retState = state;
-    return SHUResult_Ok;
+
+    // the panel takes the tree's nodes that are dragged onto it, as data of the core's drag and drop
+    const char *const drops[] = {"example.node"};
+    return ECSPanel_AcceptDrops(panel, drops, COUNT(drops));
 }
 
 static void ControlsDestroy(void *data)
@@ -159,6 +170,84 @@ static void DescribeTable(Controls *controls)
              .onSort = true, .sort = controls->sort, .ascending = controls->ascending ? UI_TRUE : UI_FALSE);
 }
 
+/// @brief The parent of a node of the tree, or nullptr for src and README.md, at the top; lib holds every file but main.c.
+static const char *ParentOf(const char *id)
+{
+    if (strcmp(id, "main") == 0 || strcmp(id, "lib") == 0)
+    {
+        return "src";
+    }
+
+    return strcmp(id, "src") == 0 || strcmp(id, "readme") == 0 ? nullptr : "lib";
+}
+
+/// @brief Whether a node is the one with an id, or one of its parents.
+static bool Holds(const char *node, const char *id)
+{
+    for (; id != nullptr; id = ParentOf(id))
+    {
+        if (strcmp(id, node) == 0)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// a press on a node and a move of the pointer drag what onDrag gives, as data of the core's drag and drop: the node's id
+static bool TreeDrag(void *user, const ECSValue *item, const char **retType, ECSValue *retValue)
+{
+    (void)user;
+    *retType = "example.node";
+    return ECSValue_SetString(retValue, ECSValue_GetString(item, "")) == SHUResult_Ok;
+}
+
+// while a node is dragged, the tree asks where it may land, with what onDrop would get: a node may not land on itself or inside itself, so false
+// refuses it, and the tree marks nothing there; a file holds nothing, so a node dropped into one goes after it
+static bool TreeDragOver(void *user, UiDrop *drop)
+{
+    (void)user;
+    const char *id = ECSValue_GetString(drop->item, nullptr);
+
+    if (id != nullptr && Holds(ECSValue_GetString(drop->value, ""), id))
+    {
+        return false;
+    }
+
+    if (drop->where == UI_INTO && strcmp(id, "src") != 0 && strcmp(id, "lib") != 0)
+    {
+        drop->where = UI_AFTER;
+    }
+
+    return true;
+}
+
+// a node dropped on the tree gives the node it landed on, and where: before it, into it, or after it, by where on its row
+static void TreeDrop(void *user, const UiDrop *drop)
+{
+    Controls *controls = user;
+    static const char *const WHERE[] = {"", "before", "after", "into"};
+    snprintf(controls->dropped.node, sizeof(controls->dropped.node), "%s", ECSValue_GetString(drop->value, ""));
+    snprintf(controls->dropped.where, sizeof(controls->dropped.where), "%s", WHERE[drop->where]);
+    snprintf(controls->dropped.on, sizeof(controls->dropped.on), "%s", ECSValue_GetString(drop->item, ""));
+}
+
+static void TreeRename(void *user)
+{
+    Controls *controls = user;
+    snprintf(controls->renamed, sizeof(controls->renamed), "%s", controls->menuNode);
+}
+
+// a right click on a node chooses it, unless it is chosen, and gives its id and the place, where the tree opens a menu about the node
+static void TreeMenu(void *user, const ECSValue *item, f64 x, f64 y)
+{
+    Controls *controls = user;
+    snprintf(controls->menuNode, sizeof(controls->menuNode), "%s", ECSValue_GetString(item, ""));
+    const UiMenuEntry entries[] = {{.label = "Rename", .onClick = TreeRename, .user = controls}, {0}};
+    Ui_Menu(&UI_PLUGIN, controls->panel, x, y, entries);
+}
+
 // a tree shows its open nodes' children below them; the panel keeps which nodes are open, and the chosen one
 static void DescribeTree(Controls *controls)
 {
@@ -213,7 +302,10 @@ static void DescribeTree(Controls *controls)
             }
         }
 
-        UI_TREE(&controls->node, nodes, .id = "tree", .height = 110, .grow = UI_FIXED, .border = "frame");
+        // C functions in the props give what ui asks at once, such as where a dragged node may land, and get what the user did, with the props'
+        // user, the panel's state
+        UI_TREE(&controls->node, nodes, .id = "tree", .height = 110, .grow = UI_FIXED, .border = "frame", .user = controls, .onDrag = TreeDrag,
+                .onDragOver = TreeDragOver, .onDrop = TreeDrop, .onMenu = TreeMenu);
 
         // a row with wrap = true puts the children that do not fit the rest of a line on the next line, as a toolbar does in a narrow panel;
         // this one is in a narrow column, so its buttons take two lines
@@ -481,6 +573,19 @@ static SHUResult ControlsSaveState(void *data, ECSValue *retSavedState)
     SHU_ReturnResult(SetBool(retSavedState, "locked", state->locked));
     SHU_ReturnResult(SetString(retSavedState, "sort", state->sort));
     SHU_ReturnResult(SetBool(retSavedState, "ascending", state->ascending));
+
+    SHU_ReturnResult(SetString(retSavedState, "menuNode", state->menuNode[0] != '\0' ? state->menuNode : nullptr));
+    SHU_ReturnResult(SetString(retSavedState, "renamed", state->renamed[0] != '\0' ? state->renamed : nullptr));
+
+    if (state->dropped.node[0] != '\0')
+    {
+        ECSValue *dropped = nullptr;
+        SHU_ReturnResult(ECSValue_SetTableField(retSavedState, "dropped", &dropped));
+        ECSValue_SetTable(dropped);
+        SHU_ReturnResult(SetString(dropped, "node", state->dropped.node));
+        SHU_ReturnResult(SetString(dropped, "where", state->dropped.where));
+        SHU_ReturnResult(SetString(dropped, "on", state->dropped.on));
+    }
 
     ECSValue *open = nullptr;
     SHU_ReturnResult(ECSValue_SetTableField(retSavedState, "open", &open));

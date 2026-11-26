@@ -283,6 +283,72 @@ return function(test, number, title)
   test.click(at("lockButton"))
   test.match(state().locked, false, "and unlocks it")
 
+  -- the rows: src, its children main and lib, then readme, with src open and lib closed; the tree's onDrag, onDragOver, onDrop and onMenu are
+  -- Lua functions in Lua and C functions in C
+  local src = state().rects["tree:src"]
+  local height = state().rects["tree:lib"].y - state().rects["tree:main"].y
+  local function row(i)
+    return panel.x + src.x + src.width * 0.6, panel.y + src.y + src.height / 2 + height * (i - 1)
+  end
+
+  local function top(i)
+    return panel.y + src.y + height * (i - 1) + 0.5
+  end
+
+  local left = panel.x + src.x + 0.5
+
+  -- a node dragged onto the middle of another's row drops into it, and onto the upper quarter of a row before it. While it is dragged, the
+  -- tree marks where it will land, as the core gives it dragOver, though the drag started in it: a box around the row it goes into, and a
+  -- line along the top of the row it goes before. The rows beside them show what an unmarked row looks like
+  local x, y = row(4)
+  local toX, toY = row(1)
+  test.press(x, y)
+  test.move(x, y - height / 2)
+  test.move(toX, toY)
+  test.match(test.pixel(left, toY) ~= test.pixel(left, toY + height), true, "a box marks the row the node goes into")
+  local accent = test.pixel(left, toY)
+  test.release(toX, toY)
+  test.match(test.pixel(left, toY) == test.pixel(left, toY + height), true, "the box goes with the drop")
+  test.match(state().dropped, { node = "readme", where = "into", on = "src" }, "a drop into a node")
+  x, y = row(2)
+  toX, toY = row(3)
+  test.press(x, y)
+  test.move(x, y + height / 2)
+  test.move(toX, toY - height * 0.4)
+  test.match({ test.pixel(toX, top(3)) == accent, test.pixel(left, toY) ~= accent }, { true, true }, "a line marks the row the node goes before")
+  test.release(toX, toY - height * 0.4)
+  test.match(state().dropped, { node = "main", where = "before", on = "lib" }, "a drop before a node")
+
+  -- the tree's onDragOver says where a node may land. src dragged onto the middle of main, its own child, is refused: no box marks main, and
+  -- the release drops nothing
+  x, y = row(1)
+  toX, toY = row(2)
+  test.press(x, y)
+  test.move(x, y + height / 2)
+  test.move(toX, toY)
+  test.match(test.pixel(left, toY) ~= accent, true, "no box marks a landing that onDragOver refuses")
+  test.release(toX, toY)
+  test.match(state().dropped, { node = "main", where = "before", on = "lib" }, "a refused landing drops nothing")
+
+  -- README.md dragged onto the middle of main, a file that holds nothing, goes after it, as onDragOver gives: a line marks main's bottom, and
+  -- no box marks it
+  x, y = row(4)
+  test.press(x, y)
+  test.move(x, y - height / 2)
+  test.move(toX, toY)
+  test.match({ test.pixel(left, toY) ~= accent, test.pixel(toX, top(3) - 1.5) == accent }, { true, true }, "a line marks the place that onDragOver gives")
+  test.release(toX, toY)
+  test.match(state().dropped, { node = "readme", where = "after", on = "main" }, "a drop at the place that onDragOver gives")
+
+  -- a right click on a node chooses it and gives it to onMenu, which opens a menu about it there; its entry gets the node
+  test.click(row(2))
+  test.click(x, y, 3)
+  test.match({ state().node, state().menuNode }, { "readme", "readme" }, "a right click chooses a node, and gives it to onMenu")
+  test.match(test.menu(), { { label = "Rename", enabled = true, chosen = true } }, "the node's menu")
+  local menu = test.popup(1)
+  test.click(menu.x + 10, menu.y + 10)
+  test.match(state().renamed, "readme", "the node's menu's entry")
+
   -- the Table tab: the rows are sorted by name, a click on a title sorts by its column, and a second click reverses the order
   test.click(at("tab", 0.02))
   test.key("Right")
