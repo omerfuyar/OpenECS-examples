@@ -53,12 +53,8 @@ function Runner.create(panel)
   return setmetatable({ panel = panel }, Runner)
 end
 
-function Runner:draw(surface)
-  ui.show(self.panel, surface, ui.row({ padding = 8 }, { ui.button("Run", { id = "run", onClick = run }) }))
-end
-
-function Runner:event(event)
-  ui.event(self.panel, event)
+function Runner:view()
+  return ui.row({ padding = 8 }, { ui.button("Run", { id = "run", onClick = run }) })
 end
 
 -- the console's entries, the folder and the clipboard, for the test
@@ -68,16 +64,10 @@ function Runner:saveState()
     clipboard = ecs.clipboard.getText(), source = entries[#entries] and entries[#entries].source, text = entries[#entries] and entries[#entries].text }
 end
 
-function Runner:destroy()
-  ui.forget(self.panel)
-end
-
-ecs.panel.registerType({
+ecs.panel.registerType(ui.panelType({
   name = "panel",
   title = "Runner",
   create = Runner.create,
-  draw = Runner.draw,
-  event = Runner.event,
+  view = Runner.view,
   saveState = Runner.saveState,
-  destroy = Runner.destroy,
-})
+}))

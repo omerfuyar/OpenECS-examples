@@ -35,27 +35,19 @@ function Source.create(panel)
   return state
 end
 
-function Source:draw(surface)
+function Source:view()
   local lines = {}
 
   for i, spans in ipairs(self.lines) do
     lines[i] = ui.text(spans, { font = "mono" })
   end
 
-  ui.show(self.panel, surface, ui.column({ padding = 12, gap = 8 }, {
+  return ui.column({ padding = 12, gap = 8 }, {
     ui.selector(self.file, FILES, { id = "file", onSelect = function(file)
       self:load(file)
     end }),
     ui.scroll({ id = "code", grow = 1 }, lines),
-  }))
-end
-
-function Source:event(event)
-  ui.event(self.panel, event)
-end
-
-function Source:destroy()
-  ui.forget(self.panel)
+  })
 end
 
 -- what the test reads: the file and the kinds of a line of each sample, from highlight's ranges
@@ -69,17 +61,13 @@ function Source:saveState()
   return { name = self.name, language = self.language, lines = #self.lines, kinds = kinds, languages = syntax.languages() }
 end
 
-ecs.panel.registerType({
+ecs.panel.registerType(ui.panelType({
   name = "panel",
   title = "Viewer",
 
   create = Source.create,
 
-  draw = Source.draw,
-
-  event = Source.event,
-
-  destroy = Source.destroy,
+  view = Source.view,
 
   saveState = Source.saveState,
-})
+}))

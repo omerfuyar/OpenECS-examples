@@ -52,7 +52,7 @@ function Notes.create(panel)
   return setmetatable({ panel = panel }, Notes)
 end
 
-function Notes:draw(surface)
+function Notes:view()
   local text = "Click a note to see its first line, and double-click it to open it."
   if chosen ~= "" and opened ~= chosen then
     local file = io.open(folder .. chosen, "rb")
@@ -68,33 +68,23 @@ function Notes:draw(surface)
     end
   end
   -- Show in Files shows the opened note in the files panel, unless the panel is locked
-  ui.show(self.panel, surface, ui.column({ padding = 8, gap = 8 }, {
+  return ui.column({ padding = 8, gap = 8 }, {
     ui.button("Show in files", { id = "show", tooltip = "Choose the opened note in the files panel", onClick = function()
       files.reveal(opened)
     end }),
     ui.text(text, { wrap = true }),
-  }))
-end
-
-function Notes:event(event)
-  ui.event(self.panel, event)
+  })
 end
 
 function Notes:saveState()
   return { opened = opened, chosen = chosen, folder = folder }
 end
 
-function Notes:destroy()
-  ui.forget(self.panel)
-end
-
-ecs.panel.registerType({
+ecs.panel.registerType(ui.panelType({
   name = "opened",
   title = "Opened",
   redrawOn = { "notes.shown" },
   create = Notes.create,
-  draw = Notes.draw,
-  event = Notes.event,
+  view = Notes.view,
   saveState = Notes.saveState,
-  destroy = Notes.destroy,
-})
+}))

@@ -31,29 +31,19 @@ function Counter.create(panel)
   return setmetatable({ panel = panel }, Counter)
 end
 
-function Counter:destroy()
-  ui.forget(self.panel)
-end
-
 function Counter:saveState()
   return { count = count }
 end
 
-function Counter:draw(surface)
-  ui.show(self.panel, surface, ui.text(("Counted %d times"):format(count), { size = 20 }))
+function Counter:view()
+  return ui.text(("Counted %d times"):format(count), { size = 20 })
 end
 
-function Counter:event(event)
-  ui.event(self.panel, event)
-end
-
-ecs.panel.registerType({
+ecs.panel.registerType(ui.panelType({
   name = "panel",
   title = "Counter",
   redrawOn = { "counter.counted" },
   create = Counter.create,
-  destroy = Counter.destroy,
   saveState = Counter.saveState,
-  draw = Counter.draw,
-  event = Counter.event,
-})
+  view = Counter.view,
+}))
