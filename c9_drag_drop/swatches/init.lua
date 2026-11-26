@@ -1,4 +1,5 @@
 -- A palette whose colours drag onto samples. A sample also takes files dropped from other applications, and shows their names.
+-- A sample marks the pointer, also while a colour is dragged over it: so a panel that places what is dropped, such as a list, shows where it will land.
 
 local ecs = require("ecs")
 
@@ -50,7 +51,7 @@ ecs.panel.registerType({
   event = Palette.event,
 })
 
--- the sample: one colour, and the names of the files dropped last
+-- the sample: one colour, the names of the files dropped last, and a mark at the pointer
 
 -- each panel's state is an object of Sample, whose functions are methods
 local Sample = {}
@@ -59,11 +60,16 @@ Sample.__index = Sample
 function Sample.create(panel, saved)
   -- the types the panel takes; panels that take the dragged type are outlined during a drag
   panel:acceptDrops({ "swatches.color", "file-list" })
-  return setmetatable({ panel = panel, color = saved and saved.color or "#4C566A", files = {} }, Sample)
+  return setmetatable({ panel = panel, color = saved and saved.color or "#4C566A", files = {}, scale = 1 }, Sample)
 end
 
 function Sample:draw(surface)
+  self.scale = surface.scale
   surface:fill(0, 0, surface.width, surface.height, self.color)
+
+  if self.pointerX then
+    surface:fill(self.pointerX - 4 * self.scale, self.pointerY - 4 * self.scale, 8 * self.scale, 8 * self.scale, "text")
+  end
 
   for i, name in ipairs(self.files) do
     draw.text(surface, draw.font("ui"), name, 16, 16 + (i - 1) * 24, 16, "text")
@@ -71,6 +77,13 @@ function Sample:draw(surface)
 end
 
 function Sample:event(event)
+  -- the panel under the pointer gets its moves, also while another panel drags data
+  if event.type == "pointerMove" then
+    self.pointerX, self.pointerY = math.floor(event.x), math.floor(event.y)
+    self.panel:redraw()
+    return
+  end
+
   if event.type ~= "drop" then
     return
   end
