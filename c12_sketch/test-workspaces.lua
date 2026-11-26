@@ -2,7 +2,6 @@
 -- The window buttons stay at the bar's right end whatever the menu's name, and a panel moves to another workspace, or to a new one, by menu and by key
 
 local title = dofile(debug.getinfo(1, "S").source:match("^@(.*[/\\])") .. "title.lua")
-local menu = dofile(debug.getinfo(1, "S").source:match("^@(.*[/\\])") .. "menu.lua")
 local parts, centre = title.parts, title.centre
 
 -- the workspaces' names, by number
@@ -73,10 +72,8 @@ return {
     -- the C clock's tab menu has To workspace, whose last entry is a new workspace
     local tab = test.rect(7)
     test.click(tab.x + 20, tab.y - 12, 3)
-    menu.choose(test, "To workspace")
-    test.key("Right")
-    menu.choose(test, "New workspace")
-    test.key("Return")
+    test.choose("To workspace")
+    test.choose("New workspace")
     test.match({ #names(test), typesIn(test, 5), test.session().currentWorkspace }, { 5, { "sketch_c.clock" }, 3 }, "a clock moved to a new workspace by the menu")
   end,
 }
