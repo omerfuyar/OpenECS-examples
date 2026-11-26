@@ -93,6 +93,10 @@ return {
       { label = "Reset the clicks", enabled = true, chosen = false },
       { label = "More", enabled = true, chosen = false },
     }, "the menu's entries")
+    -- and the menu's rectangle is its popup's
+    local shown, popup = test.menu(), test.popup(1)
+    test.match({ shown.rect, shown.window }, { { x = popup.x, y = popup.y, width = popup.width, height = popup.height }, popup.window },
+      "the menu's rectangle")
     test.key("Down")
     test.match(test.menu()[2].chosen, true, "Down goes past the line to Reset")
     test.key("Return")
@@ -101,6 +105,11 @@ return {
     -- runs its first entry
     test.click(corner.x + corner.width - 20, corner.y + corner.height - 20, 3)
     local whole = test.popup(1).height
+    -- test.choose fails on an entry that is not enabled, as Reset is with no clicks, and on a label that no entry has
+    local chose, problem = pcall(test.choose, "Reset the clicks")
+    test.match({ chose, problem:find('the entry "Reset the clicks" is not enabled', 1, true) ~= nil }, { false, true }, problem)
+    chose, problem = pcall(test.choose, "Nothing")
+    test.match({ chose, problem:find('the menu has no entry "Nothing"', 1, true) ~= nil }, { false, true }, problem)
     test.key("Up")
     test.key("Right")
     local more = test.popup(1).height

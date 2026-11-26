@@ -11,21 +11,6 @@ local function types(test)
   return found
 end
 
--- chooses the entry with a label in the open menu: Down moves the choice until it is there, so an entry added before it changes nothing
-local function choose(test, label)
-  for _ = 1, #test.menu() do
-    for _, entry in ipairs(test.menu()) do
-      if entry.chosen and entry.label == label then
-        return
-      end
-    end
-
-    test.key("Down")
-  end
-
-  error(("the menu has no entry '%s'"):format(label), 2)
-end
-
 return {
   preset = "preset.lua",
   run = function(test)
@@ -40,16 +25,14 @@ return {
     test.click(tools.x + tools.width / 2, tools.y + tools.height / 2)
     test.match(test.menu(), { { label = "Open the launcher", chosen = true }, { label = "Open the panel list" }, { label = "Open the settings" } },
       "the menu Tools")
-    choose(test, "Open the settings")
-    test.key("Return")
+    test.choose("Open the settings")
     test.match(types(test), { "shapes.square", "settings.window" }, "the settings window opened from the menu Tools")
 
     -- ecs.app.menu opens the title bar's first menu, File, with keys; Right goes to the next menu, Window, then Tools
     test.call("ecs.app.menu")
     test.key("Right")
     test.key("Right")
-    choose(test, "Open the panel list")
-    test.key("Return")
+    test.choose("Open the panel list")
     test.match(types(test), { "shapes.square", "settings.window", "panels.list" }, "the panel list opened from the menu Tools")
   end,
 }
