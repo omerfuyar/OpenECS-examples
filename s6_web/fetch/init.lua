@@ -16,15 +16,14 @@ local PAGES = { ["/"] = "Hello from OpenECS", ["/plain"] = "A plain page" }
 local server = net.listen("", PORT) -- nil if the port is taken
 local clients = {}              -- the server's connections, until each closes
 local log = { server and "Serving http://127.0.0.1:" .. PORT .. "/" or "Cannot serve on port " .. PORT }
-local panels = {}               -- the open panels, drawn again when the log changes
 local socket                    -- the WebSocket connection that typed lines go to, and its state
+
+-- the plugin's own event: every panel draws again when it comes, as the panel type's redrawOn names it
+ecs.event.declare("logged", "A line was added to the log: its text")
 
 local function add(line)
   log[#log + 1] = line
-
-  for panel in pairs(panels) do
-    panel:redraw()
-  end
+  ecs.event.emit("fetch.logged", line)
 end
 
 -- the answer to what a client sent: a page for a GET of one, 404 for another path, and 400 for anything else
@@ -135,7 +134,6 @@ local Fetch = {}
 Fetch.__index = Fetch
 
 function Fetch.create(panel)
-  panels[panel] = true
   panel:setTextInput(true)
   return setmetatable({ panel = panel, line = "" }, Fetch)
 end
@@ -204,21 +202,16 @@ function Fetch:event(event)
   self.panel:redraw()
 end
 
-function Fetch:destroy()
-  panels[self.panel] = nil
-end
-
 ecs.panel.registerType({
   name = "panel",
   title = "Fetch",
+  redrawOn = { "fetch.logged" },
 
   create = Fetch.create,
 
   draw = Fetch.draw,
 
   event = Fetch.event,
-
-  destroy = Fetch.destroy,
 })
 
 -- the log is the plugin's saved state, so the test can read it; the timer stops before the program exits

@@ -6,15 +6,14 @@ local ecs = require("ecs")
 local draw = require("draw")
 local notify = require("notify")
 
-local panels = {} -- every open panel's state
 local lines = {} -- what happened, newest last
+
+-- the plugin's own event, which every panel redraws on
+ecs.event.declare("noted", "A line was added to what happened: its text")
 
 local function note(text)
   lines[#lines + 1] = text
-
-  for _, state in pairs(panels) do
-    state.panel:redraw()
-  end
+  ecs.event.emit("alerts.noted", text)
 end
 
 -- each event's value names what was clicked: a notification by its id and its button, a tray by its name and its entry
@@ -65,13 +64,7 @@ function Alerts:send()
 end
 
 function Alerts.create(panel)
-  local state = setmetatable({ panel = panel, sent = 0 }, Alerts)
-  panels[panel] = state
-  return state
-end
-
-function Alerts:destroy()
-  panels[self.panel] = nil
+  return setmetatable({ panel = panel, sent = 0 }, Alerts)
 end
 
 function Alerts:event(event)
@@ -99,10 +92,9 @@ end
 ecs.panel.registerType({
   name = "panel",
   title = "Alerts",
+  redrawOn = { "alerts.noted" },
 
   create = Alerts.create,
-
-  destroy = Alerts.destroy,
 
   event = Alerts.event,
 
