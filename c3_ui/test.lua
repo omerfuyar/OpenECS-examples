@@ -51,15 +51,31 @@ return {
     test.match(state().nodes, { "readme" }, "a right click chooses a node that is not chosen")
     test.match(state().menuNode, "readme", "and gives it to onMenu")
 
-    -- a node dragged onto the middle of another's row drops into it, and onto the upper quarter of a row before it
+    -- a node dragged onto the middle of another's row drops into it, and onto the upper quarter of a row before it. While it is dragged, the
+    -- tree marks where it will land, as the core gives it dragOver, though the drag started in it: a box around the row it goes into, and a
+    -- line along the top of the row it goes before. The rows beside them show what an unmarked row looks like
+    local left = box.x + src.x + 0.5
+    local function top(i)
+      return box.y + src.y + height * (i - 1) + 0.5
+    end
+
     local toX, toY
     x, y = row(4)
     toX, toY = row(1)
-    test.drag(x, y, toX, toY)
+    test.press(x, y)
+    test.move(x, y - height / 2)
+    test.move(toX, toY)
+    test.match(test.pixel(left, toY) ~= test.pixel(left, toY + height), true, "a box marks the row the node goes into")
+    test.release(toX, toY)
+    test.match(test.pixel(left, toY) == test.pixel(left, toY + height), true, "the box goes with the drop")
     test.match(state().dropped, { node = "readme", where = "into", on = "src" }, "a drop into a node")
     x, y = row(2)
     toX, toY = row(3)
-    test.drag(x, y, toX, toY - height * 0.4)
+    test.press(x, y)
+    test.move(x, y + height / 2)
+    test.move(toX, toY - height * 0.4)
+    test.match(test.pixel(toX, top(3)) ~= test.pixel(toX, top(2)), true, "a line marks the row the node goes before")
+    test.release(toX, toY - height * 0.4)
     test.match(state().dropped, { node = "main", where = "before", on = "lib" }, "a drop before a node")
 
     -- a right click beside the elements reaches the root's onMenu, which opens the panel's menu there: its entries are a row each, with a line between the
@@ -77,6 +93,10 @@ return {
       { label = "Reset the clicks", enabled = true, chosen = false },
       { label = "More", enabled = true, chosen = false },
     }, "the menu's entries")
+    -- and the menu's rectangle is its popup's
+    local shown, popup = test.menu(), test.popup(1)
+    test.match({ shown.rect, shown.window }, { { x = popup.x, y = popup.y, width = popup.width, height = popup.height }, popup.window },
+      "the menu's rectangle")
     test.key("Down")
     test.match(test.menu()[2].chosen, true, "Down goes past the line to Reset")
     test.key("Return")
@@ -85,6 +105,11 @@ return {
     -- runs its first entry
     test.click(corner.x + corner.width - 20, corner.y + corner.height - 20, 3)
     local whole = test.popup(1).height
+    -- test.choose fails on an entry that is not enabled, as Reset is with no clicks, and on a label that no entry has
+    local chose, problem = pcall(test.choose, "Reset the clicks")
+    test.match({ chose, problem:find('the entry "Reset the clicks" is not enabled', 1, true) ~= nil }, { false, true }, problem)
+    chose, problem = pcall(test.choose, "Nothing")
+    test.match({ chose, problem:find('the menu has no entry "Nothing"', 1, true) ~= nil }, { false, true }, problem)
     test.key("Up")
     test.key("Right")
     local more = test.popup(1).height
