@@ -9,6 +9,6 @@ return {
   depends = { ticker = "0.1", listener = "0.1", heard_c = "0.1" },
   pluginsDir = ".",
   workspaces = {
-    { name = "Main", windows = { { panels = { { type = "listener.panel" }, { type = "heard_c.panel" } } } } },
+    { name = "Main", windows = { { split = "horizontal", { panels = { { type = "listener.panel" } } }, { panels = { { type = "heard_c.panel" } } } } } },
   },
 }

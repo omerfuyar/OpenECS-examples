@@ -44,14 +44,13 @@ local secureClient = net.connectTLS("localhost", PORT + 2)
 local secureAccepted
 local secureSent = false
 local secureAnswer = "" -- what came back over TLS, saved for the test
-local panels = {} -- the open panels, drawn again when the log changes
+
+-- the plugin's own event: every panel draws again when it comes, as the panel type's redrawOn names it
+ecs.event.declare("logged", "A line was added to the log: its text")
 
 local function add(line)
   log[#log + 1] = line
-
-  for panel in pairs(panels) do
-    panel:redraw()
-  end
+  ecs.event.emit("echo.logged", line)
 end
 
 -- every 50 ms: accept the client, answer what the server got, and log what the client got
@@ -134,7 +133,6 @@ local Echo = {}
 Echo.__index = Echo
 
 function Echo.create(panel)
-  panels[panel] = true
   panel:setTextInput(true)
   return setmetatable({ panel = panel, line = "" }, Echo)
 end
@@ -175,21 +173,16 @@ function Echo:event(event)
   self.panel:redraw()
 end
 
-function Echo:destroy()
-  panels[self.panel] = nil
-end
-
 ecs.panel.registerType({
   name = "panel",
   title = "Echo",
+  redrawOn = { "echo.logged" },
 
   create = Echo.create,
 
   draw = Echo.draw,
 
   event = Echo.event,
-
-  destroy = Echo.destroy,
 })
 
 -- the log is the plugin's saved state, so the test can read it; the timer stops before the program exits

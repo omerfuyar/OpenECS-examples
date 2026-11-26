@@ -9,8 +9,6 @@ local draw = require("draw")
 -- tell editors their parameters, so they complete and check calls
 local counter = require("counter")
 
-local panels = {}
-
 -- a Lua function fails and checks its arguments as a C one does: ecs.check stops the Lua code at a misuse, the caller's mistake,
 -- and a failure, which is not the caller's mistake, returns nil and why, as ecs.fail gives it
 local function addTo(name, amount)
@@ -26,20 +24,13 @@ local function addTo(name, amount)
   return value
 end
 
-local function redrawAll()
-  for panel in pairs(panels) do
-    panel:redraw()
-  end
-end
+-- the plugin's own event, which its panel type redraws on below
+ecs.event.declare("changed", "The click counter changed: its new value")
 
 -- counter keeps this function and calls it with each change, from any plugin; a Lua function becomes a C function pointer for it
 counter.watch(function(name, value)
   if name == "clicks" then
-    for panel in pairs(panels) do
-      panel.title = ("Tally (%d)"):format(value)
-    end
-
-    redrawAll()
+    ecs.event.emit("tally.changed", value)
   end
 end)
 
@@ -48,17 +39,15 @@ local Tally = {}
 Tally.__index = Tally
 
 function Tally.create(panel)
-  panels[panel] = true
   return setmetatable({ panel = panel }, Tally)
 end
 
-function Tally:destroy()
-  panels[self.panel] = nil
-end
-
+-- the tab's title follows the counter as the panel draws; a panel in a hidden tab draws, and shows the count, when it is shown
 function Tally:draw(surface)
+  local clicks = counter.get("clicks")
+  self.panel.title = ("Tally (%d)"):format(clicks)
   surface:fill(0, 0, surface.width, surface.height, "panel")
-  draw.text(surface, draw.font("ui"), ("%d clicks in all"):format(counter.get("clicks")), 24, 24, 24, "text")
+  draw.text(surface, draw.font("ui"), ("%d clicks in all"):format(clicks), 24, 24, 24, "text")
 end
 
 function Tally:event(event)
@@ -71,9 +60,10 @@ ecs.panel.registerType({
   name = "panel",
   title = "Tally",
 
-  create = Tally.create,
+  -- every panel of the type draws again at each tally.changed, so the plugin keeps no list of its panels
+  redrawOn = { "tally.changed" },
 
-  destroy = Tally.destroy,
+  create = Tally.create,
 
   draw = Tally.draw,
 

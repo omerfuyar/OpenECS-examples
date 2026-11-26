@@ -1527,6 +1527,9 @@ SHUResult ECSPlugin_Init(ECSPlugin plugin)
         SHU_ReturnResult(ECSPanelType_AddMenuEntry(plugin, SKETCH_NAME("canvas"), bindings[i][1]));
     }
 
+    // the plugin's own name as the scope binds a key for all of its panel types: Ctrl+H highlights while the canvas or the clock has the focus
+    SHU_ReturnResult(ECSKey_Bind(plugin, "sketch_c", "Ctrl+H", SKETCH_NAME("highlight")));
+
     SHU_ReturnResult(ECSEvent_Declare(plugin, "strokeAdded", "A canvas has a new stroke: { panel = id, strokes = count }"));
 
     const char *const events[] = {SKETCH_NAME("strokeAdded"), "ecs.panelOpened", "ecs.panelClosed", "ecs.workspaceSwitched"};

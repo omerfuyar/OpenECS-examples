@@ -11,13 +11,9 @@ local ui = require("ui")
 local folder = ecs.plugin.folder .. "folder/"
 local opened = "" -- the last file that the files panel opened, by its path in the folder
 local chosen = "" -- the file that a click chose
-local panels = {} ---@type table<ecs.Panel, boolean>
 
-local function redraw()
-  for panel in pairs(panels) do
-    panel:redraw()
-  end
-end
+-- the plugin's own event, which its panels redraw on
+ecs.event.declare("shown", "A click chose a note, or a double click opened one: its path in the folder")
 
 -- the folder that the files panel shows; a path ends with a slash
 files.setFolder(folder)
@@ -27,12 +23,12 @@ files.setHandlers({
   -- a click, or Up and Down, chooses a file
   choose = function(path)
     chosen = path
-    redraw()
+    ecs.event.emit("notes.shown", path)
   end,
   -- a double click opens it
   open = function(path)
     opened = path
-    redraw()
+    ecs.event.emit("notes.shown", path)
   end,
   -- New offers Folder and File, and these kinds between them; make gets the path that the panel's name field gives
   kinds = {
@@ -53,7 +49,6 @@ local Notes = {}
 Notes.__index = Notes
 
 function Notes.create(panel)
-  panels[panel] = true
   return setmetatable({ panel = panel }, Notes)
 end
 
@@ -91,12 +86,12 @@ end
 
 function Notes:destroy()
   ui.forget(self.panel)
-  panels[self.panel] = nil
 end
 
 ecs.panel.registerType({
   name = "opened",
   title = "Opened",
+  redrawOn = { "notes.shown" },
   create = Notes.create,
   draw = Notes.draw,
   event = Notes.event,

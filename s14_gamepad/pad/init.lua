@@ -1,5 +1,6 @@
 -- A panel that shows every gamepad that is plugged in, with the gamepad standard plugin: the buttons that are down and where the sticks are.
--- The plugin tells what changes as events, so the panel redraws only then; a plugin may also read a gamepad when it wants, such as each frame of a game.
+-- The plugin tells what changes as events, so the panel redraws only then, as its type's redrawOn names them; a plugin may also read a gamepad
+-- when it wants, such as each frame of a game.
 -- The panel draws each gamepad: its triggers, sticks and buttons, which light up as they are used.
 -- Space on the panel plugs in a virtual gamepad, which the keyboard drives.
 
@@ -7,21 +8,14 @@ local ecs = require("ecs")
 local draw = require("draw")
 local gamepad = require("gamepad")
 
-local panels = {} -- every open panel's state, to redraw them all
 local pads = {} -- every open gamepad, by its id
+local presses = {} -- the buttons pressed and released, newest last
 local virtual -- the virtual gamepad, once Space plugged it in
-
-local function redraw()
-  for _, state in pairs(panels) do
-    state.panel:redraw()
-  end
-end
 
 -- opens a gamepad, to read it; one that cannot open is left out
 local function add(id)
   if not pads[id] then
     pads[id] = gamepad.open(id)
-    redraw()
   end
 end
 
@@ -32,18 +26,11 @@ end)
 
 ecs.event.subscribe("gamepad.removed", function(_, value)
   pads[value.id] = nil
-  redraw()
 end)
 
 ecs.event.subscribe("gamepad.button", function(_, value)
-  for _, state in pairs(panels) do
-    state.presses[#state.presses + 1] = value.button .. (value.down and " down" or " up")
-  end
-
-  redraw()
+  presses[#presses + 1] = value.button .. (value.down and " down" or " up")
 end)
-
-ecs.event.subscribe("gamepad.axis", redraw)
 
 -- the gamepads that were plugged in before the plugin loaded give no event
 for _, info in ipairs(gamepad.list()) do
@@ -124,13 +111,7 @@ local Pad = {}
 Pad.__index = Pad
 
 function Pad.create(panel)
-  local state = setmetatable({ panel = panel, presses = {} }, Pad)
-  panels[panel] = state
-  return state
-end
-
-function Pad:destroy()
-  panels[self.panel] = nil
+  return setmetatable({ panel = panel }, Pad)
 end
 
 function Pad:event(event)
@@ -175,7 +156,7 @@ function Pad:draw(surface)
     y += share
   end
 
-  draw.text(surface, font, "Last presses: " .. table.concat(self.presses, ", ", math.max(1, #self.presses - 5)), 16, height - 30, 18, "accent")
+  draw.text(surface, font, "Last presses: " .. table.concat(presses, ", ", math.max(1, #presses - 5)), 16, height - 30, 18, "accent")
 end
 
 -- what the test reads
@@ -187,16 +168,17 @@ function Pad:saveState()
     triggers[#triggers + 1] = { pad:axis("lefttrigger"), pad:axis("righttrigger") }
   end
 
-  return { pads = names, presses = self.presses, triggers = triggers }
+  return { pads = names, presses = presses, triggers = triggers }
 end
 
 ecs.panel.registerType({
   name = "panel",
   title = "Gamepads",
 
-  create = Pad.create,
+  -- every panel draws again when one of these events comes, after the handlers above have heard it
+  redrawOn = { "gamepad.added", "gamepad.removed", "gamepad.button", "gamepad.axis" },
 
-  destroy = Pad.destroy,
+  create = Pad.create,
 
   event = Pad.event,
 

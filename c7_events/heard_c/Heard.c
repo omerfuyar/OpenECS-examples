@@ -1,4 +1,5 @@
 // A panel in C that hears the log: the core emits each line logged, by any plugin or the core, as the event ecs.logged.
+// Its panels draw again whenever the plugin's own event heard_c.poked is emitted, without a list of them.
 
 #include "OpenECS.h"
 
@@ -8,6 +9,7 @@ static ECSPlugin PLUGIN = nullptr;
 
 static i64 HEARD = 0;  // this plugin's own warnings that the event brought
 static i64 ECHOED = 0; // the lines that the handler logged itself, which the event leaves out
+static i64 DRAWN = 0;  // how often a panel drew, which heard_c.poked makes it do again
 
 // ecs.logged's value is a table: time, level ("debug", "info", "warn" or "error"), plugin ("ecs" for the core) and message
 static void Logged(void *data, const char *name, const ECSValue *value)
@@ -65,6 +67,8 @@ static SHUResult PanelSaveState(void *state, ECSValue *retSavedState)
     ECSValue_SetInteger(field, HEARD);
     SHU_ReturnResult(ECSValue_SetTableField(retSavedState, "echoed", &field));
     ECSValue_SetInteger(field, ECHOED);
+    SHU_ReturnResult(ECSValue_SetTableField(retSavedState, "drawn", &field));
+    ECSValue_SetInteger(field, DRAWN);
     return SHUResult_Ok;
 }
 
@@ -72,7 +76,17 @@ static void PanelDraw(void *state, ECSSurface *surface, f64 seconds)
 {
     (void)state;
     (void)seconds;
+    DRAWN++;
     ECSSurface_Fill(surface, 0, 0, surface->width, surface->height, 0xFF434C5E);
+}
+
+static void Poke(void)
+{
+    // the panels hear nothing of it themselves: their type's redrawOn names the event, so the core draws them again
+    if (ECSEvent_Emit(PLUGIN, "heard_c.poked", nullptr))
+    {
+        ECS_LogWarn(PLUGIN, "Cannot emit heard_c.poked.");
+    }
 }
 
 SHUResult ECSPlugin_Init(ECSPlugin plugin)
@@ -83,14 +97,22 @@ SHUResult ECSPlugin_Init(ECSPlugin plugin)
     ECSSubscription subscription = nullptr;
     SHU_ReturnResult(ECSEvent_Subscribe(plugin, &subscription, "ecs.logged", Logged, nullptr));
 
+    // the events whose every emission draws each panel of the type again; an event is found by its name when it is emitted, so it may be
+    // declared after the type, as heard_c.poked is below, and a name that nothing declares draws nothing
+    static const char *const REDRAW_ON[] = {"heard_c.poked", "nobody.declares"};
+
     const ECSPanelTypeDesc heard = {
         .name = "panel",
         .title = "Heard in C",
+        .redrawOn = REDRAW_ON,
+        .redrawOnCount = sizeof(REDRAW_ON) / sizeof(*REDRAW_ON),
         .Create = PanelCreate,
         .Destroy = PanelDestroy,
         .SaveState = PanelSaveState,
         .Draw = PanelDraw,
     };
 
-    return ECSPanelType_Register(plugin, &heard);
+    SHU_ReturnResult(ECSPanelType_Register(plugin, &heard));
+    SHU_ReturnResult(ECSEvent_Declare(plugin, "poked", "Asks every Heard in C panel to draw again"));
+    return ECSService_RegisterFunction(plugin, "poke", (ECSFunction)Poke, "void()", "Draw every Heard in C panel again");
 }
