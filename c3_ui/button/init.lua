@@ -309,9 +309,12 @@ function Controls:draw(surface)
               self.starred = on
             end
           end,
-          -- a right click on a node chooses it, unless it is chosen, and gives its id, as a menu about it would take it
-          onMenu = function(id)
+          -- a right click on a node chooses it, unless it is chosen, and gives its id and the place, where the tree opens a menu about the node
+          onMenu = function(id, x, y)
             self.menuNode = id
+            ui.menu(self.panel, x, y, { { label = "Rename", onClick = function()
+              self.renamed = id
+            end } })
           end,
           -- a press on a node and a move of the pointer drag what onDrag gives, as data of the core's drag and drop
           onDrag = function(id)
@@ -422,6 +425,7 @@ function Controls:saveState()
     volume = self.volume,
     kept = self.kept,
     dropped = self.dropped,
+    renamed = self.renamed,
     size = SIZES[self.size],
     fruit = FRUITS[self.fruit],
     item = ITEMS[self.item],
