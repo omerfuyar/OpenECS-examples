@@ -70,10 +70,17 @@ return {
     local menu = test.popup(1)
     test.click(menu.x + 10, menu.y + 10)
     test.match(state().clicks, clicks + 1, "the menu's first entry")
+    -- the menu gives the core its entries, so test.menu reads them as it reads the core's menus; a line is not an entry
     test.click(corner.x + corner.width - 20, corner.y + corner.height - 20, 3)
+    test.match(test.menu(), {
+      { label = "Add a click", enabled = true, chosen = true },
+      { label = "Reset the clicks", enabled = true, chosen = false },
+      { label = "More", enabled = true, chosen = false },
+    }, "the menu's entries")
     test.key("Down")
+    test.match(test.menu()[2].chosen, true, "Down goes past the line to Reset")
     test.key("Return")
-    test.match(state().clicks, 0, "Down goes past the line to Reset")
+    test.match(state().clicks, 0, "Return runs Reset")
     -- More opens its entries in place, below the way back: Right opens it, Left goes back to More, Return opens it again, and Return
     -- runs its first entry
     test.click(corner.x + corner.width - 20, corner.y + corner.height - 20, 3)
@@ -81,6 +88,7 @@ return {
     test.key("Up")
     test.key("Right")
     local more = test.popup(1).height
+    test.match(test.menu(), { { label = "More" }, { label = "Add ten clicks", chosen = true } }, "the submenu below its way back")
     test.key("Left")
     test.match({ more < whole, test.popup(1).height }, { true, whole }, "the submenu in place, and back")
     test.key("Return")

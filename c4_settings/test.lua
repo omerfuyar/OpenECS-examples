@@ -14,5 +14,11 @@ return {
     -- a right click takes the user's size away, so the default applies again
     test.click(panel.x + 50, panel.y + 50, 3)
     test.match(test.panel(1), { title = "Hello, OpenECS (32)" }, "after the reset")
+
+    -- a test changes a setting as the user's settings file does: its owner hears of it, and nil takes the user's value away again
+    test.setSetting("greeter.name", "you")
+    test.match(test.panel(1), { title = "Hello, you (32)" }, "the user's name")
+    test.setSetting("greeter.name", nil)
+    test.match(test.panel(1), { title = "Hello, OpenECS (32)" }, "the preset's name again")
   end,
 }

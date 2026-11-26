@@ -17,5 +17,10 @@ return {
     test.call("bonus.give")
     test.match(test.panel(1), { title = "Tally (11)" })
     test.match(test.errors(), {}, "the errors")
+
+    -- a test passes values to a function and gets its results, as a Lua plugin calls it: tally.addTo in Lua, which adds in C
+    test.match({ test.call("tally.addTo", "clicks", 4) }, { 15 }, "tally.addTo's result")
+    test.match(test.panel(1), { title = "Tally (15)" }, "the panels follow the counter")
+    test.match(test.call("counter.get", "clicks"), 15, "counter.get's result")
   end,
 }
