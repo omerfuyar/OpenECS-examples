@@ -81,7 +81,6 @@ function Note:view()
     ui.text("This panel keeps no history: Ctrl+Z here undoes the tool's default one.", { style = STYLES.note, wrap = true }),
     ui.button("Default: tally", { id = "tally", onClick = function() history.useDefault(h) end }),
     ui.button("No default", { id = "none", onClick = function()
-      ---@diagnostic disable-next-line: param-type-mismatch
       history.useDefault(nil)
     end }),
   })

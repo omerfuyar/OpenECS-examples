@@ -1330,9 +1330,14 @@ static void SketchUseBrush(void *brushHandle, ECSPanel panel)
 
     SketchCanvas *canvas = SketchFindCanvas(panel);
 
-    if (canvas != nullptr && brush != nullptr)
+    // no brush gives the canvas the settings' brush again
+    if (canvas != nullptr)
     {
-        brush->references++;
+        if (brush != nullptr)
+        {
+            brush->references++;
+        }
+
         SketchReleaseBrush(canvas->brush);
         canvas->brush = brush;
     }
@@ -1502,7 +1507,7 @@ SHUResult ECSPlugin_Init(ECSPlugin plugin)
         {"eachCanvas", (ECSFunction)SketchEachCanvas, "int(fn<void(handle<ecs.panel>, int)>)", "Calls a function with every canvas and its number of strokes"},
         {"pixels", (ECSFunction)SketchPixels, "buffer(handle<ecs.panel>)", "Gives a canvas as a PPM image"},
         {"brush", (ECSFunction)SketchNewBrush, "handle<sketch_c.brush>(int, string)", "Makes a brush of a size and a colour"},
-        {"useBrush", (ECSFunction)SketchUseBrush, "void(handle<sketch_c.brush>, handle<ecs.panel>)", "Makes a canvas draw with a brush"},
+        {"useBrush", (ECSFunction)SketchUseBrush, "void(handle<sketch_c.brush>? brush, handle<ecs.panel>)", "Makes a canvas draw with a brush, or with the settings' brush again for nil"},
         {"freeBrush", (ECSFunction)SketchFreeBrush, "void(handle<sketch_c.brush>)", "Frees a brush now; its handle becomes invalid, and a canvas that uses it keeps it"},
     };
 
