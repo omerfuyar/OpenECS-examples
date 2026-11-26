@@ -25,7 +25,7 @@ end
 return {
   preset = "preset.lua",
   run = function(test)
-    local base = "http://127.0.0.1:47201"
+    local base = "http://127.0.0.1:47210"
     fetch(test, base .. "/")
 
     -- the plugin drops the request's handle; web keeps the request until its function has it
@@ -37,15 +37,15 @@ return {
     test.match(log[4], "404 text/plain: Not Found", "the missing page")
 
     -- the server answers TLS's greeting with plain HTTP, so the request fails in its handshake; web's mbedTLS names SSL in the error
-    fetch(test, "https://127.0.0.1:47201/")
+    fetch(test, "https://127.0.0.1:47210/")
     log = waitFor(test, 7)
     test.match(log[6]:match("^Failed: .*SSL") ~= nil, true, "the HTTPS request: " .. tostring(log[6]))
 
     -- a message typed before the connection is open waits, and goes once it is
-    fetch(test, "ws://127.0.0.1:47201/echo")
+    fetch(test, "ws://127.0.0.1:47210/echo")
     fetch(test, "early")
     log = waitFor(test, 11)
-    test.match({ log[8], log[9], log[10], log[11] }, { "Connecting to ws://127.0.0.1:47201/echo", "Connected to ws://127.0.0.1:47201/echo", "Echo (text): Hello from the echo server", "Echo (text): early" }, "the connection")
+    test.match({ log[8], log[9], log[10], log[11] }, { "Connecting to ws://127.0.0.1:47210/echo", "Connected to ws://127.0.0.1:47210/echo", "Echo (text): Hello from the echo server", "Echo (text): early" }, "the connection")
 
     -- a long message comes back in many frames of the network, as one message
     local long = ("0123456789"):rep(1000)

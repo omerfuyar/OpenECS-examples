@@ -1,7 +1,7 @@
 -- Fetches each typed URL with the web standard plugin, and shows the answer's status, type and first line.
--- So the example works without the internet, the plugin also serves two pages on this computer with net, at http://127.0.0.1:47201/.
+-- So the example works without the internet, the plugin also serves two pages on this computer with net, at http://127.0.0.1:47210/.
 -- A request runs in the background, and a function gets it once it is done, so the program never waits for the network.
--- A ws:// URL opens a WebSocket connection, here to the plugin's echo server at ws://127.0.0.1:47201/echo: then each typed line is a message, and bye closes it.
+-- A ws:// URL opens a WebSocket connection, here to the plugin's echo server at ws://127.0.0.1:47210/echo: then each typed line is a message, and bye closes it.
 
 local ecs = require("ecs")
 local web = require("web")
@@ -9,7 +9,8 @@ local net = require("net")
 local draw = require("draw")
 local websocket = require("websocket") -- the server side of WebSocket, in websocket.lua of the plugin's folder
 
-local PORT = 47201
+-- a port no other example uses, as the examples' tests run at once; s3_network's takes 47200 to 47202
+local PORT = 47210
 local SIZE = 16
 local PAGES = { ["/"] = "Hello from OpenECS", ["/plain"] = "A plain page" }
 
