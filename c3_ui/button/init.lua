@@ -47,6 +47,34 @@ for i = 2, 100 do
   NODES[1].children[2].children[i] = { id = "f" .. i, label = ("file%d.c"):format(i) }
 end
 
+-- the nodes by id, and the node of each id's parent, so the tree knows where a dragged node may land
+local NODE_OF, PARENT_OF = {}, {}
+
+local function index(nodes, parent)
+  for _, node in ipairs(nodes) do
+    NODE_OF[node.id], PARENT_OF[node.id] = node, parent
+
+    if node.children then
+      index(node.children, node)
+    end
+  end
+end
+
+index(NODES, nil)
+
+-- whether a node is the one with an id, or one of its parents
+local function holds(node, id)
+  while id ~= nil do
+    if id == node.id then
+      return true
+    end
+
+    id = PARENT_OF[id] and PARENT_OF[id].id
+  end
+
+  return false
+end
+
 -- each panel's state is an object of Controls, whose functions are methods
 local Controls = {}
 Controls.__index = Controls
@@ -292,6 +320,15 @@ function Controls:draw(surface)
           -- a node dropped on the tree gives the node it landed on, and where: before it, into it, or after it, by where on its row
           onDrop = function(id, where, _, value)
             self.dropped = { node = value, where = where, on = id }
+          end,
+          -- while a node is dragged, the tree asks where it may land, with what onDrop would get: a node may not land on itself or inside
+          -- itself, so false refuses it, and the tree marks nothing there; a file holds nothing, so a node dropped into one goes after it
+          onDragOver = function(id, where, _, value)
+            if id ~= nil and holds(NODE_OF[value], id) then
+              return false
+            elseif where == "into" and not NODE_OF[id].children then
+              return "after"
+            end
           end,
         }),
       -- a row with wrap = true puts the children that do not fit the rest of a line on the next line, as a toolbar does in a narrow panel;

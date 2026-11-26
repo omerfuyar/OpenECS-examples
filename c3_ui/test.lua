@@ -66,6 +66,7 @@ return {
     test.move(x, y - height / 2)
     test.move(toX, toY)
     test.match(test.pixel(left, toY) ~= test.pixel(left, toY + height), true, "a box marks the row the node goes into")
+    local accent = test.pixel(left, toY)
     test.release(toX, toY)
     test.match(test.pixel(left, toY) == test.pixel(left, toY + height), true, "the box goes with the drop")
     test.match(state().dropped, { node = "readme", where = "into", on = "src" }, "a drop into a node")
@@ -77,6 +78,27 @@ return {
     test.match(test.pixel(toX, top(3)) ~= test.pixel(toX, top(2)), true, "a line marks the row the node goes before")
     test.release(toX, toY - height * 0.4)
     test.match(state().dropped, { node = "main", where = "before", on = "lib" }, "a drop before a node")
+
+    -- the tree's onDragOver says where a node may land. src dragged onto the middle of main, its own child, is refused: no box marks main, and
+    -- the release drops nothing
+    x, y = row(1)
+    toX, toY = row(2)
+    test.press(x, y)
+    test.move(x, y + height / 2)
+    test.move(toX, toY)
+    test.match(test.pixel(left, toY) ~= accent, true, "no box marks a landing that onDragOver refuses")
+    test.release(toX, toY)
+    test.match(state().dropped, { node = "main", where = "before", on = "lib" }, "a refused landing drops nothing")
+
+    -- README.md dragged onto the middle of main, a file that holds nothing, goes after it, as onDragOver gives: a line marks main's bottom, and
+    -- no box marks it
+    x, y = row(4)
+    test.press(x, y)
+    test.move(x, y - height / 2)
+    test.move(toX, toY)
+    test.match({ test.pixel(left, toY) ~= accent, test.pixel(toX, top(3) - 1.5) == accent }, { true, true }, "a line marks the place that onDragOver gives")
+    test.release(toX, toY)
+    test.match(state().dropped, { node = "readme", where = "after", on = "main" }, "a drop at the place that onDragOver gives")
 
     -- a right click beside the elements reaches the root's onMenu, which opens the panel's menu there: its entries are a row each, with a line between the
     -- first and the second, and Reset is enabled only when there are clicks
