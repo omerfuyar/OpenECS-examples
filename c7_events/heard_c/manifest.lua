@@ -3,7 +3,7 @@
 return {
   name = "heard_c",
   version = "0.1.0",
-  api = 3,
+  api = 4,
   description = "A panel that counts the warnings it hears in the log",
   type = "native",
 }

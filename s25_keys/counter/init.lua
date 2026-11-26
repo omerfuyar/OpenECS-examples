@@ -3,7 +3,9 @@ local ecs = require("ecs")
 local ui = require("ui")
 
 local count = 0
-local panels = {}
+
+-- the plugin's own event: each panel of its type draws again when it comes
+ecs.event.declare("counted", "The count went up: the new count")
 
 -- a function that takes no arguments, or the focused panel, can be bound to a key; the key list lists it with its description
 ecs.service.register({
@@ -12,10 +14,7 @@ ecs.service.register({
     doc = "Count one more",
     fn = function()
       count += 1
-
-      for panel in pairs(panels) do
-        panel:redraw()
-      end
+      ecs.event.emit("counter.counted", count)
     end,
   },
 })
@@ -29,13 +28,11 @@ local Counter = {}
 Counter.__index = Counter
 
 function Counter.create(panel)
-  panels[panel] = true
   return setmetatable({ panel = panel }, Counter)
 end
 
 function Counter:destroy()
   ui.forget(self.panel)
-  panels[self.panel] = nil
 end
 
 function Counter:saveState()
@@ -53,6 +50,7 @@ end
 ecs.panel.registerType({
   name = "panel",
   title = "Counter",
+  redrawOn = { "counter.counted" },
   create = Counter.create,
   destroy = Counter.destroy,
   saveState = Counter.saveState,

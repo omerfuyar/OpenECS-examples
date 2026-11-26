@@ -2,7 +2,7 @@
 return {
   name = "counter",
   version = "0.1.0",
-  api = 3,
+  api = 4,
   description = "Named counters that other plugins add to, in C",
   type = "native",
 }
