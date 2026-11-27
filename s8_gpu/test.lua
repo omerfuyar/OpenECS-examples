@@ -1,5 +1,6 @@
 -- each GPU panel, the one in Lua and the one in C, shows its four tiles on the background, and keeps showing them after it pops out into a window of its own;
--- the panel in Lua also shows its title, which gpu draws as text; the shapes panels, in Lua and in C, show gpu's shapes, clips and styled text
+-- the panel in Lua also shows its title, which gpu draws as text; the shapes panels, in Lua and in C, show gpu's shapes, clips and styled text, and the one
+-- in Lua a row of numbers that change at each draw, which pass gpu's kept texts
 
 return {
   preset = "preset.lua",
@@ -83,6 +84,20 @@ return {
       local regular, bold = covered(110), covered(130)
       assert(regular > 20 and bold > regular * 1.15, ("%s: the bold text covers %d pixels, the regular %d"):format(message, bold, regular))
     end
+
+    -- the panel in Lua draws 16 new numbers at each draw, as the pointer moves over it; past gpu's 1024 kept texts, the oldest go, and the new numbers and the texts that stay still draw
+    local shapesPanel = test.rect(3)
+    for i = 1, 80 do
+      test.move(shapesPanel.x + 20 + i % 2, shapesPanel.y + 20)
+    end
+    assert(test.panel(3).state.draws > 64, ("the panel in Lua drew %d times"):format(test.panel(3).state.draws))
+
+    -- the numbers' digits cover part of a line through them, and the background shows between them
+    local digits, gaps = 0, 0
+    for x = 10, 200 do
+      if test.pixel(shapesPanel.x + x, shapesPanel.y + 162) == BACKGROUND then gaps = gaps + 1 else digits = digits + 1 end
+    end
+    assert(digits > 10 and gaps > 10, ("the numbers of the panel in Lua: %d pixels of digits and %d of background"):format(digits, gaps))
 
     shapes(3, "the shapes in Lua")
     shapes(4, "the shapes in C")

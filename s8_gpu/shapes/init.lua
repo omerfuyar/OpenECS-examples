@@ -19,7 +19,7 @@ local teal = gpu.pipeline({
   depth = false,
 })
 
-local function picture(surface)
+local function picture(surface, draws)
   gpu.clear(surface, "#1B2A4A")
   gpu.rounded(surface, 10, 10, 60, 40, 12, "#BF616A")
   gpu.roundedOutline(surface, 80, 10, 60, 40, 12, 4, "#A3BE8C")
@@ -44,12 +44,27 @@ local function picture(surface)
 
   gpu.text(surface, regular, "Wide", 10, 110, 16, "#ECEFF4")
   gpu.text(surface, bold, "Wide", 10, 130, 16, "#ECEFF4")
+
+  -- a row of numbers that change at each draw: gpu keeps the last texts it laid out, so words that stay are laid out once, and
+  -- drops the oldest, so numbers that change do not fill the memory
+  for k = 0, 15 do
+    gpu.text(surface, regular, tostring(draws * 16 + k), 10 + k * 40, 155, 12, "#81A1C1")
+  end
 end
 
 ecs.panel.registerType({
   name = "panel",
   title = "Shapes in Lua",
   surface = "gpu",
-  create = function() return {} end,
-  draw = function(_, surface) picture(surface) end,
+  create = function(panel) return { panel = panel, draws = 0 } end,
+  draw = function(self, surface)
+    self.draws = self.draws + 1
+    picture(surface, self.draws)
+  end,
+  -- the panel draws again when the pointer moves over it, so its numbers change
+  event = function(self, event)
+    if event.type == "pointerMove" then self.panel:redraw() end
+  end,
+  -- its count of draws, which the test reads; a new panel counts from 0
+  saveState = function(self) return { draws = self.draws } end,
 })
