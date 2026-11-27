@@ -5,8 +5,8 @@ local checks = dofile(debug.getinfo(1, "S").source:match("^@(.*[/\\])") .. "chec
 return {
   preset = "preset.lua",
   run = function(test)
-    -- without the setting ui.gpu, ui's panels draw into pixels; test_gpu.lua runs the same checks on the GPU
-    test.match(test.session().workspaces[1].windows[1].panels[1].state.surface, "pixels", "the panel draws into pixels")
+    -- the setting ui.gpu, on by default, puts ui's panels on the GPU; test_pixels.lua runs the same checks on pixels
+    test.match(test.session().workspaces[1].windows[1].panels[1].state.surface, "gpu", "the panel draws on the GPU")
     checks(test, 1, "Controls")
 
     -- the note beside a label breaks at nearly the column's width, so it takes about as many lines as the note alone, not twice as many
