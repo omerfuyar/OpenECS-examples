@@ -80,8 +80,8 @@ return {
     test.match(test.session().disabled, {}, "no plugin is disabled")
     test.match(panelOf(test, "badges.badge"), { title = "Badge", fault = nil }, "the badge after")
 
-    -- each standard plugin registers the same things again when it is enabled again; the plugin list needs ui, draw and image, so they stay
-    for _, name in ipairs({ "audio", "cglm", "compress", "fs", "gamepad", "gltf", "gpu", "hash", "launcher", "mixer", "net", "notify", "panels", "parse", "process", "settings", "sqlite", "textgrid", "web", "regex", "markdown", "syntax", "video" }) do
+    -- each standard plugin registers the same things again when it is enabled again; the plugin list needs ui, draw, gpu and image, so they stay
+    for _, name in ipairs({ "audio", "cglm", "compress", "fs", "gamepad", "gltf", "hash", "launcher", "mixer", "net", "notify", "panels", "parse", "process", "settings", "sqlite", "textgrid", "web", "regex", "markdown", "syntax", "video" }) do
       choose(test, name)
       test.key("Return")
 

@@ -53,6 +53,7 @@ typedef struct Controls
 {
     ECSPanel panel;
     f32 scale;
+    bool gpu; // the surface is a GPU one, as the setting ui.gpu puts ui's panels on the GPU
     i32 clicks;
     i32 untaken; // the keys that reached the panel's own Event, which ui did not take
     bool sound;
@@ -405,6 +406,7 @@ static void ControlsView(void *data, ECSSurface *surface)
 {
     Controls *state = data;
     state->scale = surface->scale;
+    state->gpu = surface->type == ECSSurfaceType_Gpu;
     char clicked[64];
     snprintf(clicked, sizeof(clicked), "Clicked %d times", state->clicks);
 
@@ -551,6 +553,7 @@ static SHUResult ControlsSaveState(void *data, ECSValue *retSavedState)
 {
     Controls *state = data;
     ECSValue_SetTable(retSavedState);
+    SHU_ReturnResult(SetString(retSavedState, "surface", state->gpu ? "gpu" : "pixels"));
     SHU_ReturnResult(SetNumber(retSavedState, "clicks", state->clicks));
     SHU_ReturnResult(SetNumber(retSavedState, "untaken", state->untaken));
     SHU_ReturnResult(SetBool(retSavedState, "sound", state->sound));

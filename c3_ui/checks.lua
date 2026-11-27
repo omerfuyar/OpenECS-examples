@@ -14,6 +14,14 @@ return function(test, number, title)
     return panel.x + rect.x + rect.width * (across or 0.5), panel.y + rect.y + rect.height * (down or 0.5)
   end
 
+  -- the panel looks the same on pixels and on the GPU: the colours inside its elements, away from their text and edges
+  test.match({
+    view = test.pixel(panel.x + 5, panel.y + 5),
+    button = test.pixel(at("button", 0.04)),
+    field = test.pixel(at("name", 0.97)),
+    list = test.pixel(at("list", 0.5, 0.97)),
+  }, { view = "#303030", button = "#4A4A4A", field = "#1E1E1E", list = "#303030" }, "the colours inside the elements")
+
   test.click(at("button"))
   test.click(at("button"))
   test.click(panel.x + 5, panel.y + 5)
