@@ -63,7 +63,8 @@ return {
 
       -- the panel in Lua draws a pipeline over the whole surface inside a clip, which keeps it to the clip
       if id == 3 then
-        is(215, 30, "#007F7F", "the pipeline, inside its clip: 0.5 is 127 of 255")
+        -- the shader writes 128 of 255 exactly, which every driver keeps; a half rounds either way
+        is(215, 30, "#008080", "the pipeline, inside its clip")
         is(240, 30, BACKGROUND, "the pipeline, right of its clip")
         is(215, 60, BACKGROUND, "the pipeline, below its clip")
       end

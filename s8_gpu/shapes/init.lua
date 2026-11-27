@@ -14,7 +14,7 @@ local bold = draw.styledFont("ui", "bold")
 local cover = gpu.buffer("vertex", ffi.new("float[6]", -1, -1, 3, -1, -1, 3))
 local teal = gpu.pipeline({
   vertex = gpu.shader({ stage = "vertex", glsl = "#version 450\nlayout(location = 0) in vec2 point;\nvoid main() { gl_Position = vec4(point, 0.0, 1.0); }\n" }),
-  fragment = gpu.shader({ stage = "fragment", glsl = "#version 450\nlayout(location = 0) out vec4 color;\nvoid main() { color = vec4(0.0, 0.5, 0.5, 1.0); }\n" }),
+  fragment = gpu.shader({ stage = "fragment", glsl = "#version 450\nlayout(location = 0) out vec4 color;\nvoid main() { color = vec4(0.0, 128.0 / 255.0, 128.0 / 255.0, 1.0); }\n" }),
   attributes = { "float2" },
   depth = false,
 })
