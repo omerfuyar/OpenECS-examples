@@ -182,6 +182,8 @@ end
 -- ui lays out and draws the elements that draw describes each time, so the panel keeps only its own state
 function Controls:view(surface)
   self.scale = surface.scale
+  -- pixels, or gpu when the setting ui.gpu puts ui's panels on the GPU
+  self.surface = surface.type
   -- each callback changes the panel's self; ui then asks the core to draw the panel again
   local function set(key)
     return function(value)
@@ -413,6 +415,7 @@ end
 -- the values and the rectangles are saved, so the test can read them
 function Controls:saveState()
   return {
+    surface = self.surface,
     clicks = self.clicks,
     untaken = self.untaken,
     sound = self.sound,
